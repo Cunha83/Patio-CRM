@@ -49,11 +49,14 @@ function viewMensagens() {
       ${abas.map(([k, r]) => `<button data-act="aba-zap" data-k="${k}" aria-selected="${a === k}">${r}</button>`).join('')}
     </div>
     <div style="display:flex;gap:8px">
+      <button class="btn btn-primario" data-act="conectar-wpp" style="font-size:13px;padding:6px 14px">
+        📱 Conectar WhatsApp Web
+      </button>
       <button class="btn ${zap.ativo ? 'btn-secundario' : 'btn-sucesso'}" data-act="liga-zap" style="font-size:13px;padding:6px 14px">
         ${zap.ativo ? 'Pausar Régua' : 'Ativar Régua'}
       </button>
       <button class="btn btn-secundario" data-act="ver-api" style="font-size:13px;padding:6px 14px">
-        ${ico('cfg', 14)} Configurar API WhatsApp
+        ${ico('cfg', 14)} Gateway Externo
       </button>
     </div>
   </div>
@@ -385,6 +388,79 @@ function folhaAPI() {
 
     <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:18px;border-top:1px solid var(--aco-150);padding-top:12px">
       <button class="btn btn-primario" data-act="fechar">Salvar Configurações</button>
+    </div>
+  </div>`;
+}
+
+function folhaConectarWpp() {
+  const wpp = S.ui.wppStatus || { status: 'carregando' };
+
+  let conteudoStatus = '';
+  if (wpp.status === 'pronto') {
+    conteudoStatus = `
+      <div style="background:#e8f5e9;border:1px solid #81c784;color:#2e7d32;padding:16px;border-radius:8px;text-align:center;margin-bottom:16px">
+        <div style="font-size:24px;margin-bottom:4px">✅</div>
+        <div style="font-weight:700;font-size:16px">WhatsApp Conectado e Pronto!</div>
+        <div style="font-size:13px;margin-top:4px;color:#1b5e20">Número Conectado: <b>${esc(wpp.user || 'Sessão Ativa')}</b></div>
+        <div style="font-size:12px;margin-top:8px;color:#388e3c">O Agente com Inteligência Artificial Gemini está ouvindo mensagens e pronto para abrir OS e tirar dúvidas.</div>
+      </div>
+    `;
+  } else if (wpp.status === 'aguardando_qr' && (wpp.qrImage || wpp.qr)) {
+    const srcImg = wpp.qrImage || `/api/whatsapp/qr.png?t=${Date.now()}`;
+    conteudoStatus = `
+      <div style="text-align:center;margin-bottom:16px">
+        <div style="font-weight:600;font-size:14px;margin-bottom:12px;color:var(--aco-800)">
+          Escaneie o QR Code abaixo com o WhatsApp do seu celular:
+        </div>
+        <div style="display:inline-block;padding:12px;background:#ffffff;border:2px solid var(--verde);border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,0.12)">
+          <img src="${srcImg}" alt="QR Code WhatsApp" style="width:260px;height:260px;display:block;image-rendering:pixelated" />
+        </div>
+        <div style="margin-top:10px">
+          <a href="/api/whatsapp/qr.png" target="_blank" class="btn btn-secundario" style="font-size:11px;padding:4px 10px;text-decoration:none;display:inline-block">
+            🔍 Abrir QR Code em tela cheia / Imagem Direta
+          </a>
+        </div>
+        <div style="margin-top:12px;font-size:12px;color:var(--aco-500);line-height:1.5">
+          1. Abra o <b>WhatsApp</b> no celular<br>
+          2. Toque em <b>Mais opções (⋮)</b> ou <b>Configurações</b> > <b>Aparelhos conectados</b><br>
+          3. Toque em <b>Conectar um aparelho</b> e aponte a câmera
+        </div>
+      </div>
+    `;
+  } else {
+    conteudoStatus = `
+      <div style="text-align:center;padding:24px;color:var(--aco-500)">
+        <div style="font-size:24px;margin-bottom:8px">⏳</div>
+        <div style="font-weight:600">Inicializando serviço do WhatsApp...</div>
+        <div style="font-size:12px;margin-top:4px">O navegador virtual está subindo. Aguarde alguns segundos.</div>
+      </div>
+    `;
+  }
+
+  return `
+  <div class="card card-p" style="max-width:520px;margin:0 auto">
+    <div class="entre" style="border-bottom:1px solid var(--aco-150);padding-bottom:10px;margin-bottom:14px">
+      <div>
+        <h3 style="font-size:17px;font-weight:700">📱 WhatsApp Web & Agente IA</h3>
+        <div class="mini">Servidor Central Pátio CRM</div>
+      </div>
+      <button class="btn-fechar" data-act="fechar">${ico('x', 18)}</button>
+    </div>
+
+    ${conteudoStatus}
+
+    <div style="background:var(--aco-050);padding:12px;border-radius:8px;margin-bottom:14px;border:1px solid var(--aco-150);font-size:12px">
+      <div style="font-weight:600;margin-bottom:4px">🌐 Acesso na Rede Local (Wi-Fi):</div>
+      <div>Outros computadores ou celulares podem acessar: <b style="color:var(--azul)">http://192.168.15.15:3000</b></div>
+    </div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--aco-150);padding-top:12px">
+      <button class="btn btn-secundario" data-act="recarregar-qr-wpp" style="font-size:12px">
+        🔄 Atualizar Status
+      </button>
+      <button class="btn btn-primario" data-act="fechar" style="font-size:12px">
+        Fechar
+      </button>
     </div>
   </div>`;
 }

@@ -51,6 +51,21 @@ function viewPatio() {
     return filtro === 'todos' ? cardLivre(box) : '';
   }).filter(Boolean).join('');
 
+  // Veículos na Fila de Espera (sem box alocado)
+  const filaSemBox = filtradas.filter(o => !o.box && o.st !== 'finalizada');
+  let filaHtml = '';
+  if (filaSemBox.length > 0) {
+    filaHtml = `
+    <div style="margin-top:22px">
+      <div style="font-weight:700;font-size:15px;color:var(--aco-800);margin-bottom:10px;display:flex;align-items:center;gap:6px">
+        ${ico('relogio', 16)} <b>Fila de Espera no Pátio</b> <span class="selo" data-st="fila">${filaSemBox.length} aguardando liberação de box</span>
+      </div>
+      <div class="patio" style="grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));">
+        ${filaSemBox.map(o => cardOS(o, null)).join('')}
+      </div>
+    </div>`;
+  }
+
   return `
   <div class="kpis" style="margin-bottom:14px">
     <div class="kpi bom">
@@ -94,9 +109,13 @@ function viewPatio() {
     </div>
   </div>
 
+  <div style="font-weight:700;font-size:15px;color:var(--aco-800);margin-bottom:10px;display:flex;align-items:center;gap:6px">
+    ${ico('patio', 16)} <b>Boxes do Pátio</b>
+  </div>
   <div class="patio">
     ${cardsHtml || '<div class="card card-p vazia" style="grid-column:1/-1;text-align:center;padding:40px"><b>Nenhum veículo encontrado</b>Nenhuma Ordem de Serviço com os critérios selecionados.</div>'}
-  </div>`;
+  </div>
+  ${filaHtml}`;
 }
 
 function cardOS(o, b) {

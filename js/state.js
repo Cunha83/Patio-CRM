@@ -7,17 +7,24 @@ let salvarTimer = null;
 let folhaAtual = null;
 let confirmando = null;
 
-// Sistema de Armazenamento Local Robusto (LocalStorage + window.storage)
+// Sistema de Armazenamento Inteligente (API Servidor + LocalStorage Fallback)
 const armazem = {
+  MAX_STORAGE_BYTES: 5 * 1024 * 1024, // 5MB safety limit
   async ler() {
+    // 1. Tenta sincronizar com o banco central do servidor
     try {
-      if (window.storage && typeof window.storage.get === 'function') {
-        const r = await window.storage.get(CHAVE);
-        if (r && r.value) return JSON.parse(r.value);
+      const res = await fetch('/api/estado');
+      if (res.ok) {
+        const data = await res.json();
+        if (data && typeof data === 'object' && Object.keys(data).length > 0) {
+          try { localStorage.setItem(CHAVE, JSON.stringify(data)); } catch (_) {}
+          return data;
+        }
       }
     } catch (e) {
-      console.warn('Erro ao ler do storage da janela:', e);
+      console.warn('[Armazém] Falha ao ler da API do servidor, usando fallback local:', e);
     }
+    // 2. Fallback para localStorage
     try {
       const local = localStorage.getItem(CHAVE);
       if (local) return JSON.parse(local);
@@ -27,17 +34,26 @@ const armazem = {
     return null;
   },
   async gravar(obj) {
+    // 1. Envia para o servidor para atualizar o SQLite e sincronizar com todos os aparelhos
     try {
-      localStorage.setItem(CHAVE, JSON.stringify(obj));
+      await fetch('/api/estado', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(obj)
+      });
+    } catch (e) {
+      console.warn('[Armazém] Falha ao enviar estado para o servidor:', e);
+    }
+    // 2. Grava no cache local do navegador com limite de segurança
+    try {
+      const serialized = JSON.stringify(obj);
+      if (serialized.length > this.MAX_STORAGE_BYTES) {
+        console.error(`[Segurança] Dados excedem limite de ${(this.MAX_STORAGE_BYTES / 1024 / 1024).toFixed(0)}MB.`);
+        return;
+      }
+      localStorage.setItem(CHAVE, serialized);
     } catch (e) {
       console.warn('Erro ao gravar no localStorage:', e);
-    }
-    try {
-      if (window.storage && typeof window.storage.set === 'function') {
-        await window.storage.set(CHAVE, JSON.stringify(obj));
-      }
-    } catch (e) {
-      console.warn('Erro ao gravar no storage da janela:', e);
     }
   }
 };
@@ -56,7 +72,33 @@ function salvar() {
 }
 
 /* ---------------- Utilitários Gerais ---------------- */
-const uid = (p = 'id') => p + '_' + Math.random().toString(36).slice(2, 9);
+// Crypto-safe unique ID generator (replaces Math.random)
+const uid = (p = 'id') => {
+  if (window.crypto && window.crypto.getRandomValues) {
+    const arr = new Uint8Array(7);
+    window.crypto.getRandomValues(arr);
+    return p + '_' + Array.from(arr, b => b.toString(36).padStart(2, '0')).join('').slice(0, 9);
+  }
+  // Fallback (should never hit in modern browsers)
+  return p + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+};
+
+// Sanitize plain-text string: strip control chars, limit length
+const sanitizeStr = (s, maxLen = 500) => {
+  return String(s ?? '').replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '').slice(0, maxLen);
+};
+
+// Rate limiter for external API calls
+const _apiThrottles = {};
+function apiThrottle(key, cooldownMs = 2000) {
+  const now = Date.now();
+  if (_apiThrottles[key] && (now - _apiThrottles[key]) < cooldownMs) {
+    torrar('Aguarde antes de consultar novamente.');
+    return false;
+  }
+  _apiThrottles[key] = now;
+  return true;
+}
 const brl = (n) => (Number(n) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const brlCurto = (n) => {
   n = Number(n) || 0;
@@ -295,6 +337,44 @@ function sementes() {
     ],
     os: [
       {
+        id: 'os_ago1',
+        num: 1020,
+        box: 'b1',
+        vei: 'v1',
+        cli: 'c1',
+        mec: 'Valdir (Mecânico Chefe)',
+        st: 'finalizada',
+        abertura: '2026-08-05',
+        prev: '2026-08-08',
+        km: 380100,
+        queixa: 'Revisão preventiva - Agosto',
+        servicos: [{ id: 's3', nome: 'Troca de Óleo', qtd: 1, valor: 380.00 }],
+        pecas: [{ id: 'p4', nome: 'Óleo Motor Diesel', qtd: 2, valor: 480.00 }],
+        desc: 0,
+        pago: true,
+        formaPgto: 'Pix',
+        obs: 'Finalizada em agosto.'
+      },
+      {
+        id: 'os_ago2',
+        num: 1021,
+        box: 'b2',
+        vei: 'v3',
+        cli: 'c2',
+        mec: 'Jonas (Especialista Freios)',
+        st: 'finalizada',
+        abertura: '2026-08-12',
+        prev: '2026-08-14',
+        km: 418000,
+        queixa: 'Freio falhando.',
+        servicos: [{ id: 's1', nome: 'Revisão Freio', qtd: 1, valor: 850.00 }],
+        pecas: [{ id: 'p1', nome: 'Pastilhas de Freio', qtd: 4, valor: 540.00 }],
+        desc: 100,
+        pago: true,
+        formaPgto: 'Boleto',
+        obs: 'Finalizada em agosto.'
+      },
+      {
         id: 'os1',
         num: 1044,
         box: 'b1',
@@ -372,6 +452,10 @@ function sementes() {
       }
     ],
     contas: [
+      { id: 'ct_ago1', tipo: 'receber', desc: 'OS 1020 — TransRodrigues', parte: 'TransRodrigues Transportes Ltda', valor: 1340.00, venc: '2026-08-08', pago: true, cat: 'Serviços & Peças', doc: 'NF-1020', osId: 'os_ago1' },
+      { id: 'ct_ago2', tipo: 'receber', desc: 'OS 1021 — Expresso Vale', parte: 'Expresso Vale Logística & Cargas', valor: 2910.00, venc: '2026-08-14', pago: true, cat: 'Serviços & Peças', doc: 'NF-1021', osId: 'os_ago2' },
+      { id: 'ct_ago3', tipo: 'pagar', desc: 'Aluguel do Barracão - Agosto', parte: 'Imobiliária Anhanguera', valor: 6500.00, venc: '2026-08-10', pago: true, cat: 'Estrutura & Aluguel', doc: 'BOL-0826' },
+      { id: 'ct_ago4', tipo: 'pagar', desc: 'Conta de Energia - Agosto', parte: 'CPFL', valor: 1200.00, venc: '2026-08-15', pago: true, cat: 'Água / Luz / Internet', doc: 'FAT-08' },
       { id: 'ct1', tipo: 'receber', desc: 'OS 1040 — Manutenção Preventiva Scania', parte: 'TransRodrigues Transportes Ltda', valor: 6850.00, venc: addDias(dHoje, -5), pago: false, cat: 'Serviços & Peças', doc: 'NF-1040', osId: 'os1040' },
       { id: 'ct2', tipo: 'receber', desc: 'OS 1041 — Troca de Cuícas Volvo FH', parte: 'Expresso Vale Logística & Cargas', valor: 4320.00, venc: addDias(dHoje, 7), pago: false, cat: 'Serviços & Peças', doc: 'NF-1041', osId: 'os1041' },
       { id: 'ct3', tipo: 'receber', desc: 'OS 1042 — Geometria e Freios Actros', parte: 'AgroLog Grãos & Fertilizantes S/A', valor: 3150.00, venc: addDias(dHoje, 14), pago: false, cat: 'Serviços & Peças', doc: 'NF-1042', osId: 'os1042' },
@@ -381,6 +465,12 @@ function sementes() {
       { id: 'ct7', tipo: 'pagar', desc: 'Folha de Pagamento Mecânicos e Apoio', parte: 'Equipe da Oficina', valor: 14200.00, venc: addDias(dHoje, 5), pago: false, cat: 'Pessoal & Salários', doc: 'FOLHA-09' }
     ],
     movimentos: [
+      { id: 'mv_ago1', data: '2026-08-08', tipo: 'entrada', desc: 'Recebimento OS 1020', valor: 1340.00, cat: 'Serviços & Peças', conc: true, forma: 'Pix' },
+      { id: 'mv_ago2', data: '2026-08-14', tipo: 'entrada', desc: 'Recebimento OS 1021', valor: 2910.00, cat: 'Serviços & Peças', conc: true, forma: 'Boleto' },
+      { id: 'mv_ago3', data: '2026-08-10', tipo: 'saida', desc: 'Pagamento Aluguel - Agosto', valor: 6500.00, cat: 'Estrutura & Aluguel', conc: true, forma: 'Transferência' },
+      { id: 'mv_ago4', data: '2026-08-15', tipo: 'saida', desc: 'Pagamento Energia - Agosto', valor: 1200.00, cat: 'Água / Luz / Internet', conc: true, forma: 'Débito' },
+      { id: 'mv_ago5', data: '2026-08-20', tipo: 'saida', desc: 'Folha de Pagamento - Adiantamento', valor: 5000.00, cat: 'Pessoal & Salários', conc: true, forma: 'Transferência' },
+      { id: 'mv_ago6', data: '2026-08-25', tipo: 'entrada', desc: 'Adiantamento de Contrato - AgroLog', valor: 8000.00, cat: 'Serviços & Peças', conc: true, forma: 'Transferência' },
       { id: 'mv1', data: addDias(dHoje, -6), tipo: 'entrada', desc: 'Recebimento OS 1038 — TransRodrigues', valor: 7400.00, cat: 'Serviços & Peças', conc: true, forma: 'Pix' },
       { id: 'mv2', data: addDias(dHoje, -4), tipo: 'saida', desc: 'Pagamento Fornecedor Sachs Embreagens', valor: 5600.00, cat: 'Fornecedores Peças', conc: true, forma: 'Boleto' },
       { id: 'mv3', data: addDias(dHoje, -2), tipo: 'entrada', desc: 'Recebimento OS 1039 — Expresso Vale', valor: 3950.00, cat: 'Serviços & Peças', conc: true, forma: 'Transferência' },

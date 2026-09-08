@@ -448,6 +448,7 @@ document.addEventListener('click', e => {
     case 'buscar-placa-veiculo': {
       const rV = S.ui.rascVeiculo;
       if (!rV || !rV.placa || rV.placa.length < 7) { torrar('Digite uma placa válida!'); break; }
+      if (!apiThrottle('placa')) break;
       const cred = S.cfg.apibrasil;
       if (!cred || !cred.deviceToken || !cred.bearerToken) { torrar('Credenciais da APIBrasil não preenchidas em Configurações.'); break; }
       b.innerHTML = '...';
@@ -540,6 +541,22 @@ document.addEventListener('click', e => {
     case 'aba-zap': S.ui.abaZap = b.dataset.k; render(); break;
     case 'liga-zap': S.zap.ativo = !S.zap.ativo; salvar(); render(); break;
     case 'ver-api': abrirFolha(folhaAPI); break;
+    case 'conectar-wpp':
+    case 'recarregar-qr-wpp': {
+      S.ui.wppStatus = { status: 'carregando' };
+      abrirFolha(folhaConectarWpp);
+      fetch('/api/whatsapp/status')
+        .then(r => r.json())
+        .then(data => {
+          S.ui.wppStatus = data;
+          if (folhaAtual === folhaConectarWpp) renderFolha();
+        })
+        .catch(err => {
+          S.ui.wppStatus = { status: 'erro' };
+          if (folhaAtual === folhaConectarWpp) renderFolha();
+        });
+      break;
+    }
     case 'disparar-camp': {
       const camp = S.ui.camp || {};
       const lista = destinatarios(camp.seg);
@@ -729,6 +746,56 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && folhaAtual
   if (!S.zap || !S.zap.regua) S.zap = zapPadrao();
 
   render();
+
+  // Sincronização Periódica em Tempo Real com o Servidor (Auto-Refresh quando chegar OS do WhatsApp)
+  let _checandoSync = false;
+  async function checarAtualizacoesServidor() {
+    if (_checandoSync) return;
+    _checandoSync = true;
+    try {
+      const res = await fetch('/api/versao');
+      if (res.ok) {
+        const info = await res.json();
+        const versaoLocal = S.versao || 0;
+        const osLocal = (S.os || []).length;
+        const veiLocal = (S.veiculos || []).length;
+
+        if ((info.versao && info.versao > versaoLocal) || info.totalOS !== osLocal || info.totalVei !== veiLocal) {
+          const resEst = await fetch('/api/estado');
+          if (resEst.ok) {
+            const novo = await resEst.json();
+            if (novo && novo.os) {
+              S.os = novo.os;
+              S.veiculos = novo.veiculos;
+              S.clientes = novo.clientes;
+              S.boxes = novo.boxes;
+              if (novo.pecas) S.pecas = novo.pecas;
+              if (novo.contas) S.contas = novo.contas;
+              if (novo.movimentos) S.movimentos = novo.movimentos;
+              S.versao = novo.versao || info.versao;
+
+              try { localStorage.setItem(CHAVE, JSON.stringify(S)); } catch (_) {}
+
+              // Re-renderiza em tempo real se nenhuma folha/modal estiver sendo editada
+              if (!folhaAtual && typeof render === 'function') {
+                render();
+                const statusEl = document.getElementById('status-salvo');
+                if (statusEl) {
+                  statusEl.textContent = '● Pátio Atualizado';
+                  statusEl.style.color = 'var(--verde)';
+                  setTimeout(() => { if (statusEl) statusEl.textContent = '● Salvo'; }, 2000);
+                }
+              }
+            }
+          }
+        }
+      }
+    } catch (_) {
+    } finally {
+      _checandoSync = false;
+    }
+  }
+  setInterval(checarAtualizacoesServidor, 2000);
 })();
 
 
@@ -737,6 +804,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && folhaAtual
 function buscarCep(cep, prefix) {
   cep = cep.replace(/\D/g, '');
   if (cep.length !== 8) { torrar('CEP inválido'); return; }
+  if (!apiThrottle('cep')) return;
   
   torrar('Buscando CEP...', 'neutro');
   fetch(`https://viacep.com.br/ws/${cep}/json/`)
@@ -769,6 +837,7 @@ function buscarCep(cep, prefix) {
 function buscarCNPJ(cnpj, prefix) {
   cnpj = cnpj.replace(/\D/g, '');
   if (cnpj.length !== 14) { torrar('CNPJ inválido. Digite 14 números.'); return; }
+  if (!apiThrottle('cnpj')) return;
   
   torrar('Consultando Receita Federal...', 'neutro');
   // Usando um endpoint proxy ou direto se houver CORS liberado. 
@@ -807,6 +876,7 @@ function buscarCNPJ(cnpj, prefix) {
 
 function consultarPlaca(placa) {
   if(!placa || placa.length < 7) { torrar('Placa inválida'); return; }
+  if (!apiThrottle('consultaPlaca')) return;
   torrar('Consultando base do Sinesp/Denatran...', 'neutro');
   
   // Mock function for Placa
@@ -835,7 +905,8 @@ function consultarPlaca(placa) {
 }
 
 function consultarSerasa(doc, prefix) {
-  if(!doc) { torrar('Digite the CNPJ/CPF primeiro'); return; }
+  if(!doc) { torrar('Digite o CNPJ/CPF primeiro'); return; }
+  if (!apiThrottle('serasa')) return;
   torrar('Conectando à base Serasa Experian...', 'neutro');
   
   const tagEl = document.getElementById('tag_serasa');
@@ -869,6 +940,7 @@ function consultarSerasa(doc, prefix) {
 function consultarSintegra(doc, prefix) {
   doc = String(doc).replace(/\D/g, '');
   if(doc.length !== 14) { torrar('CNPJ inválido para Sintegra'); return; }
+  if (!apiThrottle('sintegra')) return;
   
   torrar('Consultando Sintegra / Receita Estadual...', 'neutro');
   
