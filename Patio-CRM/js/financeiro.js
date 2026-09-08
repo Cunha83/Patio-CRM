@@ -567,7 +567,9 @@ function folhaConta() {
 
       <div>
         <label style="font-weight:600;display:block;margin-bottom:4px">Categoria de Centro de Custo:</label>
-        <input type="text" class="campo-texto" placeholder="Ex: Serviços & Peças, Fornecedores Peças, Aluguel" data-act="rct" data-c="cat" value="${esc(r.cat || '')}" style="width:100%;height:34px">
+        <select class="campo-select" data-act="rct" data-c="cat" style="width:100%;height:34px">
+          ${(S.cfg.planoDeContas || []).map(x => `<option value="${esc(x)}" ${r.cat===x?'selected':''}>${esc(x)}</option>`).join('')}
+        </select>
       </div>
     </div>
 
@@ -610,9 +612,17 @@ function folhaMov() {
         <input type="text" class="campo-texto" placeholder="Ex: Pagamento de Frete / Compra de Material de Limpeza" data-act="rmv" data-c="desc" value="${esc(r.desc || '')}" style="width:100%;height:34px">
       </div>
 
-      <div>
-        <label style="font-weight:600;display:block;margin-bottom:4px">Valor (R$):</label>
-        <input type="number" class="campo-texto" placeholder="0.00" data-act="rmv" data-c="valor" value="${r.valor || ''}" step="0.50" style="width:100%;height:34px;font-weight:700">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div>
+          <label style="font-weight:600;display:block;margin-bottom:4px">Categoria / Centro de Custo:</label>
+          <select class="campo-select" data-act="rmv" data-c="cat" style="width:100%;height:34px">
+            ${(S.cfg.planoDeContas || []).map(x => `<option value="${esc(x)}" ${r.cat===x?'selected':''}>${esc(x)}</option>`).join('')}
+          </select>
+        </div>
+        <div>
+          <label style="font-weight:600;display:block;margin-bottom:4px">Valor (R$):</label>
+          <input type="number" class="campo-texto" placeholder="0.00" data-act="rmv" data-c="valor" value="${r.valor || ''}" step="0.50" style="width:100%;height:34px;font-weight:700">
+        </div>
       </div>
     </div>
 

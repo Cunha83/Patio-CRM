@@ -149,6 +149,7 @@ function blocoCobranca() {
       <div style="font-weight:700;font-size:15px">Fila de Mensagens Automáticas de Cobrança (${fila.length})</div>
       <div class="mini">Títulos em vencimento ou atraso mapeados pelas etapas da régua</div>
     </div>
+    ${fila.length ? `<button class="btn btn-primario" onclick="torrar('Disparo em massa iniciado (simulação).', 'sucesso')" style="font-weight:600">${(typeof ico === 'function' ? ico('zap', 14) : '⚡')} Disparar para Todos</button>` : ''}
   </div>
 
   <div class="card">
@@ -164,11 +165,18 @@ function blocoCobranca() {
           </tr>
         </thead>
         <tbody>
-          ${fila.length ? fila.map(item => `
+          ${fila.length ? fila.map(item => {
+            let statusBadge = item.diff < 0 
+              ? `<span style="display:inline-block;margin-top:4px;padding:2px 6px;background:var(--tijolo);color:#fff;border-radius:4px;font-size:11px;font-weight:600">Atrasado há ${Math.abs(item.diff)} dias</span>`
+              : (item.diff === 0 
+                ? `<span style="display:inline-block;margin-top:4px;padding:2px 6px;background:var(--laranja);color:#fff;border-radius:4px;font-size:11px;font-weight:600">Vence Hoje</span>`
+                : `<span style="display:inline-block;margin-top:4px;padding:2px 6px;background:var(--verde);color:#fff;border-radius:4px;font-size:11px;font-weight:600">Vence em ${item.diff} dias</span>`);
+
+            return `
             <tr>
               <td>
-                <span class="selo selo-aprovacao">${esc(item.regra.nome)}</span>
-                <div class="mini" style="margin-top:4px">Gatilho: ${item.diff} dias do vencimento</div>
+                <span class="selo selo-aprovacao">${esc(item.regra.nome)}</span><br>
+                ${statusBadge}
               </td>
               <td>
                 <b>${esc(item.cli ? (item.cli.fantasia || item.cli.nome) : item.conta.parte)}</b>
@@ -192,8 +200,8 @@ function blocoCobranca() {
                   </button>
                 </div>
               </td>
-            </tr>
-          `).join('') : `
+            </tr>`;
+          }).join('') : `
             <tr>
               <td colspan="5" style="text-align:center;padding:36px;color:var(--aco-400)">
                 <div style="margin-bottom:8px">${ico('check', 28)}</div>

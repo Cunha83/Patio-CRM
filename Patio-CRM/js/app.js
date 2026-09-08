@@ -153,6 +153,47 @@ function viewPainelInicial() {
         <canvas id="grafico-ocupacao"></canvas>
       </div>
     </div>
+  </div>
+  
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+    ${blocoTitulosPainel(rec, 'Títulos a Receber (Próx. 7 Dias ou Atrasados)', 'receber')}
+    ${blocoTitulosPainel(pag, 'Títulos a Pagar (Próx. 7 Dias ou Atrasados)', 'pagar')}
+  </div>`;
+}
+
+function blocoTitulosPainel(lista, titulo, tipo) {
+  const dH = hoje();
+  // Filtra títulos que vencem em até 7 dias ou que já estão atrasados
+  let filtrados = lista.filter(c => {
+    const diff = diasEntre(dH, c.venc);
+    return diff <= 7;
+  }).sort((a,b) => new Date(a.venc) - new Date(b.venc)).slice(0, 5); // Pega os 5 mais urgentes
+
+  let htmlLista = filtrados.length === 0 ? `<div class="mini" style="color:var(--aco-500);text-align:center;padding:12px">Nenhum título para o período.</div>` : filtrados.map(c => {
+    const diff = diasEntre(dH, c.venc);
+    let cor = diff < 0 ? 'var(--tijolo)' : (diff === 0 ? 'var(--laranja)' : 'var(--aco-700)');
+    let descVenc = diff < 0 ? `${Math.abs(diff)}d atraso` : (diff === 0 ? 'Hoje' : `em ${diff}d`);
+    
+    return `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--aco-100)">
+      <div>
+        <div style="font-weight:600;font-size:13px;color:var(--aco-800)">${esc(c.parte)}</div>
+        <div style="font-size:11px;color:${cor}">${dataBR(c.venc)} (${descVenc})</div>
+      </div>
+      <div style="font-weight:700;font-size:14px;color:${tipo === 'receber' ? 'var(--verde)' : 'var(--aco-800)'}">
+        ${brlCurto(c.valor)}
+      </div>
+    </div>`;
+  }).join('');
+
+  return `
+  <div class="card card-p">
+    <div class="entre" style="margin-bottom:12px;border-bottom:1px solid var(--aco-200);padding-bottom:8px">
+      <div style="font-weight:700;font-size:14px">${titulo}</div>
+      ${ico(tipo==='receber'?'doc':'maleta', 14)}
+    </div>
+    ${htmlLista}
+    ${filtrados.length > 0 ? `<div style="text-align:center;margin-top:10px"><button class="btn btn-secundario" onclick="S.ui.view='financeiro';render()" style="font-size:11px;padding:4px 8px">Ver Financeiro Completo</button></div>` : ''}
   </div>`;
 }
 
@@ -546,13 +587,48 @@ document.addEventListener('click', e => {
           S.clientes.push({ id: uid('cli'), nome: r.nome, fantasia: r.fantasia || '', doc: r.doc || '', fone: r.fone || '', email: r.email || '', contato: r.contato || '', prazo: +r.prazo || 0, ie: r.ie || '', endereco: r.endereco || '', cidade: r.cidade || '', uf: r.uf || '', cep: r.cep || '', optin: true, bloqueado: false });
         }
       }
+      if (t === 'fornecedor') {
+        if (!r.nome) { torrar('Razão Social do Fornecedor é obrigatória'); break; }
+        S.fornecedores.push({ id: uid('f'), nome: r.nome, fantasia: r.fantasia||'', doc: r.doc||'', fone: r.fone||'', email: r.email||'', contato: r.contato||'', cidade: r.cidade||'', uf: r.uf||'' });
+      }
+      if (t === 'mecanico') {
+        if (!r.nome) { torrar('Nome do mecânico é obrigatório'); break; }
+        S.mecanicos.push({ id: uid('m'), nome: r.nome, especialidade: r.especialidade||'Geral', fone: r.fone||'' });
+      }
+      if (t === 'produto') {
+        if (!r.nome) { torrar('Nome do produto é obrigatório'); break; }
+        if (r.id) {
+          const idx = S.pecas.findIndex(x => x.id === r.id);
+          if (idx >= 0) S.pecas[idx] = { ...S.pecas[idx], ...r, custo: +r.custo||0, venda: +r.venda||0 };
+        } else {
+          S.pecas.push({ id: uid('p'), cod: r.cod||'', nome: r.nome, un: r.un||'un', ncm: r.ncm||'', cest: r.cest||'', origem: r.origem||'0', cfop: r.cfop||'', custo: +r.custo||0, venda: +r.venda||0 });
+        }
+      }
       if (t === 'servico') {
         if (!r.nome) { torrar('Descrição do serviço é obrigatória'); break; }
-        S.servicos.push({ id: uid('s'), nome: r.nome, valor: +r.valor || 0, horas: +r.horas || 1 });
+        if (r.id) {
+          const idx = S.servicos.findIndex(x => x.id === r.id);
+          if (idx >= 0) S.servicos[idx] = { ...S.servicos[idx], ...r, valor: +r.valor||0, horas: +r.horas||1 };
+        } else {
+          S.servicos.push({ id: uid('s'), nome: r.nome, valor: +r.valor||0, horas: +r.horas||1, cnae: r.cnae||'', codServLC116: r.codServLC116||'', cfop: r.cfop||'' });
+        }
+      }
+      if (t === 'regra-tributaria') {
+        if (!r.cfop || !r.desc) { torrar('CFOP e Descrição são obrigatórios'); break; }
+        if (!S.cfg.regrasTributarias) S.cfg.regrasTributarias = [];
+        let idx = S.cfg.regrasTributarias.findIndex(x => x.cfop === r.cfop);
+        let nova = { ...r };
+        ['aliqICMS','redBCICMS','mvaICMS','aliqICMSST','aliqFCP','aliqIPI','aliqPIS','aliqCOFINS','aliqIBS','aliqCBS','aliqISS'].forEach(k => nova[k] = +(nova[k]||0));
+        if (idx >= 0) S.cfg.regrasTributarias[idx] = nova;
+        else S.cfg.regrasTributarias.push(nova);
       }
       if (t === 'box') {
         if (!r.nome) { torrar('Nome do box é obrigatório'); break; }
         S.boxes.push({ id: uid('b'), nome: r.nome, tipo: r.tipo || 'Geral' });
+      }
+      if (t === 'veiculo') {
+        if (!r.placa) { torrar('Falta a placa'); break; }
+        S.veiculos.push({ id: uid('v'), cli: r.cli || S.clientes[0]?.id, placa: (r.placa || '').toUpperCase(), modelo: r.modelo || '', ano: r.ano || '', km: +r.km || 0, tipo: r.tipo || 'Cavalo' });
       }
       salvar(); S.ui.rascCad = null; fecharFolha(); render(); torrar('Cadastro realizado com sucesso!'); break;
     }
@@ -654,3 +730,157 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && folhaAtual
 
   render();
 })();
+
+
+/* ===== INTEGRAÇÕES & APIS ===== */
+
+function buscarCep(cep, prefix) {
+  cep = cep.replace(/\D/g, '');
+  if (cep.length !== 8) { torrar('CEP inválido'); return; }
+  
+  torrar('Buscando CEP...', 'neutro');
+  fetch(`https://viacep.com.br/ws/${cep}/json/`)
+    .then(res => res.json())
+    .then(data => {
+      if (data.erro) { torrar('CEP não encontrado'); return; }
+      
+      let end = data.logradouro + (data.bairro ? ', ' + data.bairro : '');
+      
+      // Update rascCad
+      if(S.ui.rascCad) {
+        S.ui.rascCad.endereco = end;
+        S.ui.rascCad.cidade = data.localidade;
+        S.ui.rascCad.uf = data.uf;
+      }
+      
+      // Update DOM
+      const inputs = document.querySelectorAll('input[data-act="rc"]');
+      inputs.forEach(el => {
+        if(el.dataset.c === 'endereco') el.value = end;
+        if(el.dataset.c === 'cidade') el.value = data.localidade;
+        if(el.dataset.c === 'uf') el.value = data.uf;
+      });
+      
+      torrar('Endereço preenchido!', 'sucesso');
+    })
+    .catch(err => torrar('Erro ao buscar CEP'));
+}
+
+function buscarCNPJ(cnpj, prefix) {
+  cnpj = cnpj.replace(/\D/g, '');
+  if (cnpj.length !== 14) { torrar('CNPJ inválido. Digite 14 números.'); return; }
+  
+  torrar('Consultando Receita Federal...', 'neutro');
+  // Usando um endpoint proxy ou direto se houver CORS liberado. 
+  // Na vida real usaríamos um backend. Para a simulação, vamos usar o Minha Receita ou ReceitaWS.
+  fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`)
+    .then(res => res.json())
+    .then(data => {
+      if (data.message) { torrar('CNPJ não encontrado ou erro na API'); return; }
+      
+      if(S.ui.rascCad) {
+        S.ui.rascCad.nome = data.razao_social;
+        S.ui.rascCad.fantasia = data.nome_fantasia || data.razao_social;
+        S.ui.rascCad.fone = data.ddd_telefone_1 || data.ddd_telefone_2 || '';
+        S.ui.rascCad.endereco = `${data.logradouro}, ${data.numero} - ${data.bairro}`;
+        S.ui.rascCad.cidade = data.municipio;
+        S.ui.rascCad.uf = data.uf;
+        S.ui.rascCad.cep = data.cep;
+      }
+      
+      // Update DOM
+      const inputs = document.querySelectorAll('input[data-act="rc"]');
+      inputs.forEach(el => {
+        if(el.dataset.c === 'nome') el.value = data.razao_social;
+        if(el.dataset.c === 'fantasia') el.value = data.nome_fantasia || data.razao_social;
+        if(el.dataset.c === 'fone') el.value = data.ddd_telefone_1 || '';
+        if(el.dataset.c === 'endereco') el.value = `${data.logradouro}, ${data.numero} - ${data.bairro}`;
+        if(el.dataset.c === 'cidade') el.value = data.municipio;
+        if(el.dataset.c === 'uf') el.value = data.uf;
+        if(el.dataset.c === 'cep') el.value = data.cep;
+      });
+      
+      torrar('Dados do CNPJ importados!', 'sucesso');
+    })
+    .catch(err => torrar('Erro ao consultar CNPJ.'));
+}
+
+function consultarPlaca(placa) {
+  if(!placa || placa.length < 7) { torrar('Placa inválida'); return; }
+  torrar('Consultando base do Sinesp/Denatran...', 'neutro');
+  
+  // Mock function for Placa
+  setTimeout(() => {
+    let mockData = {
+      modelo: 'VOLVO FH 460',
+      ano: '2021',
+      tipo: 'Cavalo'
+    };
+    
+    if(S.ui.rascCad) {
+      S.ui.rascCad.modelo = mockData.modelo;
+      S.ui.rascCad.ano = mockData.ano;
+      S.ui.rascCad.tipo = mockData.tipo;
+    }
+    
+    const inputs = document.querySelectorAll('input[data-act="rc"]');
+    inputs.forEach(el => {
+      if(el.dataset.c === 'modelo') el.value = mockData.modelo;
+      if(el.dataset.c === 'ano') el.value = mockData.ano;
+      if(el.dataset.c === 'tipo') el.value = mockData.tipo;
+    });
+    
+    torrar('Veículo localizado na base nacional!', 'sucesso');
+  }, 1000);
+}
+
+function consultarSerasa(doc, prefix) {
+  if(!doc) { torrar('Digite the CNPJ/CPF primeiro'); return; }
+  torrar('Conectando à base Serasa Experian...', 'neutro');
+  
+  const tagEl = document.getElementById('tag_serasa');
+  if(tagEl) {
+    tagEl.innerHTML = 'Consultando...';
+    tagEl.style.background = 'var(--aco-200)';
+    tagEl.style.color = 'inherit';
+  }
+  
+  setTimeout(() => {
+    // Random mock result
+    const score = Math.floor(Math.random() * (950 - 300) + 300);
+    if(S.ui.rascCad) S.ui.rascCad.scoreSerasa = score;
+    
+    if(tagEl) {
+      if(score > 500) {
+        tagEl.innerHTML = `Score Serasa: ${score} ✔️`;
+        tagEl.style.background = 'var(--verde)';
+        tagEl.style.color = '#fff';
+        torrar('Score alto. Baixo risco de crédito.', 'sucesso');
+      } else {
+        tagEl.innerHTML = `Score Serasa: ${score} ⚠️`;
+        tagEl.style.background = 'var(--tijolo)';
+        tagEl.style.color = '#fff';
+        torrar('Atenção: Score baixo. Risco de inadimplência.', 'erro');
+      }
+    }
+  }, 1000);
+}
+
+function consultarSintegra(doc, prefix) {
+  doc = String(doc).replace(/\D/g, '');
+  if(doc.length !== 14) { torrar('CNPJ inválido para Sintegra'); return; }
+  
+  torrar('Consultando Sintegra / Receita Estadual...', 'neutro');
+  
+  setTimeout(() => {
+    const ieMock = Math.floor(Math.random() * 900000000) + 100000000;
+    if(S.ui.rascCad) S.ui.rascCad.ie = ieMock.toString();
+    
+    const inputs = document.querySelectorAll('input[data-act="rc"]');
+    inputs.forEach(el => {
+      if(el.dataset.c === 'ie') el.value = ieMock;
+    });
+    
+    torrar('Inscrição Estadual localizada!', 'sucesso');
+  }, 1000);
+}

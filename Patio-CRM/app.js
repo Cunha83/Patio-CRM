@@ -765,6 +765,16 @@ function viewPainelInicial() {
             </div>
           </div>
         </div>
+
+        <div class="card card-p" style="padding:0;overflow:hidden">
+          <div style="background:var(--aco-500);color:#fff;padding:8px 12px;font-weight:600;font-size:13px;display:flex;align-items:center;gap:8px">${ico('nota', 14)} A Receber na Semana</div>
+          ${recSemana.length === 0 ? '<div style="padding:16px;font-size:13px;color:var(--aco-400)">Nenhum título a receber nesta semana.</div>' : '<div style="padding:0 16px">' + recSemana.map(c => '<div style="display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--aco-150);font-size:13px"><div><div style="font-weight:600;color:var(--aco-700)">'+esc(c.desc)+'</div><div style="font-size:11px;color:var(--aco-400)">Venc: '+dataBR(c.venc)+' | '+esc(c.parte)+'</div></div><div style="font-weight:700;color:var(--verde)">'+brl(c.valor)+'</div></div>').join('') + '</div>'}
+        </div>
+
+        <div class="card card-p" style="padding:0;overflow:hidden">
+          <div style="background:var(--aco-500);color:#fff;padding:8px 12px;font-weight:600;font-size:13px;display:flex;align-items:center;gap:8px">${ico('nota', 14)} A Pagar na Semana</div>
+          ${pagSemana.length === 0 ? '<div style="padding:16px;font-size:13px;color:var(--aco-400)">Nenhum título a pagar nesta semana.</div>' : '<div style="padding:0 16px">' + pagSemana.map(c => '<div style="display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--aco-150);font-size:13px"><div><div style="font-weight:600;color:var(--aco-700)">'+esc(c.desc)+'</div><div style="font-size:11px;color:var(--aco-400)">Venc: '+dataBR(c.venc)+' | '+esc(c.parte)+'</div></div><div style="font-weight:700;color:var(--tijolo)">'+brl(c.valor)+'</div></div>').join('') + '</div>'}
+        </div>
       </div>
     </div>
   `;
@@ -2638,11 +2648,14 @@ function folhaCadastro(){
   const campos={
     cliente:[['nome','Nome / razão social'],['doc','CNPJ ou CPF'],['fone','Telefone'],['contato','Pessoa de contato'],['prazo','Prazo de pagamento (dias)','number']],
     veiculo:[['placa','Placa'],['modelo','Modelo'],['ano','Ano'],['tipo','Tipo (cavalo, carreta, truck)'],['km','KM atual','number']],
-    servico:[['nome','Descrição do serviço'],['valor','Valor (R$)','number'],['horas','Horas de box','number']],
+    fornecedor:[['nome','Razão social'],['fantasia','Nome fantasia'],['doc','CNPJ'],['fone','Telefone'],['email','E-mail'],['contato','Pessoa de contato'],['cidade','Cidade'],['uf','UF']],
+    mecanico:[['nome','Nome do mecânico'],['especialidade','Especialidade (Geral, Freios, Elétrica)'],['fone','Telefone']],
+    produto:[['cod','Código'],['nome','Nome da peça/produto'],['un','Unidade (un, kg, l)'],['custo','Custo de compra (R$)','number'],['venda','Preço de venda (R$)','number'],['ncm','NCM'],['cfop','CFOP padrão (ex: 5102)']],
+    servico:[['nome','Descrição do serviço'],['valor','Valor (R$)','number'],['horas','Horas de box','number'],['cnae','CNAE (Fiscal)'],['iss_cod','Código ISS (Fiscal)'],['iss_aliq','Alíquota ISS %','number']],
     box:[['nome','Nome do box'],['tipo','Tipo (elevador, vala, solda)']]
   }[t];
   const extra=t==='veiculo'?`<label class="campo"><span>Cliente dono</span><select data-act="rc" data-c="cli">${S.clientes.map(c=>`<option value="${c.id}" ${r.cli===c.id?'selected':''}>${esc(c.nome)}</option>`).join('')}</select></label>`:'';
-  const titulo={cliente:'Novo cliente',veiculo:'Novo veículo',servico:'Novo serviço',box:'Novo box'}[t];
+  const titulo={cliente:'Novo cliente',veiculo:'Novo veículo',servico:'Novo serviço',box:'Novo box',fornecedor:'Novo fornecedor',mecanico:'Novo mecânico',produto:'Novo produto/peça'}[t];
   return cabecaFolha(titulo,'Cadastro rápido')+
   `<div class="folha-corpo"><div class="card card-p">
     ${extra}
@@ -2990,27 +3003,14 @@ document.addEventListener('click',e=>{
           if(idx>=0) {
             S.clientes[idx] = {...S.clientes[idx], ...r};
             // Se o nome/razão social foi alterado, seria bom varrer e alterar `parte` nas contas para não quebrar o link
-          }
+      const r = S.ui.rascCad || {}, t = S.ui.cadTipo;
+      if (t === 'cliente') {
+        if (!r.nome) { torrar('Razão Social / Nome é obrigatório'); break; }
+        if (r.id) {
+          const idx = S.clientes.findIndex(x => x.id === r.id);
+          if (idx >= 0) S.clientes[idx] = { ...S.clientes[idx], ...r };
         } else {
-          S.clientes.push({
-            id:uid('cli'),
-            nome:r.nome,
-            fantasia:r.fantasia||'',
-            doc:r.doc||'',
-            fone:r.fone||'',
-            email:r.email||'',
-            contato:r.contato||'',
-            prazo:+r.prazo||0,
-            ie:r.ie||'',
-            cep:r.cep||'',
-            endereco:r.endereco||'',
-            numero:r.numero||'',
-            complemento:r.complemento||'',
-            bairro:r.bairro||'',
-            cidade:r.cidade||'',
-            uf:r.uf||'',
-            optin:true
-          });
+          S.clientes.push({ id: uid('cli'), nome: r.nome, fantasia: r.fantasia || '', doc: r.doc || '', fone: r.fone || '', email: r.email || '', contato: r.contato || '', prazo: +r.prazo || 0, ie: r.ie || '', endereco: r.endereco || '', cidade: r.cidade || '', uf: r.uf || '', cep: r.cep || '', optin: true, bloqueado: false });
         }
       }
       if(t==='veiculo'){ if(!r.placa){torrar('Falta a placa');break;} S.veiculos.push({id:uid('v'),cli:r.cli||S.clientes[0].id,placa:(r.placa||'').toUpperCase(),modelo:r.modelo||'',ano:r.ano||'',km:+r.km||0,tipo:r.tipo||'Cavalo'}); }

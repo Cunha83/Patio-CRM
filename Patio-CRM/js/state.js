@@ -137,7 +137,34 @@ function sementes() {
       bancoNome: 'Banco do Brasil (Ag: 1234-5 / CC: 56789-0)',
       garantiaMeses: 3,
       termoGarantia: 'Garantia de 90 dias para serviços mecânicos e peças aplicadas com defeito de fabricação.',
-      apibrasil: { deviceToken: '', bearerToken: '' }
+      apibrasil: { deviceToken: '', bearerToken: '' },
+      regimeTributario: 'Simples Nacional',
+      ie: '123.456.789.000',
+      im: '98765-4',
+      cnae: '4520-0/01',
+      planoDeContas: ['Serviços', 'Peças', 'Pessoal', 'Fixas', 'Impostos', 'Outros'],
+      formasPgto: ['Dinheiro', 'Pix', 'Cartão de Crédito', 'Cartão de Débito', 'Boleto', 'Transferência'],
+      contasCaixa: [{id: 'cx1', nome: 'Caixa Interno (Dinheiro)'}, {id: 'cx2', nome: 'Banco do Brasil'}],
+      usuarios: [{id: 'u1', nome: 'Administrador Principal', login: 'admin', papel: 'Gerente'}],
+      contabil: { escritorio: 'Contabilidade Confiança', crc: '123456/SP', fone: '(19) 3000-1111', email: 'contato@confianca.com.br' },
+      integracoes: { whatsapp: {}, serasa: {}, placas: {}, fiscal: {} },
+      reguaCobranca: [{dias: -3, msg: 'Lembrete: seu boleto vence em 3 dias'}, {dias: 0, msg: 'Seu boleto vence hoje!'}, {dias: 3, msg: 'Aviso de atraso — regularize sua situação'}],
+      aliqPIS: 0.65,
+      aliqCOFINS: 3.00,
+      aliqCSLL: 1.08,
+      ambienteNfe: 'Homologação (Teste)',
+      serieNfe: '1',
+      numeroNfe: 1,
+      cfopPadrao: '5102',
+      senhaCertificado: '',
+      regrasTributarias: [
+        { cfop: '5102', desc: 'Venda de Mercadoria (Dentro do Estado)', tipo: 'produto', cstICMS: '00', aliqICMS: 18, redBCICMS: 0, mvaICMS: 0, aliqICMSST: 0, aliqFCP: 0, cstIPI: '50', aliqIPI: 0, cstPIS: '01', aliqPIS: 0.65, cstCOFINS: '01', aliqCOFINS: 3.00, aliqIBS: 0, aliqCBS: 0 },
+        { cfop: '6102', desc: 'Venda de Mercadoria (Fora do Estado)', tipo: 'produto', cstICMS: '00', aliqICMS: 12, redBCICMS: 0, mvaICMS: 0, aliqICMSST: 0, aliqFCP: 0, cstIPI: '50', aliqIPI: 0, cstPIS: '01', aliqPIS: 0.65, cstCOFINS: '01', aliqCOFINS: 3.00, aliqIBS: 0, aliqCBS: 0 },
+        { cfop: '5405', desc: 'Venda de Mercadoria ST (Dentro do Estado)', tipo: 'produto', cstICMS: '60', aliqICMS: 0, redBCICMS: 0, mvaICMS: 0, aliqICMSST: 0, aliqFCP: 0, cstIPI: '53', aliqIPI: 0, cstPIS: '06', aliqPIS: 0, cstCOFINS: '06', aliqCOFINS: 0, aliqIBS: 0, aliqCBS: 0 },
+        { cfop: '5933', desc: 'Prestação de Serviço Tributado pelo ISS', tipo: 'servico', cstPIS: '01', aliqPIS: 0.65, cstCOFINS: '01', aliqCOFINS: 3.00, aliqISS: 5, issRetido: 'N', aliqIBS: 0, aliqCBS: 0 },
+        { cfop: '1102', desc: 'Compra de Mercadoria (Dentro do Estado)', tipo: 'entrada', cstICMS: '00', aliqICMS: 18, redBCICMS: 0, mvaICMS: 0, aliqICMSST: 0, aliqFCP: 0, cstIPI: '00', aliqIPI: 0, cstPIS: '01', aliqPIS: 0.65, cstCOFINS: '01', aliqCOFINS: 3.00, aliqIBS: 0, aliqCBS: 0 },
+        { cfop: '2102', desc: 'Compra de Mercadoria (Fora do Estado)', tipo: 'entrada', cstICMS: '00', aliqICMS: 12, redBCICMS: 0, mvaICMS: 0, aliqICMSST: 0, aliqFCP: 0, cstIPI: '00', aliqIPI: 0, cstPIS: '01', aliqPIS: 0.65, cstCOFINS: '01', aliqCOFINS: 3.00, aliqIBS: 0, aliqCBS: 0 }
+      ]
     },
     ui: {
       view: 'patio',
@@ -145,7 +172,7 @@ function sementes() {
       abaFin: 'dashboard',
       filtroFin: 'tudo',
       abaOS: 'servicos',
-      abaCad: 'clientes',
+      abaCad: 'hub',
       abaZap: 'cobranca',
       busca: '',
       buscaPlaca: ''
@@ -157,6 +184,17 @@ function sementes() {
       { id: 'b4', nome: 'Box 04 — Câmbio & Diferencial', tipo: 'Transmissão' },
       { id: 'b5', nome: 'Box 05 — Alinhamento / Geometria', tipo: 'Geometria' },
       { id: 'b6', nome: 'Box 06 — Socorro / Elétrica', tipo: 'Elétrica' }
+    ],
+    fornecedores: [
+      { id: 'f1', nome: 'Fras-le Peças', fantasia: 'Fras-le', doc: '11.222.333/0001-44', fone: '11999998888', email: 'vendas@frasle.com.br', contato: 'Roberto', cidade: 'São Paulo', uf: 'SP' },
+      { id: 'f2', nome: 'Sachs Embreagens', fantasia: 'Sachs', doc: '22.333.444/0001-55', fone: '19988887777', email: 'vendas@sachs.com.br', contato: 'Mário', cidade: 'Campinas', uf: 'SP' },
+      { id: 'f3', nome: 'ZF Wabco Brasil', fantasia: 'Wabco', doc: '33.444.555/0001-66', fone: '19977776666', email: 'pedidos@wabco.com.br', contato: 'Júlia', cidade: 'Sumaré', uf: 'SP' }
+    ],
+    mecanicos: [
+      { id: 'm1', nome: 'Valdir (Mecânico Chefe)', especialidade: 'Geral', fone: '19999990001' },
+      { id: 'm2', nome: 'Jonas (Especialista Freios)', especialidade: 'Freios', fone: '19999990002' },
+      { id: 'm3', nome: 'Renato (Diagnóstico)', especialidade: 'Diagnóstico', fone: '19999990003' },
+      { id: 'm4', nome: 'Clodoaldo (Geometria)', especialidade: 'Geometria', fone: '19999990004' }
     ],
     clientes: [
       {
@@ -237,23 +275,23 @@ function sementes() {
       { id: 'v6', cli: 'c4', placa: 'CXP7719', marca: 'Volkswagen', modelo: 'Constellation 24.280', ano: '2018', km: 610000, tipo: 'Truck Baú' }
     ],
     servicos: [
-      { id: 's1', nome: 'Revisão Completa de Freio (Eixo Traseiro e Dianteiro)', valor: 850.00, horas: 4.5 },
-      { id: 's2', nome: 'Troca de Kit de Embreagem com Retífica de Volante', valor: 1600.00, horas: 8.0 },
-      { id: 's3', nome: 'Troca de Óleo de Motor, Filtro de Óleo e Combustível', valor: 380.00, horas: 1.5 },
-      { id: 's4', nome: 'Diagnóstico Eletrônico & Calibração de Unidades Injetoras', valor: 650.00, horas: 3.0 },
-      { id: 's5', nome: 'Revisão do Sistema de Arla 32 & Bomba Dosadora', valor: 920.00, horas: 4.0 },
-      { id: 's6', nome: 'Geometria Completa de Direção & Alinhamento a Laser', valor: 480.00, horas: 2.0 },
-      { id: 's7', nome: 'Reparo e Vedação de Cuíca de Freio Dupla Spring Brake', valor: 290.00, horas: 1.5 },
-      { id: 's8', nome: 'Revisão e Regulagem de Válvulas de Motor', valor: 750.00, horas: 3.5 }
+      { id: 's1', nome: 'Revisão Completa de Freio (Eixo Traseiro e Dianteiro)', valor: 850.00, horas: 4.5, iss_cod: '14.01', iss_aliq: 5.0, cnae: '4520-0/01' },
+      { id: 's2', nome: 'Troca de Kit de Embreagem com Retífica de Volante', valor: 1600.00, horas: 8.0, iss_cod: '14.01', iss_aliq: 5.0, cnae: '4520-0/01' },
+      { id: 's3', nome: 'Troca de Óleo de Motor, Filtro de Óleo e Combustível', valor: 380.00, horas: 1.5, iss_cod: '14.01', iss_aliq: 5.0, cnae: '4520-0/01' },
+      { id: 's4', nome: 'Diagnóstico Eletrônico & Calibração de Unidades Injetoras', valor: 650.00, horas: 3.0, iss_cod: '14.01', iss_aliq: 5.0, cnae: '4520-0/01' },
+      { id: 's5', nome: 'Revisão do Sistema de Arla 32 & Bomba Dosadora', valor: 920.00, horas: 4.0, iss_cod: '14.01', iss_aliq: 5.0, cnae: '4520-0/01' },
+      { id: 's6', nome: 'Geometria Completa de Direção & Alinhamento a Laser', valor: 480.00, horas: 2.0, iss_cod: '14.01', iss_aliq: 5.0, cnae: '4520-0/01' },
+      { id: 's7', nome: 'Reparo e Vedação de Cuíca de Freio Dupla Spring Brake', valor: 290.00, horas: 1.5, iss_cod: '14.01', iss_aliq: 5.0, cnae: '4520-0/01' },
+      { id: 's8', nome: 'Revisão e Regulagem de Válvulas de Motor', valor: 750.00, horas: 3.5, iss_cod: '14.01', iss_aliq: 5.0, cnae: '4520-0/01' }
     ],
     pecas: [
-      { id: 'p1', cod: 'SCN-1875892', nome: 'Jogo de Pastilhas de Freio Scania Série R (WVA 29174)', un: 'jg', qtd: 8, min: 3, custo: 320.00, venda: 540.00, loc: 'Prat. A-02', forn: 'Fras-le Peças' },
-      { id: 'p2', cod: 'VLV-2134567', nome: 'Filtro Separador Racor Volvo FH D13', un: 'un', qtd: 14, min: 5, custo: 85.00, venda: 165.00, loc: 'Prat. B-01', forn: 'Donaldson Filtros' },
-      { id: 'p3', cod: 'MBZ-004420', nome: 'Cuíca de Freio Dupla Tipo 30/30 Tristop', un: 'un', qtd: 4, min: 2, custo: 420.00, venda: 730.00, loc: 'Prat. C-04', forn: 'Knorr-Bremse' },
-      { id: 'p4', cod: 'LUB-15W40', nome: 'Óleo Motor Diesel 15W40 CI-4 Top Turbo (Galão 20L)', un: 'gl', qtd: 18, min: 6, custo: 290.00, venda: 480.00, loc: 'Depósito 01', forn: 'Lubrax Distribuidora' },
-      { id: 'p5', cod: 'WBC-480104', nome: 'Válvula Moduladora EBS/ABS Wabco', un: 'un', qtd: 2, min: 1, custo: 1250.00, venda: 2100.00, loc: 'Prat. E-01', forn: 'ZF Wabco Brasil' },
-      { id: 'p6', cod: 'SCN-2245890', nome: 'Kit Embreagem Cerâmica Scania 430mm Sachs', un: 'kt', qtd: 3, min: 1, custo: 2800.00, venda: 4450.00, loc: 'Pallet 03', forn: 'Sachs Embreagens' },
-      { id: 'p7', cod: 'FLT-AR540', nome: 'Elemento Filtro de Ar Primário Volvo FH4/FH5', un: 'un', qtd: 6, min: 3, custo: 190.00, venda: 340.00, loc: 'Prat. B-03', forn: 'Mann Filter' }
+      { id: 'p1', cod: 'SCN-1875892', nome: 'Jogo de Pastilhas de Freio Scania Série R (WVA 29174)', un: 'jg', qtd: 8, min: 3, custo: 320.00, venda: 540.00, loc: 'Prat. A-02', forn: 'Fras-le Peças', ncm: '87083019', cfop: '5102', cest: '01.053.00', origem: '0 - Nacional' },
+      { id: 'p2', cod: 'VLV-2134567', nome: 'Filtro Separador Racor Volvo FH D13', un: 'un', qtd: 14, min: 5, custo: 85.00, venda: 165.00, loc: 'Prat. B-01', forn: 'Donaldson Filtros', ncm: '84212300', cfop: '5102', cest: '01.062.00', origem: '0 - Nacional' },
+      { id: 'p3', cod: 'MBZ-004420', nome: 'Cuíca de Freio Dupla Tipo 30/30 Tristop', un: 'un', qtd: 4, min: 2, custo: 420.00, venda: 730.00, loc: 'Prat. C-04', forn: 'Knorr-Bremse', ncm: '87083090', cfop: '5102', cest: '01.053.00', origem: '1 - Estrangeira' },
+      { id: 'p4', cod: 'LUB-15W40', nome: 'Óleo Motor Diesel 15W40 CI-4 Top Turbo (Galão 20L)', un: 'gl', qtd: 18, min: 6, custo: 290.00, venda: 480.00, loc: 'Depósito 01', forn: 'Lubrax Distribuidora', ncm: '27101932', cfop: '5405', cest: '06.002.00', origem: '0 - Nacional' },
+      { id: 'p5', cod: 'WBC-480104', nome: 'Válvula Moduladora EBS/ABS Wabco', un: 'un', qtd: 2, min: 1, custo: 1250.00, venda: 2100.00, loc: 'Prat. E-01', forn: 'ZF Wabco Brasil', ncm: '87083090', cfop: '5102', cest: '01.053.00', origem: '1 - Estrangeira' },
+      { id: 'p6', cod: 'SCN-2245890', nome: 'Kit Embreagem Cerâmica Scania 430mm Sachs', un: 'kt', qtd: 3, min: 1, custo: 2800.00, venda: 4450.00, loc: 'Pallet 03', forn: 'Sachs Embreagens', ncm: '87089300', cfop: '5102', cest: '01.045.00', origem: '0 - Nacional' },
+      { id: 'p7', cod: 'FLT-AR540', nome: 'Elemento Filtro de Ar Primário Volvo FH4/FH5', un: 'un', qtd: 6, min: 3, custo: 190.00, venda: 340.00, loc: 'Prat. B-03', forn: 'Mann Filter', ncm: '84213100', cfop: '5102', cest: '01.062.00', origem: '0 - Nacional' }
     ],
     os: [
       {
