@@ -6,6 +6,7 @@ let S = null;
 let salvarTimer = null;
 let folhaAtual = null;
 let confirmando = null;
+let pendingLocalSave = false;
 
 // Sistema de Armazenamento Inteligente (API Servidor + LocalStorage Fallback)
 const armazem = {
@@ -35,14 +36,18 @@ const armazem = {
   },
   async gravar(obj) {
     // 1. Envia para o servidor para atualizar o SQLite e sincronizar com todos os aparelhos
+    let apiSuccess = false;
     try {
-      await fetch('/api/estado', {
+      const res = await fetch('/api/estado', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(obj)
       });
+      if (res.ok) apiSuccess = true;
+      else throw new Error('HTTP Status ' + res.status);
     } catch (e) {
       console.warn('[Armazém] Falha ao enviar estado para o servidor:', e);
+      throw e;
     }
     // 2. Grava no cache local do navegador com limite de segurança
     try {
@@ -62,11 +67,22 @@ function salvar() {
   clearTimeout(salvarTimer);
   const statusEl = document.getElementById('status-salvo');
   if (statusEl) statusEl.textContent = 'Salvando...';
-  salvarTimer = setTimeout(() => {
-    armazem.gravar(S);
-    if (statusEl) {
-      statusEl.textContent = '● Salvo';
-      setTimeout(() => { if (statusEl) statusEl.textContent = ''; }, 2000);
+  if (typeof pendingLocalSave !== 'undefined') pendingLocalSave = true;
+  salvarTimer = setTimeout(async () => {
+    try {
+      await armazem.gravar(S);
+      if (statusEl) {
+        statusEl.textContent = '● Salvo';
+        setTimeout(() => { if (statusEl) statusEl.textContent = ''; }, 2000);
+      }
+    } catch (e) {
+      if (statusEl) {
+        statusEl.textContent = '⚠️ Erro ao salvar';
+        statusEl.style.color = 'var(--tijolo)';
+        setTimeout(() => { if (statusEl) statusEl.textContent = ''; }, 3000);
+      }
+    } finally {
+      if (typeof pendingLocalSave !== 'undefined') pendingLocalSave = false;
     }
   }, 300);
 }
@@ -151,7 +167,7 @@ const totOS = (o) => {
   if (!o) return 0;
   const totServ = soma(o.servicos, (i) => (i.qtd || 1) * (i.valor || 0));
   const totPec = soma(o.pecas, (i) => (i.qtd || 1) * (i.valor || 0));
-  return Math.max(0, totServ + totPec - (Number(o.desc) || 0));
+  return +Math.max(0, totServ + totPec - (Number(o.desc) || 0)).toFixed(2);
 };
 
 const emAberto = (tipo) => S.contas.filter((c) => c.tipo === tipo && !c.pago);
@@ -159,7 +175,7 @@ const saldoCaixa = () => {
   const ini = Number(S.cfg.saldoInicial) || 0;
   const ent = soma(S.movimentos.filter((m) => m.tipo === 'entrada'), (m) => m.valor);
   const sai = soma(S.movimentos.filter((m) => m.tipo === 'saida'), (m) => m.valor);
-  return ini + ent - sai;
+  return +(ini + ent - sai).toFixed(2);
 };
 
 /* ---------------- Dados Iniciais Demonstrativos (Oficina Pesada) ---------------- */
@@ -199,13 +215,23 @@ function sementes() {
       numeroNfe: 1,
       cfopPadrao: '5102',
       senhaCertificado: '',
+      // Configurações da Nova Reforma Tributária (EC 132/2023 - IVA Dual)
+      faseReforma: 'teste_2026',
+      opcaoSimplesIBSCBS: 'simples_hibrido',
+      aliqPadraoCBS: 0.90,
+      aliqPadraoIBSEst: 0.05,
+      aliqPadraoIBSMun: 0.05,
+      aliqPadraoIBS: 0.10,
+      aliqPadraoIS: 0.00,
+      ibgeMunicipio: '3509502',
+      cClassTribPadrao: '010101',
       regrasTributarias: [
-        { cfop: '5102', desc: 'Venda de Mercadoria (Dentro do Estado)', tipo: 'produto', cstICMS: '00', aliqICMS: 18, redBCICMS: 0, mvaICMS: 0, aliqICMSST: 0, aliqFCP: 0, cstIPI: '50', aliqIPI: 0, cstPIS: '01', aliqPIS: 0.65, cstCOFINS: '01', aliqCOFINS: 3.00, aliqIBS: 0, aliqCBS: 0 },
-        { cfop: '6102', desc: 'Venda de Mercadoria (Fora do Estado)', tipo: 'produto', cstICMS: '00', aliqICMS: 12, redBCICMS: 0, mvaICMS: 0, aliqICMSST: 0, aliqFCP: 0, cstIPI: '50', aliqIPI: 0, cstPIS: '01', aliqPIS: 0.65, cstCOFINS: '01', aliqCOFINS: 3.00, aliqIBS: 0, aliqCBS: 0 },
-        { cfop: '5405', desc: 'Venda de Mercadoria ST (Dentro do Estado)', tipo: 'produto', cstICMS: '60', aliqICMS: 0, redBCICMS: 0, mvaICMS: 0, aliqICMSST: 0, aliqFCP: 0, cstIPI: '53', aliqIPI: 0, cstPIS: '06', aliqPIS: 0, cstCOFINS: '06', aliqCOFINS: 0, aliqIBS: 0, aliqCBS: 0 },
-        { cfop: '5933', desc: 'Prestação de Serviço Tributado pelo ISS', tipo: 'servico', cstPIS: '01', aliqPIS: 0.65, cstCOFINS: '01', aliqCOFINS: 3.00, aliqISS: 5, issRetido: 'N', aliqIBS: 0, aliqCBS: 0 },
-        { cfop: '1102', desc: 'Compra de Mercadoria (Dentro do Estado)', tipo: 'entrada', cstICMS: '00', aliqICMS: 18, redBCICMS: 0, mvaICMS: 0, aliqICMSST: 0, aliqFCP: 0, cstIPI: '00', aliqIPI: 0, cstPIS: '01', aliqPIS: 0.65, cstCOFINS: '01', aliqCOFINS: 3.00, aliqIBS: 0, aliqCBS: 0 },
-        { cfop: '2102', desc: 'Compra de Mercadoria (Fora do Estado)', tipo: 'entrada', cstICMS: '00', aliqICMS: 12, redBCICMS: 0, mvaICMS: 0, aliqICMSST: 0, aliqFCP: 0, cstIPI: '00', aliqIPI: 0, cstPIS: '01', aliqPIS: 0.65, cstCOFINS: '01', aliqCOFINS: 3.00, aliqIBS: 0, aliqCBS: 0 }
+        { cfop: '5102', desc: 'Venda de Mercadoria (Dentro do Estado)', tipo: 'produto', cstICMS: '00', aliqICMS: 18, redBCICMS: 0, mvaICMS: 0, aliqICMSST: 0, aliqFCP: 0, cstIPI: '50', aliqIPI: 0, cstPIS: '01', aliqPIS: 0.65, cstCOFINS: '01', aliqCOFINS: 3.00, cstIBSCBS: '01', cClassTrib: '010101', aliqCBS: 0.90, aliqIBSEst: 0.05, aliqIBSMun: 0.05, aliqIBS: 0.10, redBCIBSCBS: 0, cstIS: '00', aliqIS: 0, indDestino: '1' },
+        { cfop: '6102', desc: 'Venda de Mercadoria (Fora do Estado)', tipo: 'produto', cstICMS: '00', aliqICMS: 12, redBCICMS: 0, mvaICMS: 0, aliqICMSST: 0, aliqFCP: 0, cstIPI: '50', aliqIPI: 0, cstPIS: '01', aliqPIS: 0.65, cstCOFINS: '01', aliqCOFINS: 3.00, cstIBSCBS: '01', cClassTrib: '010101', aliqCBS: 0.90, aliqIBSEst: 0.05, aliqIBSMun: 0.05, aliqIBS: 0.10, redBCIBSCBS: 0, cstIS: '00', aliqIS: 0, indDestino: '1' },
+        { cfop: '5405', desc: 'Venda de Mercadoria ST (Dentro do Estado)', tipo: 'produto', cstICMS: '60', aliqICMS: 0, redBCICMS: 0, mvaICMS: 0, aliqICMSST: 0, aliqFCP: 0, cstIPI: '53', aliqIPI: 0, cstPIS: '06', aliqPIS: 0, cstCOFINS: '06', aliqCOFINS: 0, cstIBSCBS: '01', cClassTrib: '010101', aliqCBS: 0.90, aliqIBSEst: 0.05, aliqIBSMun: 0.05, aliqIBS: 0.10, redBCIBSCBS: 0, cstIS: '00', aliqIS: 0, indDestino: '1' },
+        { cfop: '5933', desc: 'Prestação de Serviço Tributado pelo ISS', tipo: 'servico', cstPIS: '01', aliqPIS: 0.65, cstCOFINS: '01', aliqCOFINS: 3.00, aliqISS: 5, issRetido: 'N', cstIBSCBS: '01', cClassTrib: '010101', aliqCBS: 0.90, aliqIBSEst: 0.05, aliqIBSMun: 0.05, aliqIBS: 0.10, redBCIBSCBS: 0, cstIS: '00', aliqIS: 0, indDestino: '1' },
+        { cfop: '1102', desc: 'Compra de Mercadoria (Dentro do Estado)', tipo: 'entrada', cstICMS: '00', aliqICMS: 18, redBCICMS: 0, mvaICMS: 0, aliqICMSST: 0, aliqFCP: 0, cstIPI: '00', aliqIPI: 0, cstPIS: '01', aliqPIS: 0.65, cstCOFINS: '01', aliqCOFINS: 3.00, cstIBSCBS: '01', cClassTrib: '010101', aliqCBS: 0.90, aliqIBSEst: 0.05, aliqIBSMun: 0.05, aliqIBS: 0.10, redBCIBSCBS: 0, cstIS: '00', aliqIS: 0, indDestino: '1' },
+        { cfop: '2102', desc: 'Compra de Mercadoria (Fora do Estado)', tipo: 'entrada', cstICMS: '00', aliqICMS: 12, redBCICMS: 0, mvaICMS: 0, aliqICMSST: 0, aliqFCP: 0, cstIPI: '00', aliqIPI: 0, cstPIS: '01', aliqPIS: 0.65, cstCOFINS: '01', aliqCOFINS: 3.00, cstIBSCBS: '01', cClassTrib: '010101', aliqCBS: 0.90, aliqIBSEst: 0.05, aliqIBSMun: 0.05, aliqIBS: 0.10, redBCIBSCBS: 0, cstIS: '00', aliqIS: 0, indDestino: '1' }
       ]
     },
     ui: {

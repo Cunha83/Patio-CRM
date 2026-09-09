@@ -264,10 +264,10 @@ function blocoContasPagar() {
             const vencida = !c.pago && c.venc < dH;
 
             return `
-            <tr style="${vencida ? 'background:rgba(239, 68, 68, 0.04)' : ''}">
+            <tr style="${vencida ? 'background:rgba(239, 68, 68, 0.04)' : (c.provisionado ? 'background:rgba(245, 158, 11, 0.04)' : '')}">
               <td>
                 <div style="font-weight:600;color:var(--aco-900)">${esc(c.desc)}</div>
-                <div class="mini">Doc: ${esc(c.doc || '—')} · Cat: ${esc(c.cat || 'Geral')}</div>
+                <div class="mini">Doc: ${esc(c.doc || '—')} · Cat: ${esc(c.cat || 'Geral')}${c.provisionado ? ' · <b style="color:#b45309">⏳ Aguardando NF</b>' : ''}</div>
               </td>
               <td><b>${esc(c.parte)}</b></td>
               <td style="text-align:center">
@@ -278,6 +278,8 @@ function blocoContasPagar() {
               <td style="text-align:center">
                 ${c.pago ? `
                   <span class="selo selo-finalizada">Pago (${dataBR(c.dataPgto)})</span>
+                ` : c.provisionado ? `
+                  <span class="selo" style="background:#fef3c7;color:#b45309;border:1px solid #fde68a" title="Provisionamento: Aguardando NF do Fornecedor">Provisionado</span>
                 ` : vencida ? `
                   <span class="selo" style="background:var(--tijolo-fraco);color:var(--tijolo)">Vencido</span>
                 ` : `
@@ -286,8 +288,8 @@ function blocoContasPagar() {
               </td>
               <td style="text-align:center">
                 ${!c.pago ? `
-                  <button class="btn btn-sucesso" data-act="baixar" data-id="${c.id}" style="padding:4px 10px;font-size:12px">
-                    ${ico('check', 12)} Baixar Pagamento
+                  <button class="btn ${c.provisionado ? 'btn-secundario' : 'btn-sucesso'}" data-act="baixar" data-id="${c.id}" style="padding:4px 10px;font-size:12px">
+                    ${ico('check', 12)} ${c.provisionado ? 'Baixar / Liquidar' : 'Baixar Pagamento'}
                   </button>
                 ` : `
                   <span class="mini" style="color:var(--verde)">Quitado</span>

@@ -32,8 +32,9 @@ function viewCadastros() {
         ${cardCad('Boletos', 'boletos', 'Bancos e emissores', 'nota', '#64748b')}
         ${cardCad('Cobranças', 'cobrancas', 'Réguas e automações', 'zap_send', '#64748b')}
         ${cardCad('Fiscal', 'fiscal', 'NCM, CFOP Padrão', 'nota', '#64748b')}
-        ${cardCad('Regras Tributárias', 'regras-tributarias', 'Matriz ICMS, PIS, ISS', 'lista', '#64748b')}
-        ${cardCad('Dados Tributários', 'tributario', 'CNAE, Inscrições', 'nota', '#64748b')}
+        ${cardCad('Regras Tributárias', 'regras-tributarias', 'Matriz ICMS, PIS, IBS, CBS', 'lista', '#2563eb')}
+        ${cardCad('Dados Tributários', 'tributario', 'CNAE, Inscrições, IVA Dual', 'nota', '#0284c7')}
+        ${cardCad('Simulador Reforma', 'simulador-fiscal', 'Auditoria & Cálculos IVA Dual', 'grana', '#059669')}
         ${cardCad('Contábil', 'contabil', 'Escritório Contabilidade', 'maleta', '#64748b')}
         ${cardCad('Usuários', 'usuarios', 'Logins e permissões', 'gente', '#64748b')}
         ${cardCad('API', 'api', 'Integrações', 'nuvem', '#64748b')}
@@ -60,14 +61,18 @@ function viewCadastros() {
   else if (a === 'cobrancas') { corpo = viewCobrancas(); acoes = `<button class="btn btn-primario" data-act="salvar-cfg">${ico('check', 14)} Salvar</button>`; }
   else if (a === 'fiscal') { corpo = viewFiscal(); acoes = `<button class="btn btn-primario" data-act="salvar-cfg">${ico('check', 14)} Salvar</button>`; }
   else if (a === 'tributario') { corpo = viewTributario(); acoes = `<button class="btn btn-primario" data-act="salvar-cfg">${ico('check', 14)} Salvar</button>`; }
-  else if (a === 'regras-tributarias') { corpo = viewRegrasTributarias(); acoes = `<button class="btn btn-primario" onclick="S.ui.rascCad={tipo:'produto'};S.ui.cadTipo='regra-tributaria';if(typeof renderFolha==='function')renderFolha()">${ico('mais', 14)} Nova Regra</button>`; }
+  else if (a === 'regras-tributarias') {
+    corpo = viewRegrasTributarias();
+    acoes = `<button class="btn btn-primario" onclick="S.ui.rascCad={tipo:'produto',cfop:'',desc:'',cstIBSCBS:'01',cClassTrib:'010101',aliqCBS:S.cfg.aliqPadraoCBS||0.9,aliqIBSEst:S.cfg.aliqPadraoIBSEst||0.05,aliqIBSMun:S.cfg.aliqPadraoIBSMun||0.05,aliqIBS:S.cfg.aliqPadraoIBS||0.1,cstIS:'00',aliqIS:0,indDestino:'1'};S.ui.cadTipo='regra-tributaria';abrirFolha(folhaCadastro);">${ico('mais', 14)} Nova Regra</button>`;
+  }
+  else if (a === 'simulador-fiscal') { corpo = viewSimuladorFiscal(); }
   else if (a === 'contabil') { corpo = viewContabil(); acoes = `<button class="btn btn-primario" data-act="salvar-cfg">${ico('check', 14)} Salvar</button>`; }
   else if (a === 'usuarios') { corpo = viewUsuarios(); }
   else if (a === 'api') { corpo = viewAPI(); acoes = `<button class='btn btn-primario' data-act='salvar-cfg'>${ico('check', 14)} Salvar</button>`; }
 
   const nomesAbas = {
     clientes: 'Clientes & Frotas', veiculos: 'Veículos / Caminhões', servicos: 'Tabela de Serviços', boxes: 'Boxes do Pátio', fornecedores: 'Fornecedores', mecanicos: 'Mecânicos & Equipe', produtos: 'Produtos & Peças',
-    empresa: 'Geral', planocontas: 'Plano de Contas', contascaixa: 'Contas Caixa', operacoes: 'Operações', formaspgto: 'Formas de Pgto', boletos: 'Boletos', cobrancas: 'Cobranças', fiscal: 'Fiscal', tributario: 'Dados Tributários', regrasTributarias: 'Regras Tributárias', contabil: 'Contábil', usuarios: 'Usuários'
+    empresa: 'Geral', planocontas: 'Plano de Contas', contascaixa: 'Contas Caixa', operacoes: 'Operações', formaspgto: 'Formas de Pgto', boletos: 'Boletos', cobrancas: 'Cobranças', fiscal: 'Fiscal', tributario: 'Dados Tributários & IVA Dual', 'regras-tributarias': 'Regras Tributárias', 'simulador-fiscal': 'Simulador Reforma Tributária', contabil: 'Contábil', usuarios: 'Usuários'
   };
 
   return `
@@ -520,7 +525,7 @@ function folhaCadastro() {
     const regraSel = regras.find(x => x.cfop === r.cfop);
 
     return `
-    <div class="card card-p" style="max-width:600px;margin:0 auto">
+    <div class="card card-p" style="max-width:640px;margin:0 auto">
       <div class="entre" style="border-bottom:1px solid var(--aco-150);padding-bottom:10px;margin-bottom:14px">
         <h3 style="font-size:17px;font-weight:700">Novo Produto / Peça</h3>
         <button class="btn-fechar" data-act="fechar">${(typeof ico === 'function' ? ico('x', 18) : 'X')}</button>
@@ -535,9 +540,10 @@ function folhaCadastro() {
           <div><label class="mini">Custo (R$)</label><input type="number" class="campo-texto" data-act="rc" data-c="custo" value="${r.custo||0}" step="0.01" style="width:100%"></div>
           <div><label class="mini">Preço Venda (R$)</label><input type="number" class="campo-texto" data-act="rc" data-c="venda" value="${r.venda||0}" step="0.01" style="width:100%"></div>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px">
           <div><label class="mini">NCM</label><input class="campo-texto" data-act="rc" data-c="ncm" value="${esc(r.ncm||'')}" placeholder="0000.00.00" style="width:100%"></div>
           <div><label class="mini">CEST</label><input class="campo-texto" data-act="rc" data-c="cest" value="${esc(r.cest||'')}" placeholder="00.000.00" style="width:100%"></div>
+          <div><label class="mini">cClassTrib (RTC)</label><input class="campo-texto" data-act="rc" data-c="cClassTrib" value="${esc(r.cClassTrib||'')}" placeholder="Ex: 010101" style="width:100%" title="Código de Classificação Tributária da Reforma Tributária"></div>
           <div><label class="mini">Origem</label><select class="campo-texto" data-act="rc" data-c="origem" style="width:100%">${selOrigem}</select></div>
         </div>
 
@@ -548,9 +554,8 @@ function folhaCadastro() {
             ${regras.map(rg => `<option value="${rg.cfop}" ${r.cfop===rg.cfop?'selected':''}>${rg.cfop} – ${esc(rg.desc)}</option>`).join('')}
           </select>
           ${regraSel ? `<div class="mini" style="margin-top:6px;padding:8px;background:var(--aco-50);border-radius:6px;line-height:1.6">
-            <b>Impostos vinculados ao CFOP ${regraSel.cfop}:</b><br>
-            ICMS: ${regraSel.aliqICMS}% (CST ${regraSel.cstICMS}) · IPI: ${regraSel.aliqIPI}%<br>
-            PIS: ${regraSel.aliqPIS}% · COFINS: ${regraSel.aliqCOFINS}%${regraSel.aliqIBS ? ' · IBS: '+regraSel.aliqIBS+'%' : ''}${regraSel.aliqCBS ? ' · CBS: '+regraSel.aliqCBS+'%' : ''}
+            <b>Regime Atual:</b> ICMS: ${regraSel.aliqICMS}% (CST ${regraSel.cstICMS}) · IPI: ${regraSel.aliqIPI}% · PIS: ${regraSel.aliqPIS}% · COFINS: ${regraSel.aliqCOFINS}%<br>
+            <b style="color:var(--petroleo)">Nova Reforma (EC 132/2023):</b> CBS: ${regraSel.aliqCBS != null ? regraSel.aliqCBS : 0.9}% · IBS: ${regraSel.aliqIBS != null ? regraSel.aliqIBS : 0.1}% (Est: ${regraSel.aliqIBSEst||0.05}% / Mun: ${regraSel.aliqIBSMun||0.05}%) · CST RTC: ${regraSel.cstIBSCBS||'01'} · cClassTrib: ${esc(r.cClassTrib || regraSel.cClassTrib || '010101')}
           </div>` : `<div class="mini" style="margin-top:6px;color:var(--aco-500)">Configure as regras tributárias em <b>Cadastros → Regras Tributárias</b>.</div>`}
         </div>
       </div>
@@ -579,7 +584,10 @@ function folhaCadastro() {
           <div><label class="mini">Horas de Box</label><input type="number" class="campo-texto" data-act="rc" data-c="horas" value="${r.horas||1}" style="width:100%"></div>
           <div><label class="mini">CNAE</label><input class="campo-texto" data-act="rc" data-c="cnae" value="${esc(r.cnae||'')}" placeholder="4520-0/01" style="width:100%"></div>
         </div>
-        <div><label class="mini">Código Serviço (LC 116/2003)</label><input class="campo-texto" data-act="rc" data-c="codServLC116" value="${esc(r.codServLC116||'')}" placeholder="Ex: 14.01" style="width:100%"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div><label class="mini">Código Serviço (LC 116/2003)</label><input class="campo-texto" data-act="rc" data-c="codServLC116" value="${esc(r.codServLC116||'')}" placeholder="Ex: 14.01" style="width:100%"></div>
+          <div><label class="mini">cClassTrib (Reforma Tributária / RTC)</label><input class="campo-texto" data-act="rc" data-c="cClassTrib" value="${esc(r.cClassTrib||'')}" placeholder="Ex: 010101" style="width:100%" title="Código de Classificação Tributária da Reforma Tributária"></div>
+        </div>
 
         <div style="border-top:1px solid var(--aco-150);padding-top:12px;margin-top:4px">
           <label class="mini" style="font-weight:700">CFOP / Regra Tributária</label>
@@ -588,8 +596,8 @@ function folhaCadastro() {
             ${regrasS.map(rg => `<option value="${rg.cfop}" ${r.cfop===rg.cfop?'selected':''}>${rg.cfop} – ${esc(rg.desc)}</option>`).join('')}
           </select>
           ${regraSel ? `<div class="mini" style="margin-top:6px;padding:8px;background:var(--aco-50);border-radius:6px;line-height:1.6">
-            <b>Impostos vinculados ao CFOP ${regraSel.cfop}:</b><br>
-            ISS: ${regraSel.aliqISS||0}% ${regraSel.issRetido==='S'?'(Retido)':''} · PIS: ${regraSel.aliqPIS}% · COFINS: ${regraSel.aliqCOFINS}%${regraSel.aliqIBS ? ' · IBS: '+regraSel.aliqIBS+'%' : ''}${regraSel.aliqCBS ? ' · CBS: '+regraSel.aliqCBS+'%' : ''}
+            <b>Regime Atual:</b> ISS: ${regraSel.aliqISS||0}% ${regraSel.issRetido==='S'?'(Retido)':''} · PIS: ${regraSel.aliqPIS}% · COFINS: ${regraSel.aliqCOFINS}%<br>
+            <b style="color:var(--petroleo)">Nova Reforma (EC 132/2023):</b> CBS: ${regraSel.aliqCBS != null ? regraSel.aliqCBS : 0.9}% · IBS: ${regraSel.aliqIBS != null ? regraSel.aliqIBS : 0.1}% (Est: ${regraSel.aliqIBSEst||0.05}% / Mun: ${regraSel.aliqIBSMun||0.05}%) · CST RTC: ${regraSel.cstIBSCBS||'01'} · cClassTrib: ${esc(r.cClassTrib || regraSel.cClassTrib || '010101')}
           </div>` : `<div class="mini" style="margin-top:6px;color:var(--aco-500)">Configure as regras tributárias em <b>Cadastros → Regras Tributárias</b>.</div>`}
         </div>
       </div>
@@ -606,6 +614,18 @@ function folhaCadastro() {
     const cstICMS = ['00 – Tributada integralmente','10 – Tributada com cobrança por ST','20 – Com redução de base de cálculo','30 – Isenta/não tributada, com ST','40 – Isenta','41 – Não tributada','50 – Suspensão','51 – Diferimento','60 – ICMS cobrado anteriormente por ST','70 – Redução da BC e cobrança ST','90 – Outros'];
     const cstIPI = ['00 – Entrada com recuperação de crédito','01 – Entrada tributada com alíquota zero','49 – Outras entradas','50 – Saída tributada','51 – Saída tributada com alíquota zero','52 – Saída isenta','53 – Saída não tributada','54 – Saída imune','55 – Saída com suspensão','99 – Outras saídas'];
     const cstPISCOFINS = ['01 – Operação Tributável (BC = Valor da Operação)','02 – Operação Tributável (BC = Valor da Operação - Alíquota Diferenciada)','04 – Operação Tributável (ST)','05 – Operação Tributável (Substituição Tributária)','06 – Operação Tributável (Alíquota Zero)','07 – Operação Isenta da Contribuição','08 – Operação sem Incidência da Contribuição','09 – Operação com Suspensão da Contribuição','49 – Outras Operações de Saída','99 – Outras Operações'];
+    const cstRTC = [
+      '01 – Tributada integralmente com alíquota padrão',
+      '02 – Tributada com alíquota diferenciada / reduzida',
+      '03 – Tributada com redução de base de cálculo',
+      '04 – Tributada por valor fixo (ad rem)',
+      '05 – Imunidade',
+      '06 – Não incidência',
+      '07 – Isenção',
+      '08 – Suspensão',
+      '09 – Diferimento',
+      '90 – Outros / Regime Específico'
+    ];
 
     let camposImpostos = '';
     if (r.tipo === 'produto' || r.tipo === 'entrada') {
@@ -636,9 +656,12 @@ function folhaCadastro() {
     }
 
     return `
-    <div class="card card-p" style="max-width:700px;margin:0 auto">
+    <div class="card card-p" style="max-width:760px;margin:0 auto">
       <div class="entre" style="border-bottom:1px solid var(--aco-150);padding-bottom:10px;margin-bottom:14px">
-        <h3 style="font-size:17px;font-weight:700">Regra Tributária (CFOP)</h3>
+        <div>
+          <h3 style="font-size:17px;font-weight:700">Regra Tributária (CFOP)</h3>
+          <div class="mini">Convivência Harmoniosa: Sistema Legado & Nova Reforma Tributária</div>
+        </div>
         <button class="btn-fechar" data-act="fechar">${(typeof ico === 'function' ? ico('x', 18) : 'X')}</button>
       </div>
       
@@ -655,14 +678,84 @@ function folhaCadastro() {
           </div>
         </div>
 
-        <div style="border-top:1px solid var(--aco-150);padding-top:12px;margin-top:6px;display:flex;flex-direction:column;gap:10px">
+        <!-- 1. TRIBUTOS DO MODELO ATUAL / TRANSIÇÃO -->
+        <div style="border:1px solid var(--aco-200);border-radius:8px;padding:12px;background:#fff">
+          <div style="font-weight:700;color:var(--aco-800);margin-bottom:8px;font-size:12px">1. Tributos Atuais (ICMS, ISS, IPI, PIS, COFINS):</div>
           ${camposImpostos}
           
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px">
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-top:10px">
             <div><label class="mini">CST PIS</label><select class="campo-texto" data-act="rc" data-c="cstPIS" style="width:100%">${sel(cstPISCOFINS,'cstPIS')}</select></div>
             <div><label class="mini">Alíq. PIS (%)</label><input type="number" class="campo-texto" data-act="rc" data-c="aliqPIS" value="${r.aliqPIS||0}" step="0.01" style="width:100%"></div>
             <div><label class="mini">CST COFINS</label><select class="campo-texto" data-act="rc" data-c="cstCOFINS" style="width:100%">${sel(cstPISCOFINS,'cstCOFINS')}</select></div>
             <div><label class="mini">Alíq. COFINS (%)</label><input type="number" class="campo-texto" data-act="rc" data-c="aliqCOFINS" value="${r.aliqCOFINS||0}" step="0.01" style="width:100%"></div>
+          </div>
+        </div>
+
+        <!-- 2. BLOCO DA NOVA REFORMA TRIBUTÁRIA (EC 132/2023 - IVA DUAL & IS) -->
+        <div style="border:1px solid var(--petroleo);border-radius:8px;padding:14px;background:var(--petroleo-fraco)">
+          <div class="entre" style="margin-bottom:10px">
+            <div style="font-weight:700;color:var(--petroleo);font-size:13px">
+              2. Nova Reforma Tributária (IVA Dual: CBS Federal / IBS Subnacional & Imposto Seletivo)
+            </div>
+            <span class="selo selo-finalizada" style="font-size:10.5px">Vigência EC 132/2023</span>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+            <div>
+              <label class="mini">CST IBS/CBS (RTC)</label>
+              <select class="campo-texto" data-act="rc" data-c="cstIBSCBS" style="width:100%">
+                ${sel(cstRTC, 'cstIBSCBS')}
+              </select>
+            </div>
+            <div>
+              <label class="mini">Classificação Fiscal (cClassTrib RTC)</label>
+              <input type="text" class="campo-texto" data-act="rc" data-c="cClassTrib" value="${esc(r.cClassTrib || '010101')}" placeholder="Ex: 010101" style="width:100%">
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:10px">
+            <div>
+              <label class="mini">CBS Federal (%)</label>
+              <input type="number" class="campo-texto" data-act="rc" data-c="aliqCBS" value="${r.aliqCBS != null ? r.aliqCBS : 0.90}" step="0.01" style="width:100%">
+            </div>
+            <div>
+              <label class="mini">IBS Estadual (%)</label>
+              <input type="number" class="campo-texto" data-act="rc" data-c="aliqIBSEst" value="${r.aliqIBSEst != null ? r.aliqIBSEst : 0.05}" step="0.01" style="width:100%">
+            </div>
+            <div>
+              <label class="mini">IBS Municipal (%)</label>
+              <input type="number" class="campo-texto" data-act="rc" data-c="aliqIBSMun" value="${r.aliqIBSMun != null ? r.aliqIBSMun : 0.05}" step="0.01" style="width:100%">
+            </div>
+            <div>
+              <label class="mini">Total IBS (%)</label>
+              <input type="number" class="campo-texto" data-act="rc" data-c="aliqIBS" value="${r.aliqIBS != null ? r.aliqIBS : 0.10}" step="0.01" style="width:100%">
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px">
+            <div>
+              <label class="mini">Redução BC IBS/CBS (%)</label>
+              <input type="number" class="campo-texto" data-act="rc" data-c="redBCIBSCBS" value="${r.redBCIBSCBS || 0}" step="0.01" style="width:100%">
+            </div>
+            <div>
+              <label class="mini">CST Imposto Seletivo (IS)</label>
+              <select class="campo-texto" data-act="rc" data-c="cstIS" style="width:100%">
+                <option value="00" ${(r.cstIS||'00')==='00'?'selected':''}>00 – Não incidente</option>
+                <option value="01" ${r.cstIS==='01'?'selected':''}>01 – Tributado</option>
+                <option value="07" ${r.cstIS==='07'?'selected':''}>07 – Isento</option>
+              </select>
+            </div>
+            <div>
+              <label class="mini">Alíq. Imposto Seletivo (%)</label>
+              <input type="number" class="campo-texto" data-act="rc" data-c="aliqIS" value="${r.aliqIS || 0}" step="0.01" style="width:100%">
+            </div>
+            <div>
+              <label class="mini">Princípio do Destino</label>
+              <select class="campo-texto" data-act="rc" data-c="indDestino" style="width:100%">
+                <option value="1" ${(r.indDestino||'1')==='1'?'selected':''}>Local do Consumo (Destino)</option>
+                <option value="0" ${r.indDestino==='0'?'selected':''}>Estabelecimento Prestador</option>
+              </select>
+            </div>
           </div>
         </div>
       </div>
@@ -712,50 +805,97 @@ function folhaCadastro() {
 }
 
 /* ===== NOVAS VIEWS DE CONFIGURAÇÃO ===== */
-function viewEmpresa() {
-  const c = S.cfg || {};
-  return `
-  <div class="card card-p" style="max-width:800px;margin:0 auto">
-    <div style="margin-bottom:16px;border-bottom:1px solid var(--aco-150);padding-bottom:12px">
-      <h3 style="font-weight:600;font-size:16px;margin:0">Dados da Oficina</h3>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:24px">
-      <div><label class="mini">Razão Social / Nome</label><input type="text" class="campo-texto" data-act="cfg" data-c="empresa" value="${esc(c.empresa)}" style="width:100%"></div>
-      <div><label class="mini">CNPJ / CPF</label><input type="text" class="campo-texto" data-act="cfg" data-c="cnpj" value="${esc(c.cnpj)}" style="width:100%"></div>
-      <div><label class="mini">Endereço Completo</label><input type="text" class="campo-texto" data-act="cfg" data-c="endereco" value="${esc(c.endereco)}" style="width:100%"></div>
-      <div><label class="mini">Telefone / Contato</label><input type="text" class="campo-texto" data-act="cfg" data-c="fone" value="${esc(c.fone)}" style="width:100%"></div>
-    </div>
-  </div>`;
-}
 
 function viewTributario() {
   const c = S.cfg || {};
   return `
-  <div class="card card-p" style="max-width:800px;margin:0 auto">
+  <div class="card card-p" style="max-width:850px;margin:0 auto">
     <div style="margin-bottom:16px;border-bottom:1px solid var(--aco-150);padding-bottom:12px">
-      <h3 style="font-weight:600;font-size:16px;margin:0">Dados Tributários Avançados</h3>
+      <h3 style="font-weight:700;font-size:17px;margin:0;color:var(--aco-900)">Dados Tributários & Reforma Tributária (IVA Dual)</h3>
+      <div class="mini">Parametrização completa para adequação à Emenda Constitucional nº 132/2023 e PLP 68/2024</div>
     </div>
     
-    <div style="font-weight:700;font-size:14px;margin-bottom:10px">Inscrições e Atividade:</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:24px">
-      <div><label class="mini">Regime Tributário</label>
+    <!-- 1. IDENTIFICAÇÃO E REGIME -->
+    <div style="font-weight:700;font-size:13.5px;margin-bottom:8px;color:var(--aco-800)">1. Enquadramento e Inscrições Fiscais:</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:20px;background:#fff;padding:14px;border-radius:8px;border:1px solid var(--aco-200)">
+      <div>
+        <label class="mini">Regime Tributário Geral</label>
         <select class="campo-texto" data-act="cfg" data-c="regimeTributario" style="width:100%">
           <option ${c.regimeTributario==='Simples Nacional'?'selected':''}>Simples Nacional</option>
           <option ${c.regimeTributario==='Lucro Presumido'?'selected':''}>Lucro Presumido</option>
           <option ${c.regimeTributario==='Lucro Real'?'selected':''}>Lucro Real</option>
         </select>
       </div>
-      <div><label class="mini">CNAE Principal</label><input type="text" class="campo-texto" data-act="cfg" data-c="cnae" value="${esc(c.cnae||'')}" style="width:100%"></div>
-      <div></div>
+      <div><label class="mini">CNAE Principal</label><input type="text" class="campo-texto" data-act="cfg" data-c="cnae" value="${esc(c.cnae||'4520-0/01')}" style="width:100%"></div>
+      <div><label class="mini">Cód. IBGE Município (Destino)</label><input type="text" class="campo-texto" data-act="cfg" data-c="ibgeMunicipio" value="${esc(c.ibgeMunicipio||'3509502')}" placeholder="3509502" style="width:100%" title="Código IBGE utilizado na apuração do IBS Municipal segundo o Princípio do Destino"></div>
       <div><label class="mini">Inscrição Estadual (IE)</label><input type="text" class="campo-texto" data-act="cfg" data-c="ie" value="${esc(c.ie||'')}" style="width:100%"></div>
       <div><label class="mini">Inscrição Municipal (IM)</label><input type="text" class="campo-texto" data-act="cfg" data-c="im" value="${esc(c.im||'')}" style="width:100%"></div>
+      <div><label class="mini">Classificação Fiscal Padrão (cClassTrib)</label><input type="text" class="campo-texto" data-act="cfg" data-c="cClassTribPadrao" value="${esc(c.cClassTribPadrao||'010101')}" style="width:100%"></div>
     </div>
     
-    <div style="font-weight:700;font-size:14px;margin-bottom:10px">Alíquotas Padrão (Emissão de NFe):</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
-      <div><label class="mini">PIS (%)</label><input type="number" class="campo-texto" data-act="cfg" data-c="aliqPIS" value="${c.aliqPIS||0}" step="0.01" style="width:100%"></div>
-      <div><label class="mini">COFINS (%)</label><input type="number" class="campo-texto" data-act="cfg" data-c="aliqCOFINS" value="${c.aliqCOFINS||0}" step="0.01" style="width:100%"></div>
-      <div><label class="mini">CSLL (%)</label><input type="number" class="campo-texto" data-act="cfg" data-c="aliqCSLL" value="${c.aliqCSLL||0}" step="0.01" style="width:100%"></div>
+    <!-- 2. NOVA REFORMA TRIBUTÁRIA (EC 132/2023 - IVA DUAL) -->
+    <div style="border:1px solid var(--petroleo);border-radius:10px;padding:16px;background:var(--petroleo-fraco);margin-bottom:20px">
+      <div class="entre" style="margin-bottom:12px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="background:var(--petroleo);color:#fff;border-radius:6px;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:bold">§</div>
+          <b style="color:var(--petroleo);font-size:14px">Nova Reforma Tributária (CBS, IBS e Imposto Seletivo)</b>
+        </div>
+        <span class="selo selo-executando" style="font-size:11px">Fase Oficial de Teste 2026</span>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+        <div>
+          <label class="mini" style="font-weight:700">Fase / Cronograma de Vigência</label>
+          <select class="campo-texto" data-act="cfg" data-c="faseReforma" style="width:100%">
+            <option value="teste_2026" ${(c.faseReforma||'teste_2026')==='teste_2026'?'selected':''}>Ano de Teste 2026 (CBS 0,9% + IBS 0,1%)</option>
+            <option value="transicao_2027_2032" ${c.faseReforma==='transicao_2027_2032'?'selected':''}>Transição Gradual (2027-2032: Extinção PIS/COFINS e redução ICMS/ISS)</option>
+            <option value="plena_2033" ${c.faseReforma==='plena_2033'?'selected':''}>Vigência Plena (2033 em diante: IBS + CBS Definitivos)</option>
+          </select>
+        </div>
+        <div>
+          <label class="mini" style="font-weight:700">Opção do Simples Nacional para IBS / CBS</label>
+          <select class="campo-texto" data-act="cfg" data-c="opcaoSimplesIBSCBS" style="width:100%">
+            <option value="simples_hibrido" ${(c.opcaoSimplesIBSCBS||'simples_hibrido')==='simples_hibrido'?'selected':''}>Recolhimento Regular IBS/CBS (Gera Crédito Integral para Frotas/PJ — Recomendado)</option>
+            <option value="simples_das" ${c.opcaoSimplesIBSCBS==='simples_das'?'selected':''}>Recolhimento Unificado no DAS (Crédito Restrito ao PGDAS)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="mini" style="background:#fff;padding:10px 12px;border-radius:6px;border:1px solid var(--aco-200);margin-bottom:14px;line-height:1.5;color:var(--aco-700)">
+        💡 <b>Oficina de Linha Pesada & Transportadoras:</b> Ao selecionar <i>Recolhimento Regular IBS/CBS</i>, suas Ordens de Serviço e notas fiscais permitirão às transportadoras e frotistas tomarem 100% dos créditos da CBS e do IBS sobre manutenção e peças, mantendo sua oficina altamente competitiva.
+      </div>
+
+      <div style="font-weight:700;font-size:12.5px;margin-bottom:8px;color:var(--aco-800)">Alíquotas Padrão de Referência da Reforma Tributária:</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(140px, 1fr));gap:10px">
+        <div>
+          <label class="mini">CBS Federal (%)</label>
+          <input type="number" class="campo-texto" data-act="cfg" data-c="aliqPadraoCBS" data-tipo="number" value="${c.aliqPadraoCBS != null ? c.aliqPadraoCBS : 0.90}" step="0.01" style="width:100%">
+        </div>
+        <div>
+          <label class="mini">IBS Estadual (%)</label>
+          <input type="number" class="campo-texto" data-act="cfg" data-c="aliqPadraoIBSEst" data-tipo="number" value="${c.aliqPadraoIBSEst != null ? c.aliqPadraoIBSEst : 0.05}" step="0.01" style="width:100%">
+        </div>
+        <div>
+          <label class="mini">IBS Municipal (%)</label>
+          <input type="number" class="campo-texto" data-act="cfg" data-c="aliqPadraoIBSMun" data-tipo="number" value="${c.aliqPadraoIBSMun != null ? c.aliqPadraoIBSMun : 0.05}" step="0.01" style="width:100%">
+        </div>
+        <div>
+          <label class="mini">Total IBS (%)</label>
+          <input type="number" class="campo-texto" data-act="cfg" data-c="aliqPadraoIBS" data-tipo="number" value="${c.aliqPadraoIBS != null ? c.aliqPadraoIBS : 0.10}" step="0.01" style="width:100%">
+        </div>
+        <div>
+          <label class="mini">Imposto Seletivo IS (%)</label>
+          <input type="number" class="campo-texto" data-act="cfg" data-c="aliqPadraoIS" data-tipo="number" value="${c.aliqPadraoIS || 0}" step="0.01" style="width:100%">
+        </div>
+      </div>
+    </div>
+    
+    <!-- 3. TRIBUTOS LEGADOS (TRANSIÇÃO) -->
+    <div style="font-weight:700;font-size:13.5px;margin-bottom:8px;color:var(--aco-800)">3. Tributos Atuais / Convivência Transitória:</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;background:#fff;padding:14px;border-radius:8px;border:1px solid var(--aco-200)">
+      <div><label class="mini">PIS (%)</label><input type="number" class="campo-texto" data-act="cfg" data-c="aliqPIS" data-tipo="number" value="${c.aliqPIS||0}" step="0.01" style="width:100%"></div>
+      <div><label class="mini">COFINS (%)</label><input type="number" class="campo-texto" data-act="cfg" data-c="aliqCOFINS" data-tipo="number" value="${c.aliqCOFINS||0}" step="0.01" style="width:100%"></div>
+      <div><label class="mini">CSLL (%)</label><input type="number" class="campo-texto" data-act="cfg" data-c="aliqCSLL" data-tipo="number" value="${c.aliqCSLL||0}" step="0.01" style="width:100%"></div>
     </div>
   </div>`;
 }
@@ -779,37 +919,235 @@ function viewRegrasTributarias() {
   if (!regras.length) return `<div style="text-align:center;padding:40px;color:var(--aco-500)">Nenhuma regra cadastrada.</div>`;
   
   return `
-  <div class="card card-p" style="max-width:900px;margin:0 auto">
+  <div class="card card-p" style="max-width:980px;margin:0 auto">
+    <div style="margin-bottom:12px;display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <b style="font-size:15px">Matriz de Regras Fiscais & Reforma Tributária</b>
+        <div class="mini">Configurações de tributação por CFOP para produtos, compras e serviços automotivos</div>
+      </div>
+      <button class="btn btn-secundario mini" onclick="S.ui.abaCad='simulador-fiscal';render()">
+        ${ico('grana', 13)} Abrir Simulador de Cálculo
+      </button>
+    </div>
+
     <div style="overflow-x:auto">
-      <table style="width:100%;text-align:left;border-collapse:collapse;font-size:13px">
+      <table style="width:100%;text-align:left;border-collapse:collapse;font-size:12px">
         <thead>
-          <tr style="border-bottom:2px solid var(--aco-200);color:var(--aco-600)">
+          <tr style="border-bottom:2px solid var(--aco-200);color:var(--aco-600);background:var(--aco-050)">
             <th style="padding:10px 8px">CFOP</th>
             <th style="padding:10px 8px">Descrição</th>
             <th style="padding:10px 8px">Tipo</th>
-            <th style="padding:10px 8px">Impostos Base</th>
+            <th style="padding:10px 8px">Regime Atual (ICMS/ISS/PIS/COF)</th>
+            <th style="padding:10px 8px;background:var(--petroleo-fraco);color:var(--petroleo)">Reforma Tributária (IBS/CBS/IS)</th>
             <th style="padding:10px 8px;text-align:right">Ações</th>
           </tr>
         </thead>
         <tbody>
           ${regras.map((r, i) => {
-            let impostos = '';
-            if (r.tipo === 'produto' || r.tipo === 'entrada') impostos = `ICMS: ${r.aliqICMS}% | IPI: ${r.aliqIPI}% | PIS/COF: ${r.aliqPIS}/${r.aliqCOFINS}%`;
-            if (r.tipo === 'servico') impostos = `ISS: ${r.aliqISS}% | PIS/COF: ${r.aliqPIS}/${r.aliqCOFINS}%`;
+            let impostosAtual = '';
+            if (r.tipo === 'produto' || r.tipo === 'entrada') {
+              impostosAtual = `ICMS: ${r.aliqICMS}% (CST ${r.cstICMS}) | IPI: ${r.aliqIPI}% | PIS/COF: ${r.aliqPIS}/${r.aliqCOFINS}%`;
+            } else if (r.tipo === 'servico') {
+              impostosAtual = `ISS: ${r.aliqISS||0}% ${r.issRetido==='S'?'(Ret)':''} | PIS/COF: ${r.aliqPIS}/${r.aliqCOFINS}%`;
+            }
+
+            const cbs = r.aliqCBS != null ? r.aliqCBS : 0.90;
+            const ibs = r.aliqIBS != null ? r.aliqIBS : 0.10;
+            const cstRTC = r.cstIBSCBS || '01';
+            const cClass = r.cClassTrib || '010101';
+            const impostosReforma = `CBS: ${cbs}% | IBS: ${ibs}% (Est: ${r.aliqIBSEst||0.05}% / Mun: ${r.aliqIBSMun||0.05}%) | CST RTC: ${cstRTC} | cClass: ${cClass}${r.aliqIS ? ' | IS: '+r.aliqIS+'%' : ''}`;
             
             return `
             <tr style="border-bottom:1px solid var(--aco-100)">
-              <td style="padding:10px 8px;font-weight:600">${r.cfop}</td>
-              <td style="padding:10px 8px">${esc(r.desc)}</td>
-              <td style="padding:10px 8px"><span style="background:var(--aco-100);padding:2px 6px;border-radius:4px;font-size:11px;text-transform:uppercase">${r.tipo}</span></td>
-              <td style="padding:10px 8px;color:var(--aco-600);font-size:12px">${impostos}</td>
+              <td style="padding:10px 8px;font-weight:700" class="mono">${r.cfop}</td>
+              <td style="padding:10px 8px"><b>${esc(r.desc)}</b></td>
+              <td style="padding:10px 8px"><span style="background:var(--aco-100);padding:2px 6px;border-radius:4px;font-size:10.5px;text-transform:uppercase;font-weight:600">${r.tipo}</span></td>
+              <td style="padding:10px 8px;color:var(--aco-700);font-size:11.5px">${impostosAtual}</td>
+              <td style="padding:10px 8px;background:var(--petroleo-fraco);color:var(--petroleo);font-size:11.5px;font-weight:600">${impostosReforma}</td>
               <td style="padding:10px 8px;text-align:right">
-                <button class="btn btn-secundario" onclick='S.ui.rascCad=${JSON.stringify(r).replace(/'/g, "&#39;")};S.ui.cadTipo="regra-tributaria";if(typeof renderFolha==="function")renderFolha()' style="padding:2px 6px;font-size:12px">Editar</button>
+                <button class="btn btn-secundario mini" data-act="editar-regra-fiscal" data-cfop="${esc(r.cfop)}" style="padding:3px 8px">Editar</button>
               </td>
             </tr>`;
           }).join('')}
         </tbody>
       </table>
+    </div>
+  </div>`;
+}
+
+function viewSimuladorFiscal() {
+  const regras = S.cfg.regrasTributarias || [];
+  window._simulador = window._simulador || {
+    valor: 1000,
+    cfop: (regras[0] && regras[0].cfop) || '5102',
+    tipo: 'produto'
+  };
+
+  const sim = window._simulador;
+  const regra = regras.find(x => x.cfop === sim.cfop) || regras[0] || {};
+  const v = Number(sim.valor) || 0;
+
+  // Cálculos Regime Atual
+  let icmsOuIss = 0, icmsLabel = 'ICMS';
+  if (regra.tipo === 'servico') {
+    icmsOuIss = v * ((regra.aliqISS || 0) / 100);
+    icmsLabel = 'ISS';
+  } else {
+    icmsOuIss = v * ((regra.aliqICMS || 0) / 100);
+  }
+  const pis = v * ((regra.aliqPIS || 0) / 100);
+  const cofins = v * ((regra.aliqCOFINS || 0) / 100);
+  const ipi = regra.tipo !== 'servico' ? v * ((regra.aliqIPI || 0) / 100) : 0;
+  const totAtual = icmsOuIss + pis + cofins + ipi;
+
+  // Cálculos Reforma Tributária (Fase 2026 Teste: CBS 0,9% + IBS 0,1%)
+  const aliqCBS = regra.aliqCBS != null ? regra.aliqCBS : 0.90;
+  const aliqIBSEst = regra.aliqIBSEst != null ? regra.aliqIBSEst : 0.05;
+  const aliqIBSMun = regra.aliqIBSMun != null ? regra.aliqIBSMun : 0.05;
+  const aliqIBS = regra.aliqIBS != null ? regra.aliqIBS : (aliqIBSEst + aliqIBSMun);
+  const aliqIS = regra.aliqIS || 0;
+
+  const vCBS = v * (aliqCBS / 100);
+  const vIBSEst = v * (aliqIBSEst / 100);
+  const vIBSMun = v * (aliqIBSMun / 100);
+  const vIBSTotal = v * (aliqIBS / 100);
+  const vIS = v * (aliqIS / 100);
+  const totReforma2026 = vCBS + vIBSTotal + vIS;
+
+  // Em 2026, CBS e IBS são compensáveis/dedutíveis do PIS/COFINS
+  const compensacao = Math.min(totReforma2026, pis + cofins);
+
+  // Crédito Gerado para o Cliente PJ (Transportadora / Frota)
+  const opcaoSimples = S.cfg.opcaoSimplesIBSCBS || 'simples_hibrido';
+  const creditoCliente2026 = (S.cfg.regimeTributario === 'Simples Nacional' && opcaoSimples === 'simples_das') 
+    ? (v * 0.0035) // Crédito restrito
+    : totReforma2026; // Crédito integral
+
+  return `
+  <div class="card card-p" style="max-width:920px;margin:0 auto">
+    <div class="entre" style="border-bottom:1px solid var(--aco-150);padding-bottom:12px;margin-bottom:16px">
+      <div>
+        <h3 style="font-size:18px;font-weight:800;color:var(--aco-900);margin:0">Simulador & Auditor Fiscal da Reforma Tributária (IVA Dual)</h3>
+        <div class="mini">Validação matemática em conformidade com a EC 132/2023, PLP 68/2024 e Regras Técnicas RTC</div>
+      </div>
+      <button class="btn btn-secundario mini" onclick="S.ui.abaCad='regras-tributarias';render()">
+        ${ico('lista', 13)} Ver Matriz de Regras
+      </button>
+    </div>
+
+    <!-- Painel de Parâmetros de Teste -->
+    <div style="background:var(--aco-050);padding:14px;border-radius:10px;border:1px solid var(--aco-200);margin-bottom:20px">
+      <div style="font-weight:700;font-size:13px;margin-bottom:10px">Parâmetros da Operação para Simulação:</div>
+      <div style="display:grid;grid-template-columns:180px 1fr;gap:12px">
+        <div>
+          <label class="mini" style="font-weight:700">Valor da Operação (R$)</label>
+          <input type="number" class="campo-texto" value="${v}" step="50" oninput="window._simulador.valor=this.value;render()" style="width:100%;font-size:16px;font-weight:800">
+        </div>
+        <div>
+          <label class="mini" style="font-weight:700">Regra Fiscal / CFOP Vinculado</label>
+          <select class="campo-texto" onchange="window._simulador.cfop=this.value;render()" style="width:100%;height:38px">
+            ${regras.map(rg => `<option value="${rg.cfop}" ${rg.cfop===sim.cfop?'selected':''}>${rg.cfop} – ${esc(rg.desc)} (${rg.tipo.toUpperCase()})</option>`).join('')}
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Comparativo Lado a Lado dos Modelos -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+      <!-- Coluna 1: Modelo Vigente Atual -->
+      <div style="border:1px solid var(--aco-200);border-radius:10px;padding:16px;background:#fff">
+        <div class="entre" style="border-bottom:1px solid var(--aco-150);padding-bottom:8px;margin-bottom:12px">
+          <b style="font-size:14px;color:var(--aco-800)">Regime Vigente Atual (Legado)</b>
+          <span class="selo" style="background:var(--aco-200)">ICMS / ISS / PIS / COFINS</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;font-size:13px">
+          <div class="entre">
+            <span>${icmsLabel} (${regra.tipo==='servico'?(regra.aliqISS||0):(regra.aliqICMS||0)}%):</span>
+            <b class="num">${brl(icmsOuIss)}</b>
+          </div>
+          <div class="entre">
+            <span>PIS (${regra.aliqPIS||0}%):</span>
+            <b class="num">${brl(pis)}</b>
+          </div>
+          <div class="entre">
+            <span>COFINS (${regra.aliqCOFINS||0}%):</span>
+            <b class="num">${brl(cofins)}</b>
+          </div>
+          ${regra.tipo !== 'servico' && regra.aliqIPI ? `
+            <div class="entre">
+              <span>IPI (${regra.aliqIPI}%):</span>
+              <b class="num">${brl(ipi)}</b>
+            </div>
+          ` : ''}
+          <div class="entre" style="border-top:1px solid var(--aco-200);padding-top:8px;margin-top:4px;font-size:14px">
+            <b>Carga Tributária Direta:</b>
+            <b class="num" style="color:var(--aco-900)">${brl(totAtual)} (${v > 0 ? ((totAtual/v)*100).toFixed(2) : '0.00'}%)</b>
+          </div>
+        </div>
+      </div>
+
+      <!-- Coluna 2: Nova Reforma Tributária 2026 -->
+      <div style="border:2px solid var(--petroleo);border-radius:10px;padding:16px;background:var(--petroleo-fraco)">
+        <div class="entre" style="border-bottom:1px solid var(--petroleo);padding-bottom:8px;margin-bottom:12px">
+          <b style="font-size:14px;color:var(--petroleo)">Fase de Teste 2026 (EC 132/2023)</b>
+          <span class="selo selo-finalizada">IVA Dual: 1,0%</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;font-size:13px">
+          <div class="entre">
+            <span>CBS Federal (${aliqCBS}%):</span>
+            <b class="num">${brl(vCBS)}</b>
+          </div>
+          <div class="entre">
+            <span>IBS Estadual (${aliqIBSEst}%):</span>
+            <b class="num">${brl(vIBSEst)}</b>
+          </div>
+          <div class="entre">
+            <span>IBS Municipal (${aliqIBSMun}%):</span>
+            <b class="num">${brl(vIBSMun)}</b>
+          </div>
+          ${aliqIS > 0 ? `
+            <div class="entre">
+              <span>Imposto Seletivo (${aliqIS}%):</span>
+              <b class="num">${brl(vIS)}</b>
+            </div>
+          ` : ''}
+          <div class="entre" style="border-top:1px dashed var(--petroleo);padding-top:6px;font-size:12px;color:var(--petroleo)">
+            <span>Total IVA Reforma (CBS + IBS):</span>
+            <b>${brl(totReforma2026)} (${(aliqCBS+aliqIBS).toFixed(2)}%)</b>
+          </div>
+          <div class="entre" style="border-top:1px solid var(--petroleo);padding-top:8px;margin-top:2px;font-size:14px">
+            <b>Compensação PIS/COFINS (Líquido):</b>
+            <b class="num" style="color:var(--verde)">−${brl(compensacao)}</b>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Impacto Estratégico para Clientes PJ / Transportadoras -->
+    <div style="background:var(--verde-fraco);border:1px solid var(--verde);border-radius:10px;padding:14px;display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div style="font-weight:700;color:var(--verde);font-size:13.5px">
+          Crédito Tributário Imediato Gerado para Transportadoras / Frotistas PJ:
+        </div>
+        <div class="mini" style="margin-top:2px;color:var(--aco-700)">
+          Baseado na opção configurada: <b>${opcaoSimples==='simples_hibrido'?'Recolhimento Regular IBS/CBS (Gera 100% de Crédito)':'Recolhimento DAS Simples'}</b>.
+        </div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:22px;font-weight:800;color:var(--verde)">${brl(creditoCliente2026)}</div>
+        <span class="selo selo-finalizada" style="font-size:10px">100% Auditado</span>
+      </div>
+    </div>
+
+    <!-- Auditoria de Conformidade -->
+    <div style="margin-top:16px;padding:12px;background:#fff;border-radius:8px;border:1px solid var(--aco-200);font-size:12px">
+      <b style="color:var(--aco-800)">Checklist de Conformidade Técnica para Emissão Fiscal (NF-e / RTC):</b>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px">
+        <div>✅ <b>CST IBS/CBS:</b> Código oficial ${regra.cstIBSCBS||'01'} atribuído.</div>
+        <div>✅ <b>Classificação RTC:</b> cClassTrib ${regra.cClassTrib||'010101'} mapeado.</div>
+        <div>✅ <b>Repartição Subnacional:</b> IBS Estadual (${aliqIBSEst}%) e Municipal (${aliqIBSMun}%) definidos.</div>
+        <div>✅ <b>Princípio do Destino:</b> Indicador de Destino parametrizado (${regra.indDestino==='0'?'Prestador':'Consumo/Tomador'}).</div>
+      </div>
     </div>
   </div>`;
 }

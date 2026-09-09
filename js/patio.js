@@ -143,11 +143,30 @@ function cardOS(o, b) {
 
     ${o.queixa ? `<div class="mini" style="margin-top:10px;color:var(--aco-600);line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden"><b>Queixa:</b> ${esc(o.queixa)}</div>` : ''}
 
-    <div class="box-rodape">
+    <div class="box-rodape" style="flex-wrap:wrap;gap:6px">
       <span class="mini" style="display:flex;align-items:center;gap:4px">
         ${ico('relogio', 12)} OS ${o.num} · ${qtdItens} itens
       </span>
       <div class="val">${brl(total)}</div>
+    </div>
+
+    <!-- Controle Rápido de Status e Alocação de Box -->
+    <div style="margin-top:8px;padding-top:8px;border-top:1px dashed var(--aco-150);display:flex;align-items:center;justify-content:space-between;gap:6px" onclick="event.stopPropagation()">
+      <div style="display:flex;align-items:center;gap:4px;flex:1;min-width:0">
+        <label class="mini" style="font-size:10px;font-weight:600;color:var(--aco-500)">Status:</label>
+        <select class="campo-select" data-act="mudar-status-card" data-id="${o.id}" style="height:26px;font-size:11.5px;padding:0 6px;border-radius:6px;font-weight:600;background:var(--aco-050);flex:1;min-width:0">
+          <option value="fila" ${o.st === 'fila' ? 'selected' : ''}>Na Fila</option>
+          <option value="executando" ${o.st === 'executando' ? 'selected' : ''}>Em Execução</option>
+          <option value="peca" ${o.st === 'peca' ? 'selected' : ''}>Parado p/ Peça</option>
+          <option value="aprovacao" ${o.st === 'aprovacao' ? 'selected' : ''}>Aguardando Aprovação</option>
+          <option value="finalizada" ${o.st === 'finalizada' ? 'selected' : ''}>Finalizada</option>
+        </select>
+      </div>
+      ${!o.box && o.st !== 'finalizada' ? `
+        <button class="btn btn-sucesso" data-act="iniciar-box-card" data-id="${o.id}" style="font-size:11px;padding:3px 8px;border-radius:6px;height:26px;font-weight:600;white-space:nowrap" title="Alocar primeiro box livre e iniciar execução">
+          ▶ Ocupar Box
+        </button>
+      ` : ''}
     </div>
   </div>`;
 }
@@ -377,8 +396,19 @@ function abaFicha(o, v, c, b) {
         <div><b>Modelo/Marca:</b> ${esc(v.marca ? v.marca + ' ' : '')}${esc(v.modelo)} (${esc(v.ano || '—')})</div>
         <div><b>Cliente:</b> ${esc(c.nome)}</div>
         <div><b>Telefone:</b> ${esc(c.fone || '—')}</div>
-        <div><b>Mecânico Responsável:</b> ${esc(o.mec || 'Não atribuído')}</div>
-        <div><b>Box Designado:</b> ${esc(b.nome)}</div>
+        <div style="margin-top:2px">
+          <label class="mini" style="font-weight:600;display:block;margin-bottom:3px">Box Alocado / Pátio:</label>
+          <select class="campo-select" data-act="mudar-box-os" style="width:100%;height:32px;font-size:12.5px;font-weight:600">
+            <option value="" ${!o.box ? 'selected' : ''}>🟡 Pátio / Fila de Espera (Sem Box)</option>
+            ${S.boxes.map(bx => {
+              const ocup = (S.os || []).find(other => other.id !== o.id && other.box === bx.id && other.st !== 'finalizada');
+              const isAtual = o.box === bx.id;
+              return `<option value="${bx.id}" ${isAtual ? 'selected' : ''} ${ocup && !isAtual ? 'style="color:var(--tijolo)"' : ''}>
+                ${ocup && !isAtual ? '🔴' : '🟢'} ${esc(bx.nome)} ${isAtual ? '(Box Atual)' : (ocup ? `(Ocupado - OS #${ocup.num})` : '(Disponível)')}
+              </option>`;
+            }).join('')}
+          </select>
+        </div>
       </div>
     </div>
 
@@ -428,8 +458,8 @@ function abaHistoricoVeiculo(v) {
           <div class="mini" style="margin-top:2px">KM: <b>${(pass.km || 0).toLocaleString('pt-BR')} km</b> · Mecânico: ${esc(pass.mec || '—')}</div>
           ${pass.queixa ? `<div style="font-size:12.5px;color:var(--aco-700);margin-top:4px"><b>Queixa:</b> ${esc(pass.queixa)}</div>` : ''}
           <div class="mini" style="margin-top:4px;color:var(--aco-500)">
-            Serviços: ${(pass.servicos || []).map(s => s.nome).join(', ') || 'Nenhum'} | 
-            Peças: ${(pass.pecas || []).map(p => p.nome).join(', ') || 'Nenhuma'}
+            Serviços: ${(pass.servicos || []).map(s => esc(s.nome)).join(', ') || 'Nenhum'} | 
+            Peças: ${(pass.pecas || []).map(p => esc(p.nome)).join(', ') || 'Nenhuma'}
           </div>
           <div class="num" style="font-weight:700;font-size:13px;margin-top:4px;color:var(--aco-900)">
             Valor Total: ${brl(totOS(pass))}
@@ -516,6 +546,7 @@ function folhaFaturarOS() {
 }
 
 function processarFaturamentoOS(o) {
+  if (o.st === 'finalizada') return;
   const rasc = S.ui.rascFaturar || {};
   const v = V(o.vei), c = C(o.cli);
   const total = totOS(o);
@@ -542,7 +573,7 @@ function processarFaturamentoOS(o) {
       id: uid('mv'),
       data: hoje(),
       tipo: 'entrada',
-      desc: `Recebimento OS ${o.num} (${esc(v.placa)}) — ${esc(c.nome)}`,
+      desc: `Recebimento OS ${o.num} (${v.placa}) — ${c.nome}`,
       valor: total,
       cat: 'Serviços & Peças',
       conc: true,
@@ -557,7 +588,7 @@ function processarFaturamentoOS(o) {
       S.contas.push({
         id: uid('ct'),
         tipo: 'receber',
-        desc: `OS ${o.num} (Parc. ${p}/${parcelas}) — ${esc(v.placa)}`,
+        desc: `OS ${o.num} (Parc. ${p}/${parcelas}) — ${v.placa}`,
         parte: c.nome,
         valor: valorParc,
         venc: dataVenc,
@@ -689,7 +720,18 @@ function imprimirOS(o) {
 }
 
 function novaOSFolha(boxId) {
-  const rasc = S.ui.rascunho = S.ui.rascunho || { box: boxId || (S.boxes[0] ? S.boxes[0].id : 'b1') };
+  const boxesValidos = S.boxes || [];
+  const boxesOcupados = new Map();
+  (S.os || []).filter(o => o.st !== 'finalizada' && o.box).forEach(o => {
+    const v = V(o.vei);
+    boxesOcupados.set(o.box, `OS #${o.num} (${v.placa})`);
+  });
+
+  const primeiroLivre = boxesValidos.find(b => !boxesOcupados.has(b.id));
+  const defaultBox = boxId !== undefined ? boxId : (primeiroLivre ? primeiroLivre.id : '');
+
+  const rasc = S.ui.rascunho = S.ui.rascunho || { box: defaultBox };
+  if (boxId && !S.ui.rascunho.box) S.ui.rascunho.box = boxId;
   const veiculos = S.veiculos || [];
   const clientes = S.clientes || [];
 
@@ -715,9 +757,16 @@ function novaOSFolha(boxId) {
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div>
-          <label style="font-weight:600;display:block;margin-bottom:4px">Box de Destino:</label>
-          <select class="campo-select" data-act="rasc" data-c="box" style="width:100%;height:34px">
-            ${S.boxes.map(b => `<option value="${b.id}" ${rasc.box === b.id ? 'selected' : ''}>${esc(b.nome)}</option>`).join('')}
+          <label style="font-weight:600;display:block;margin-bottom:4px">Box de Destino / Pátio:</label>
+          <select class="campo-select" data-act="rasc" data-c="box" style="width:100%;height:34px;font-weight:600">
+            <option value="" ${!rasc.box ? 'selected' : ''}>🟡 Fila de Espera (Pátio - Sem Box)</option>
+            ${boxesValidos.map(b => {
+              const ocupante = boxesOcupados.get(b.id);
+              const isSel = rasc.box === b.id;
+              return `<option value="${b.id}" ${isSel ? 'selected' : ''} ${ocupante && !isSel ? 'style="color:var(--tijolo)"' : ''}>
+                ${ocupante ? '🔴' : '🟢'} ${esc(b.nome)} ${ocupante ? `(Ocupado: ${ocupante})` : '(Disponível)'}
+              </option>`;
+            }).join('')}
           </select>
         </div>
         <div>

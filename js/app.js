@@ -415,9 +415,16 @@ document.addEventListener('click', e => {
     case 'nova-os': S.ui.rascunho = null; abrirFolha(() => novaOSFolha(b.dataset.box)); break;
     case 'voltar-os': S.ui.rascVeiculo = null; abrirFolha(novaOSFolha); break;
     case 'imprimir-os': imprimirOS(o); break;
-    case 'copiar-orc': copiar(textoOrcamento(o)); torrar('Orçamento copiado para o WhatsApp!'); break;
-    case 'excluir-os': pedirConfirmacao('os' + o.id, 'Toque de novo para excluir a OS permanentemente', () => { S.os = S.os.filter(x => x.id !== o.id); fecharFolha(); render(); torrar('OS excluída'); }); break;
-    case 'aba-os': S.ui.abaOS = b.dataset.k; S.ui.picker = null; renderFolha(); break;
+    case 'excluir-os': pedirConfirmacao('os' + o.id, 'Toque de novo para excluir a OS permanentemente', () => {
+      S._excluidos = S._excluidos || {};
+      S._excluidos.os = S._excluidos.os || [];
+      if (!S._excluidos.os.includes(o.id)) S._excluidos.os.push(o.id);
+      S.os = S.os.filter(x => x.id !== o.id);
+      salvar();
+      fecharFolha();
+      render();
+      torrar('OS excluída');
+    }); break;
     case 'picker': S.ui.picker = b.dataset.p; S.ui.busca = ''; renderFolha(); break;
     case 'fechar-picker': S.ui.picker = null; S.ui.busca = ''; renderFolha(); break;
     case 'add-item': {
@@ -436,6 +443,69 @@ document.addEventListener('click', e => {
     case 'rm-item': o[b.dataset.t] = o[b.dataset.t].filter(x => x.id !== b.dataset.i); salvar(); renderFolha(); render(); break;
     case 'faturar-os-modal': abrirFolha(folhaFaturarOS); break;
     case 'confirmar-faturamento': processarFaturamentoOS(o); fecharFolha(); render(); torrar(`OS ${o.num} faturada e entregue com sucesso!`); break;
+
+    case 'criar-os': {
+      const r = S.ui.rascunho || {};
+      if (!r.vei || r.vei === 'novo') { torrar('Selecione a placa do veículo'); break; }
+      const v = V(r.vei);
+      const boxEscolhido = r.box || null;
+      const statusInicial = boxEscolhido ? 'executando' : 'fila';
+      const maxNum = (S.os || []).reduce((max, x) => Math.max(max, parseInt(x.num, 10) || 1000), 1040);
+      const novoNum = S.proxNum ? S.proxNum++ : (maxNum + 1);
+
+      const nova = {
+        id: uid('os'),
+        num: novoNum,
+        box: boxEscolhido,
+        vei: r.vei,
+        cli: v.cli || (S.clientes[0] ? S.clientes[0].id : ''),
+        mec: r.mec || '',
+        st: statusInicial,
+        abertura: hoje(),
+        prev: r.prev || addDias(hoje(), 1),
+        km: +r.km || v.km || 0,
+        queixa: r.queixa || '',
+        servicos: [
+          { id: 'srv_' + Date.now(), nome: 'Diagnóstico e Check-in de Pátio', qtd: 1, valor: 150 }
+        ],
+        pecas: [],
+        desc: 0,
+        pago: false,
+        obs: ''
+      };
+
+      S.os = S.os || [];
+      S.os.unshift(nova);
+      S.ui.rascunho = null;
+      S.ui.osAberta = nova.id;
+      S.ui.abaOS = 'servicos';
+      salvar();
+      fecharFolha();
+      abrirFolha(folhaOS);
+      render();
+      const localMsg = boxEscolhido ? `alocada no ${B(boxEscolhido).nome}` : 'colocada na Fila de Espera';
+      torrar(`✅ OS ${nova.num} aberta com sucesso (${localMsg})!`);
+      break;
+    }
+
+    case 'iniciar-box-card': {
+      const osId = b.dataset.id;
+      const alvo = (S.os || []).find(x => x.id === osId);
+      if (!alvo) break;
+      const boxesValidos = S.boxes || [];
+      const boxesOcupados = new Set((S.os || []).filter(x => x.id !== alvo.id && x.st !== 'finalizada' && x.box).map(x => x.box));
+      const boxLivre = boxesValidos.find(bx => !boxesOcupados.has(bx.id));
+      if (boxLivre) {
+        alvo.box = boxLivre.id;
+        alvo.st = 'executando';
+        salvar();
+        render();
+        torrar(`🟢 OS ${alvo.num}: Alocada no ${boxLivre.nome}! Status: Em Execução.`);
+      } else {
+        torrar('⚠️ Todos os boxes estão ocupados no momento!');
+      }
+      break;
+    }
 
     case 'salvar-veiculo': {
       const r = S.ui.rascVeiculo;
@@ -497,6 +567,9 @@ document.addEventListener('click', e => {
     case 'excluir-peca-id': {
       const pId = b.dataset.id || S.ui.pecaAberta;
       pedirConfirmacao('pc' + pId, 'Toque de novo para excluir a peça', () => {
+        S._excluidos = S._excluidos || {};
+        S._excluidos.pecas = S._excluidos.pecas || [];
+        if (!S._excluidos.pecas.includes(pId)) S._excluidos.pecas.push(pId);
         S.pecas = S.pecas.filter(x => x.id !== pId);
         salvar(); fecharFolha(); render(); torrar('Peça removida.');
       });
@@ -581,18 +654,219 @@ document.addEventListener('click', e => {
     case 'copiar-camp': copiar(S.ui.camp.texto); torrar('Texto copiado!'); break;
     case 'copiar-var': copiar(b.dataset.v); torrar(b.dataset.v + ' copiado'); break;
     case 'limpar-hist': pedirConfirmacao('hist', 'Toque de novo para limpar o histórico', () => { S.zap.envios = []; salvar(); render(); }); break;
+    case 'preview-relatorio-admin': {
+      torrar('Carregando prévia do relatório executivo...');
+      fetch('/api/whatsapp/relatorio-preview')
+        .then(r => r.json())
+        .then(data => {
+          if (data && data.mensagensAdmin) {
+            const txt = data.mensagensAdmin.join('\n\n════════════════════════════\n\n');
+            abrirFolha(() => folhaRelatorioPreview(txt));
+          } else if (data && data.texto) {
+            abrirFolha(() => folhaRelatorioPreview(data.texto));
+          } else {
+            torrar('Erro ao compilar prévia do relatório.');
+          }
+        })
+        .catch(() => torrar('Erro de comunicação com o servidor.'));
+      break;
+    }
+    case 'preview-relatorio-operacao': {
+      torrar('Carregando prévia operacional...');
+      fetch('/api/whatsapp/relatorio-preview')
+        .then(r => r.json())
+        .then(data => {
+          if (data && data.mensagensOperacao) {
+            const txt = data.mensagensOperacao.join('\n\n════════════════════════════\n\n');
+            abrirFolha(() => folhaRelatorioOperacaoPreview(txt));
+          } else {
+            torrar('Erro ao compilar prévia operacional.');
+          }
+        })
+        .catch(() => torrar('Erro de comunicação com o servidor.'));
+      break;
+    }
+    case 'ver-imagem-preview': {
+      abrirFolha(() => folhaImagemPreview());
+      break;
+    }
+    case 'disparar-grupo-admin': {
+      torrar('Disparando relatório completo + JPG para Grupo Admin...');
+      fetch('/api/whatsapp/disparar-grupo/admin', { method: 'POST' })
+        .then(r => r.json())
+        .then(data => {
+          if (data && data.success) {
+            torrar('✅ Relatório executivo e Imagem JPG enviados com sucesso ao Grupo de Administração!');
+          } else {
+            torrar(`⚠️ ${data?.error || 'Falha ao enviar para o Grupo de Administração.'}`);
+          }
+        })
+        .catch(() => torrar('Erro ao solicitar disparo ao servidor.'));
+      break;
+    }
+    case 'disparar-grupo-operacao': {
+      torrar('Disparando relatório sem finanças para Grupo Operação...');
+      fetch('/api/whatsapp/disparar-grupo/operacao', { method: 'POST' })
+        .then(r => r.json())
+        .then(data => {
+          if (data && data.success) {
+            torrar('✅ Relatório operacional enviado com sucesso ao Grupo de Operação!');
+          } else {
+            torrar(`⚠️ ${data?.error || 'Falha ao enviar para o Grupo de Operação.'}`);
+          }
+        })
+        .catch(() => torrar('Erro ao solicitar disparo ao servidor.'));
+      break;
+    }
+    case 'atualizar-grupos-wpp': {
+      torrar('Buscando grupos no WhatsApp Web...');
+      fetch('/api/whatsapp/grupos')
+        .then(r => r.json())
+        .then(d => {
+          if (d && d.grupos) {
+            S.ui.gruposWpp = d.grupos;
+            S.ui.gruposWppCarregados = true;
+            torrar(`✅ ${d.grupos.length} grupos sincronizados com sucesso!`);
+            render();
+          } else {
+            torrar(`⚠️ ${d?.error || 'Não foi possível listar os grupos.'}`);
+          }
+        })
+        .catch(() => torrar('Erro ao consultar grupos no servidor.'));
+      break;
+    }
+    case 'salvar-config-grupos': {
+      const gAdminInput = document.getElementById('cfg_grupo_admin_id');
+      const gOpInput = document.getElementById('cfg_grupo_op_id');
+      const horaInput = document.getElementById('cfg_hora_relatorio');
+      const autoInput = document.getElementById('cfg_auto_envio');
+      const diasUteisInput = document.getElementById('cfg_apenas_dias_uteis');
+
+      const gAdminId = (gAdminInput ? gAdminInput.value : '').trim();
+      const gOpId = (gOpInput ? gOpInput.value : '').trim();
+      const horaStr = horaInput ? horaInput.value : '07:30';
+      const autoBool = autoInput ? autoInput.checked : true;
+      const diasUteisBool = diasUteisInput ? diasUteisInput.checked : true;
+
+      S.cfg = S.cfg || {};
+      S.cfg.grupoAdminId = gAdminId;
+      S.cfg.grupoOperacaoId = gOpId;
+      S.cfg.horaRelatorioDiario = horaStr;
+      S.cfg.envioAutomaticoRelatorio = autoBool;
+      S.cfg.relatorioApenasDiasUteis = diasUteisBool;
+      salvar();
+
+      fetch('/api/whatsapp/config-grupos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          grupoAdminId: gAdminId,
+          grupoOperacaoId: gOpId,
+          horaRelatorio: horaStr,
+          envioAutomatico: autoBool,
+          apenasDiasUteis: diasUteisBool
+        })
+      })
+        .then(r => r.json())
+        .then(() => {
+          torrar('Configurações dos grupos salvas com sucesso!');
+          render();
+        })
+        .catch(() => {
+          torrar('Salvo localmente!');
+          render();
+        });
+      break;
+    }
+    case 'disparar-relatorio-admin': {
+      torrar('Disparando relatório executivo aos administradores...');
+      fetch('/api/whatsapp/disparar-relatorio-admin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+      })
+        .then(r => r.json())
+        .then(data => {
+          if (data && data.success) {
+            torrar(`✅ Relatório enviado com sucesso para ${data.totalEnviados} administrador(es)!`);
+          } else {
+            torrar(`⚠️ ${data?.error || 'Não foi possível enviar o relatório via WhatsApp.'}`);
+          }
+        })
+        .catch(() => torrar('Erro ao solicitar disparo ao servidor.'));
+      break;
+    }
+    case 'salvar-config-relatorio': {
+      const fonesInput = document.getElementById('cfg_admin_fones');
+      const horaInput = document.getElementById('cfg_hora_relatorio');
+      const autoInput = document.getElementById('cfg_auto_envio');
+
+      const fonesStr = fonesInput ? fonesInput.value : '';
+      const horaStr = horaInput ? horaInput.value : '08:00';
+      const autoBool = autoInput ? autoInput.checked : true;
+
+      const fonesArr = fonesStr.split(',').map(s => s.trim().replace(/\D/g, '')).filter(Boolean);
+
+      S.cfg = S.cfg || {};
+      S.cfg.adminFones = fonesArr;
+      S.cfg.horaRelatorioDiario = horaStr;
+      S.cfg.envioAutomaticoRelatorio = autoBool;
+      salvar();
+
+      fetch('/api/whatsapp/config-relatorio', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ adminFones: fonesArr, horaRelatorio: horaStr, envioAutomatico: autoBool })
+      })
+        .then(r => r.json())
+        .then(() => {
+          torrar('Configurações do relatório salvas com sucesso!');
+          render();
+        })
+        .catch(() => {
+          torrar('Salvo localmente!');
+          render();
+        });
+      break;
+    }
+    case 'copiar-texto-relatorio': {
+      const txt = b.dataset.txt;
+      if (txt) {
+        copiar(txt);
+        torrar('Texto do relatório copiado!');
+      }
+      break;
+    }
 
     /* --- Cadastros --- */
     case 'aba-cad': S.ui.abaCad = b.dataset.k; render(); break;
     case 'ver-cliente': S.ui.cliAberto = b.dataset.id; abrirFolha(folhaCliente); break;
     case 'novo-cad': S.ui.cadTipo = b.dataset.t; S.ui.rascCad = {}; abrirFolha(folhaCadastro); break;
     case 'editar-cliente': S.ui.cadTipo = 'cliente'; S.ui.rascCad = JSON.parse(JSON.stringify(S.clientes.find(x => x.id === b.dataset.id))); abrirFolha(folhaCadastro); break;
+    case 'editar-regra-fiscal': {
+      const regra = (S.cfg.regrasTributarias || []).find(x => x.cfop === b.dataset.cfop);
+      if (regra) {
+        S.ui.rascCad = JSON.parse(JSON.stringify(regra));
+        S.ui.cadTipo = 'regra-tributaria';
+        abrirFolha(folhaCadastro);
+      }
+      break;
+    }
     case 'bloquear-cliente': {
       const cl = S.clientes.find(x => x.id === b.dataset.id);
       if (cl) { cl.bloqueado = !cl.bloqueado; salvar(); renderFolha(); render(); torrar(cl.bloqueado ? 'Cliente bloqueado para faturamento' : 'Cliente desbloqueado'); }
       break;
     }
-    case 'excluir-cliente': pedirConfirmacao('excli' + b.dataset.id, 'Toque de novo para excluir o cliente', () => { S.clientes = S.clientes.filter(x => x.id !== b.dataset.id); salvar(); render(); torrar('Cliente excluído'); }); break;
+    case 'excluir-cliente': pedirConfirmacao('excli' + b.dataset.id, 'Toque de novo para excluir o cliente', () => {
+      const cId = b.dataset.id;
+      S._excluidos = S._excluidos || {};
+      S._excluidos.clientes = S._excluidos.clientes || [];
+      if (!S._excluidos.clientes.includes(cId)) S._excluidos.clientes.push(cId);
+      S.clientes = S.clientes.filter(x => x.id !== cId);
+      salvar();
+      render();
+      torrar('Cliente excluído');
+    }); break;
     case 'salvar-cad': {
       const r = S.ui.rascCad || {}, t = S.ui.cadTipo;
       if (t === 'cliente') {
@@ -616,18 +890,18 @@ document.addEventListener('click', e => {
         if (!r.nome) { torrar('Nome do produto é obrigatório'); break; }
         if (r.id) {
           const idx = S.pecas.findIndex(x => x.id === r.id);
-          if (idx >= 0) S.pecas[idx] = { ...S.pecas[idx], ...r, custo: +r.custo||0, venda: +r.venda||0 };
+          if (idx >= 0) S.pecas[idx] = { ...S.pecas[idx], ...r, custo: +r.custo||0, venda: +r.venda||0, cClassTrib: r.cClassTrib || S.pecas[idx].cClassTrib || '' };
         } else {
-          S.pecas.push({ id: uid('p'), cod: r.cod||'', nome: r.nome, un: r.un||'un', ncm: r.ncm||'', cest: r.cest||'', origem: r.origem||'0', cfop: r.cfop||'', custo: +r.custo||0, venda: +r.venda||0 });
+          S.pecas.push({ id: uid('p'), cod: r.cod||'', nome: r.nome, un: r.un||'un', ncm: r.ncm||'', cest: r.cest||'', origem: r.origem||'0', cfop: r.cfop||'', cClassTrib: r.cClassTrib||'', custo: +r.custo||0, venda: +r.venda||0 });
         }
       }
       if (t === 'servico') {
         if (!r.nome) { torrar('Descrição do serviço é obrigatória'); break; }
         if (r.id) {
           const idx = S.servicos.findIndex(x => x.id === r.id);
-          if (idx >= 0) S.servicos[idx] = { ...S.servicos[idx], ...r, valor: +r.valor||0, horas: +r.horas||1 };
+          if (idx >= 0) S.servicos[idx] = { ...S.servicos[idx], ...r, valor: +r.valor||0, horas: +r.horas||1, cClassTrib: r.cClassTrib || S.servicos[idx].cClassTrib || '' };
         } else {
-          S.servicos.push({ id: uid('s'), nome: r.nome, valor: +r.valor||0, horas: +r.horas||1, cnae: r.cnae||'', codServLC116: r.codServLC116||'', cfop: r.cfop||'' });
+          S.servicos.push({ id: uid('s'), nome: r.nome, valor: +r.valor||0, horas: +r.horas||1, cnae: r.cnae||'', codServLC116: r.codServLC116||'', cfop: r.cfop||'', cClassTrib: r.cClassTrib||'' });
         }
       }
       if (t === 'regra-tributaria') {
@@ -635,7 +909,14 @@ document.addEventListener('click', e => {
         if (!S.cfg.regrasTributarias) S.cfg.regrasTributarias = [];
         let idx = S.cfg.regrasTributarias.findIndex(x => x.cfop === r.cfop);
         let nova = { ...r };
-        ['aliqICMS','redBCICMS','mvaICMS','aliqICMSST','aliqFCP','aliqIPI','aliqPIS','aliqCOFINS','aliqIBS','aliqCBS','aliqISS'].forEach(k => nova[k] = +(nova[k]||0));
+        ['aliqICMS','redBCICMS','mvaICMS','aliqICMSST','aliqFCP','aliqIPI','aliqPIS','aliqCOFINS','aliqIBS','aliqIBSEst','aliqIBSMun','aliqCBS','aliqIS','redBCIBSCBS','aliqISS'].forEach(k => nova[k] = +(nova[k]||0));
+        if (!nova.aliqIBS && (nova.aliqIBSEst || nova.aliqIBSMun)) {
+          nova.aliqIBS = +(nova.aliqIBSEst + nova.aliqIBSMun).toFixed(4);
+        }
+        nova.cstIBSCBS = nova.cstIBSCBS || '01';
+        nova.cClassTrib = nova.cClassTrib || '010101';
+        nova.cstIS = nova.cstIS || '00';
+        nova.indDestino = nova.indDestino || '1';
         if (idx >= 0) S.cfg.regrasTributarias[idx] = nova;
         else S.cfg.regrasTributarias.push(nova);
       }
@@ -654,6 +935,10 @@ document.addEventListener('click', e => {
     case 'exportar-csv': exportarCSV(b.dataset.tipo); break;
     case 'exportar-backup-json': exportarBackupJSON(); break;
     case 'imprimir-fechamento-caixa': imprimirFechamentoCaixa(); break;
+    case 'abrir-importador-sistemas': abrirImportadorSistemas(); break;
+    case 'baixar-template-csv': baixarTemplateCSV(b.dataset.tipo); break;
+    case 'cancelar-migracao': window._dadosMigracao = null; renderFolha(); break;
+    case 'executar-importacao-confirmada': executarImportacaoConfirmada(); break;
 
     /* --- Config & Reset --- */
     case 'salvar-cfg': salvar(); torrar('Configurações salvas!'); break;
@@ -662,15 +947,18 @@ document.addEventListener('click', e => {
 });
 
 /* ---------------- Inputs Reativos ---------------- */
+let _searchTimer = null;
+function debounceSearch(fn, ms = 250) { clearTimeout(_searchTimer); _searchTimer = setTimeout(fn, ms); }
+
 document.addEventListener('input', e => {
   const el = e.target.closest('[data-act]');
   if (!el) return;
   const a = el.dataset.act, c = el.dataset.c, v = el.value, o = OSatual();
   const guarda = (obj) => { obj[c] = v; };
 
-  if (a === 'busca-placa-patio') { S.ui.buscaPlaca = v; render(); return; }
-  if (a === 'busca-estoque') { S.ui.buscaEstoque = v; render(); return; }
-  if (a === 'busca-picker') { S.ui.busca = v; renderFolha(); return; }
+  if (a === 'busca-placa-patio') { S.ui.buscaPlaca = v; debounceSearch(() => render()); return; }
+  if (a === 'busca-estoque') { S.ui.buscaEstoque = v; debounceSearch(() => render()); return; }
+  if (a === 'busca-picker') { S.ui.busca = v; debounceSearch(() => renderFolha()); return; }
 
   if (a === 'rasc') { guarda(S.ui.rascunho = S.ui.rascunho || {}); if (c === 'vei' && v === 'novo') { abrirFolha(() => folhaNovoVeiculo(S.ui.rascunho.cli)); } }
   if (a === 'rasc-vei') guarda(S.ui.rascVeiculo = S.ui.rascVeiculo || {});
@@ -694,7 +982,81 @@ document.addEventListener('change', e => {
   if (!el) return;
   const a = el.dataset.act, o = OSatual();
 
-  if (a === 'mudar-status-os' && o) { o.st = el.value; salvar(); renderFolha(); render(); torrar(`OS ${o.num}: ${ST[o.st].r}`); }
+  if (a === 'cfg') {
+    S.cfg[el.dataset.c] = el.dataset.tipo === 'number' ? (+el.value || 0) : el.value;
+    salvar();
+    render();
+    return;
+  }
+
+  if (a === 'mudar-status-os' && o) {
+    const novoSt = el.value;
+    o.st = novoSt;
+
+    if (novoSt === 'executando' && !o.box) {
+      const boxesValidos = S.boxes || [];
+      const boxesOcupados = new Set((S.os || []).filter(x => x.id !== o.id && x.st !== 'finalizada' && x.box).map(x => x.box));
+      const boxLivre = boxesValidos.find(b => !boxesOcupados.has(b.id));
+      if (boxLivre) {
+        o.box = boxLivre.id;
+        torrar(`🟢 OS ${o.num}: Alocada no ${boxLivre.nome} e Em Execução!`);
+      } else {
+        torrar(`⚠️ Todos os boxes cheios! OS ${o.num} Em Execução no pátio.`);
+      }
+    } else if (novoSt === 'fila') {
+      o.box = null;
+      torrar(`OS ${o.num}: Retornou para a Fila (Box liberado).`);
+    } else {
+      torrar(`OS ${o.num}: ${ST[o.st].r}`);
+    }
+    salvar();
+    renderFolha();
+    render();
+  }
+
+  if (a === 'mudar-status-card') {
+    const osId = el.dataset.id;
+    const alvo = (S.os || []).find(x => x.id === osId);
+    if (alvo) {
+      const novoSt = el.value;
+      alvo.st = novoSt;
+      if (novoSt === 'executando' && !alvo.box) {
+        const boxesValidos = S.boxes || [];
+        const boxesOcupados = new Set((S.os || []).filter(x => x.id !== alvo.id && x.st !== 'finalizada' && x.box).map(x => x.box));
+        const boxLivre = boxesValidos.find(b => !boxesOcupados.has(b.id));
+        if (boxLivre) {
+          alvo.box = boxLivre.id;
+          torrar(`🟢 OS ${alvo.num}: Alocada no ${boxLivre.nome} e Em Execução!`);
+        } else {
+          torrar(`⚠️ Todos os boxes cheios! OS ${alvo.num} Em Execução no pátio.`);
+        }
+      } else if (novoSt === 'fila') {
+        alvo.box = null;
+        torrar(`OS ${alvo.num}: Retornou para a Fila (Box liberado).`);
+      } else {
+        torrar(`OS ${alvo.num}: ${ST[alvo.st].r}`);
+      }
+      salvar();
+      render();
+    }
+  }
+
+  if (a === 'mudar-box-os' && o) {
+    const novoBox = el.value || null;
+    o.box = novoBox;
+    if (novoBox && o.st === 'fila') {
+      o.st = 'executando';
+      torrar(`🟢 OS ${o.num}: Alocada no ${B(novoBox).nome} (Em Execução)`);
+    } else if (!novoBox) {
+      o.st = 'fila';
+      torrar(`OS ${o.num}: Movida para Fila de Espera (Sem Box)`);
+    } else {
+      torrar(`OS ${o.num}: Movida para ${B(novoBox).nome}`);
+    }
+    salvar();
+    renderFolha();
+    render();
+  }
   if (a === 'campo-os' && o) { renderFolha(); render(); }
   if (a === 'val-item' && o) { renderFolha(); render(); }
   if (a === 'campo-peca') { renderFolha(); render(); }
@@ -703,7 +1065,13 @@ document.addEventListener('change', e => {
     if (m) { S.ui.camp = S.ui.camp || {}; S.ui.camp.texto = m.texto; S.ui.camp.nome = m.nome; render(); }
   }
   if (a === 'arquivo-xml') { lerArquivosXML(el.files); }
-  if (a === 'restaurar-backup-json') { if (el.files && el.files[0]) restaurarBackupJSON(el.files[0]); }
+  if (a === 'restaurar-backup-json' || a === 'arquivo-migracao-input') {
+    if (el.files && el.files.length > 0) {
+      abrirFolha(folhaImportacaoSistemas);
+      processarArquivosMigracao(el.files);
+      el.value = '';
+    }
+  }
 });
 
 function lerArquivosXML(files) {
@@ -751,6 +1119,8 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && folhaAtual
   let _checandoSync = false;
   async function checarAtualizacoesServidor() {
     if (_checandoSync) return;
+    if (document.visibilityState === 'hidden') return;
+    if (pendingLocalSave) return;
     _checandoSync = true;
     try {
       const res = await fetch('/api/versao');

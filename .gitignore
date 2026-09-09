@@ -1,7 +1,15 @@
 node_modules/
 .env
 .env.local
+.env.*
+!.env.example
 .wwebjs_auth/
 .wwebjs_cache/
-patio.db
+patio.db*
+*.db
+*.db-wal
+*.db-shm
+*.sqlite*
 *.log
+whatsapp_screen.png
+*.zip

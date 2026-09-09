@@ -452,6 +452,7 @@ function confirmarXML() {
 
   S.ui.nota = null;
   fecharFolha();
+  salvar();
   render();
   torrar(`NF ${n.num} importada: ${n.itens.length} itens lançados no estoque!`);
 }
