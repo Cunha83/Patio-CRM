@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Aprovação de Orçamento — Pátio CRM</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --card-bg: #161b22;
+      --border: #30363d;
+      --text: #e6edf3;
+      --text-muted: #8b949e;
+      --primary: #238636;
+      --primary-hover: #2ea043;
+      --accent: #f78166;
+      --warning: #d29922;
+      --danger: #da3633;
+      --info: #58a6ff;
+      --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: var(--font-family);
+      line-height: 1.5;
+      padding: 16px;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 680px;
+      margin: 0 auto;
+    }
+
+    header {
+      text-align: center;
+      padding: 16px 0 24px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 20px;
+    }
+
+    .logo-badge {
+      display: inline-block;
+      background: rgba(88, 166, 255, 0.15);
+      color: var(--info);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      padding: 4px 12px;
+      border-radius: 20px;
+      margin-bottom: 8px;
+    }
+
+    h1 {
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 18px;
+      margin-bottom: 18px;
+    }
+
+    .card-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+
+    .info-item {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .info-label {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .info-value {
+      font-size: 15px;
+      font-weight: 600;
+    }
+
+    .badge-status {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .badge-status.pendente { background: rgba(210, 153, 34, 0.2); color: var(--warning); }
+    .badge-status.aprovado { background: rgba(35, 134, 54, 0.2); color: #3fb950; }
+    .badge-status.recusado { background: rgba(218, 54, 51, 0.2); color: #f85149; }
+
+    /* Galeria de Fotos */
+    .photo-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .photo-thumb {
+      width: 100%;
+      height: 110px;
+      object-fit: cover;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      cursor: pointer;
+    }
+
+    /* Lista de Itens */
+    .item-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 14px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .item-row:last-child {
+      border-bottom: none;
+    }
+
+    .item-check {
+      margin-top: 4px;
+      width: 22px;
+      height: 22px;
+      accent-color: var(--primary);
+      cursor: pointer;
+    }
+
+    .item-details {
+      flex: 1;
+    }
+
+    .item-name {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 2px;
+    }
+
+    .item-meta {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .item-price {
+      text-align: right;
+      font-size: 15px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    /* Totais */
+    .totals-box {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px dashed var(--border);
+    }
+
+    .totals-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    .total-destaque {
+      font-size: 18px;
+      font-weight: 700;
+      color: #3fb950;
+      padding-top: 8px;
+      border-top: 1px solid var(--border);
+      margin-top: 6px;
+    }
+
+    /* Botões */
+    .actions {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-top: 24px;
+      margin-bottom: 40px;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 16px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      text-align: center;
+      transition: background 0.2s;
+    }
+
+    .btn-approve {
+      background: var(--primary);
+      color: #fff;
+    }
+    .btn-approve:hover {
+      background: var(--primary-hover);
+    }
+
+    .btn-reject {
+      background: transparent;
+      border: 1px solid var(--danger);
+      color: #f85149;
+    }
+    .btn-reject:hover {
+      background: rgba(218, 54, 51, 0.1);
+    }
+
+    .feedback-card {
+      text-align: center;
+      padding: 40px 20px;
+    }
+    .feedback-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+    }
+    .feedback-title {
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+    .feedback-msg {
+      color: var(--text-muted);
+      font-size: 15px;
+      margin-bottom: 24px;
+    }
+
+    /* Modal de Imagem */
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.9);
+      justify-content: center;
+      align-items: center;
+      padding: 16px;
+    }
+    .modal img {
+      max-width: 100%;
+      max-height: 90vh;
+      border-radius: 8px;
+    }
+
+    #loading {
+      text-align: center;
+      padding: 60px 0;
+      color: var(--text-muted);
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 32px;
+      height: 32px;
+      border: 3px solid rgba(255,255,255,0.2);
+      border-radius: 50%;
+      border-top-color: var(--info);
+      animation: spin 1s ease-in-out infinite;
+      margin-bottom: 16px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <div class="logo-badge">Pátio CRM • Linha Pesada</div>
+      <h1 id="oficinaNome">Oficina Mecânica</h1>
+      <p style="color: var(--text-muted); font-size: 14px;" id="subtitulo">Aprovação Digital de Orçamento</p>
+    </header>
+
+    <div id="loading">
+      <div class="spinner"></div>
+      <p>Carregando dados do orçamento seguro...</p>
+    </div>
+
+    <div id="errorView" style="display: none;">
+      <div class="card feedback-card">
+        <div class="feedback-icon" id="errorIcon">⚠️</div>
+        <div class="feedback-title" id="errorTitle">Acesso Não Disponível</div>
+        <p class="feedback-msg" id="errorMsg">Não foi possível carregar os dados deste orçamento.</p>
+        <p style="font-size: 13px; color: var(--text-muted);">Entre em contato diretamente com a oficina para receber suporte.</p>
+      </div>
+    </div>
+
+    <div id="successView" style="display: none;">
+      <div class="card feedback-card">
+        <div class="feedback-icon" id="successIcon">✅</div>
+        <div class="feedback-title" id="successTitle">Decisão Registrada com Sucesso!</div>
+        <p class="feedback-msg" id="successMsg">Sua resposta foi enviada instantaneamente para a equipe da oficina.</p>
+        <div class="total-destaque" id="successTotal"></div>
+      </div>
+    </div>
+
+    <div id="contentView" style="display: none;">
+
+      <!-- Dados Gerais -->
+      <div class="card">
+        <div class="card-title">📋 Dados do Veículo e Atendimento</div>
+        <div class="info-grid">
+          <div class="info-item">
+            <span class="info-label">Placa:</span>
+            <span class="info-value" id="placaVeiculo">---</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Código do Orçamento:</span>
+            <span class="info-value" id="codigoOrcamento">---</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Versão:</span>
+            <span class="info-value" id="versaoOrcamento">v1</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Status:</span>
+            <span class="info-value" id="statusBadge"><span class="badge-status pendente">Aguardando Decisão</span></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Laudo Técnico e Diagnóstico -->
+      <div class="card" id="cardDiagnostico">
+        <div class="card-title">🔍 Diagnóstico Técnico Confirmado</div>
+        <div id="laudoTexto" style="font-size: 14px; margin-bottom: 10px; color: var(--text);">---</div>
+        <div style="font-size: 12px; color: var(--text-muted);" id="responsavelLaudo">Mecânico Responsável: ---</div>
+        
+        <!-- Fotos da Inspeção -->
+        <div id="fotosSection" style="display: none; margin-top: 14px;">
+          <div style="font-size: 13px; font-weight: 600; color: var(--text-muted); margin-bottom: 6px;">📷 Fotos dos Componentes:</div>
+          <div class="photo-grid" id="photoGrid"></div>
+        </div>
+      </div>
+
+      <!-- Itens do Orçamento -->
+      <div class="card">
+        <div class="card-title">⚙️ Itens e Serviços Propostos</div>
+        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 14px;">
+          Marque os itens que você autoriza executar. O valor total será recalculado automaticamente.
+        </p>
+
+        <div id="itensList"></div>
+
+        <div class="totals-box">
+          <div class="totals-row">
+            <span>Subtotal de Serviços:</span>
+            <span id="subtotalServicos">R$ 0,00</span>
+          </div>
+          <div class="totals-row">
+            <span>Subtotal de Peças:</span>
+            <span id="subtotalPecas">R$ 0,00</span>
+          </div>
+          <div class="totals-row" id="rowDesconto" style="display: none;">
+            <span>Desconto Comercial:</span>
+            <span id="valorDesconto" style="color: var(--accent);">-R$ 0,00</span>
+          </div>
+          <div class="totals-row">
+            <span>Total da Proposta Completa:</span>
+            <span id="totalProposta">R$ 0,00</span>
+          </div>
+          <div class="totals-row total-destaque">
+            <span>TOTAL AUTORIZADO:</span>
+            <span id="totalAutorizado">R$ 0,00</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Ações -->
+      <div class="actions" id="actionsContainer">
+        <button class="btn btn-approve" id="btnAprovar" onclick="enviarDecisao('aprovar')">
+          ✅ Aprovar Itens Selecionados
+        </button>
+        <button class="btn" style="background: #21262d; border: 1px solid var(--border); color: var(--text);" onclick="aprovarTodos()">
+          Aprovar Tudo (Proposta Completa)
+        </button>
+        <button class="btn btn-reject" id="btnRecusar" onclick="enviarDecisao('recusar')">
+          ❌ Recusar Orçamento
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Modal de Zoom da Foto -->
+  <div class="modal" id="imageModal" onclick="this.style.display='none'">
+    <img id="modalImg" src="" alt="Foto detalhada">
+  </div>
+
+  <script>
+    let token = '';
+    let orcamentoData = null;
+
+    function formatMoeda(val) {
+      return (Number(val) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    }
+
+    function extrairTokenDaURL() {
+      const pathParts = window.location.pathname.split('/');
+      const idx = pathParts.indexOf('aprovacao');
+      if (idx >= 0 && pathParts[idx + 1]) {
+        return pathParts[idx + 1];
+      }
+      return new URLSearchParams(window.location.search).get('token') || '';
+    }
+
+    async function carregarDados() {
+      token = extrairTokenDaURL();
+      if (!token) {
+        mostrarErro('Link Inválido', 'Token de aprovação ausente na URL.');
+        return;
+      }
+
+      try {
+        const resp = await fetch(`/api/aprovacao/${token}`);
+        const data = await resp.json();
+
+        if (!resp.ok || !data.success) {
+          mostrarErro(data.conflict ? 'Versão Atualizada' : 'Link Expirado ou Inválido', data.error || 'Não foi possível carregar os dados.');
+          return;
+        }
+
+        orcamentoData = data.quotation;
+        renderizarOrcamento(data.quotation, data.fotosInspecao);
+      } catch (err) {
+        mostrarErro('Erro de Conexão', 'Não foi possível se conectar ao servidor da oficina.');
+      }
+    }
+
+    function mostrarErro(titulo, msg) {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('contentView').style.display = 'none';
+      document.getElementById('successView').style.display = 'none';
+      document.getElementById('errorTitle').textContent = titulo;
+      document.getElementById('errorMsg').textContent = msg;
+      document.getElementById('errorView').style.display = 'block';
+    }
+
+    function renderizarOrcamento(orc, fotosInspecao) {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('contentView').style.display = 'block';
+
+      document.getElementById('placaVeiculo').textContent = orc.placa || 'Sem placa';
+      document.getElementById('codigoOrcamento').textContent = orc.codigo || '---';
+      document.getElementById('versaoOrcamento').textContent = `v${orc.versao}`;
+
+      // Se já estava aprovado/recusado, exibe estado consolidado
+      if (['aprovado', 'parcialmente_aprovado', 'recusado'].includes(orc.status)) {
+        document.getElementById('actionsContainer').style.display = 'none';
+        const stBadge = document.getElementById('statusBadge');
+        if (orc.status === 'recusado') {
+          stBadge.innerHTML = '<span class="badge-status recusado">Recusado pelo Cliente</span>';
+        } else {
+          stBadge.innerHTML = '<span class="badge-status aprovado">Aprovado pelo Cliente</span>';
+        }
+      }
+
+      // Laudo
+      const cardDiag = document.getElementById('cardDiagnostico');
+      if (fotosInspecao && fotosInspecao.length > 0) {
+        const pGrid = document.getElementById('photoGrid');
+        pGrid.innerHTML = '';
+        let count = 0;
+        fotosInspecao.forEach(fi => {
+          (fi.fotos || []).forEach(f => {
+            count++;
+            const img = document.createElement('img');
+            img.src = f.fotoBase64 || f.url;
+            img.className = 'photo-thumb';
+            img.onclick = () => {
+              document.getElementById('modalImg').src = img.src;
+              document.getElementById('imageModal').style.display = 'flex';
+            };
+            pGrid.appendChild(img);
+          });
+        });
+        if (count > 0) document.getElementById('fotosSection').style.display = 'block';
+      }
+
+      if (orc.motivoAdicional) {
+        document.getElementById('laudoTexto').innerHTML = `<strong>Atenção (Escopo Adicional):</strong> ${orc.motivoAdicional}`;
+      } else {
+        document.getElementById('laudoTexto').textContent = 'Avaliação técnica e desmontagem completada na oficina.';
+      }
+
+      // Lista de Itens
+      const itensContainer = document.getElementById('itensList');
+      itensContainer.innerHTML = '';
+
+      orc.itens.forEach(item => {
+        const row = document.createElement('div');
+        row.className = 'item-row';
+
+        const isChecked = item.status !== 'recusado';
+        const icon = item.tipo === 'peca' ? '⚙️' : '🔧';
+
+        row.innerHTML = `
+          <input type="checkbox" class="item-check" data-id="${item.id}" data-preco="${item.valorTotal}" ${isChecked ? 'checked' : ''} onchange="atualizarTotalAutorizado()">
+          <div class="item-details">
+            <div class="item-name">${icon} ${item.nome}</div>
+            <div class="item-meta">${item.quantidade}x ${formatMoeda(item.valorUnitario)} • ${item.prioridade || 'Essencial'}</div>
+          </div>
+          <div class="item-price">${formatMoeda(item.valorTotal)}</div>
+        `;
+        itensContainer.appendChild(row);
+      });
+
+      document.getElementById('subtotalServicos').textContent = formatMoeda(orc.subtotalServicos);
+      document.getElementById('subtotalPecas').textContent = formatMoeda(orc.subtotalPecas);
+      if (orc.descontoGeral > 0) {
+        document.getElementById('rowDesconto').style.display = 'flex';
+        document.getElementById('valorDesconto').textContent = `-${formatMoeda(orc.descontoGeral)}`;
+      }
+      document.getElementById('totalProposta').textContent = formatMoeda(orc.totalGeral);
+
+      atualizarTotalAutorizado();
+    }
+
+    function atualizarTotalAutorizado() {
+      let total = 0;
+      const checkboxes = document.querySelectorAll('.item-check');
+      checkboxes.forEach(cb => {
+        if (cb.checked) {
+          total += parseFloat(cb.dataset.preco || 0);
+        }
+      });
+      document.getElementById('totalAutorizado').textContent = formatMoeda(total);
+    }
+
+    function aprovarTodos() {
+      document.querySelectorAll('.item-check').forEach(cb => cb.checked = true);
+      atualizarTotalAutorizado();
+      enviarDecisao('aprovar_tudo');
+    }
+
+    async function enviarDecisao(tipo) {
+      const btn = document.getElementById('btnAprovar');
+      btn.disabled = true;
+
+      const aprovados = [];
+      const recusados = [];
+
+      document.querySelectorAll('.item-check').forEach(cb => {
+        if (cb.checked) aprovados.push(cb.dataset.id);
+        else recusados.push(cb.dataset.id);
+      });
+
+      let payload = {};
+      if (tipo === 'aprovar_tudo') {
+        payload = { aprovarTudo: true };
+      } else if (tipo === 'recusar') {
+        const motivo = prompt('Por favor, informe brevemente o motivo da recusa (opcional):') || '';
+        payload = { recusarTudo: true, motivoRecusa: motivo };
+      } else {
+        payload = {
+          itensAprovadosIds: aprovados,
+          itensRecusadosIds: recusados
+        };
+      }
+
+      try {
+        const res = await fetch(`/api/aprovacao/${token}/decidir`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          alert(data.error || 'Erro ao registrar decisão.');
+          btn.disabled = false;
+          return;
+        }
+
+        document.getElementById('contentView').style.display = 'none';
+        document.getElementById('successView').style.display = 'block';
+
+        if (tipo === 'recusar' || data.status === 'recusado') {
+          document.getElementById('successIcon').textContent = '❌';
+          document.getElementById('successTitle').textContent = 'Orçamento Recusado';
+          document.getElementById('successMsg').textContent = 'Registramos sua decisão de não autorizar os serviços. Nenhum trabalho será executado.';
+          document.getElementById('successTotal').textContent = '';
+        } else {
+          document.getElementById('successIcon').textContent = '✅';
+          document.getElementById('successTitle').textContent = 'Orçamento Autorizado!';
+          document.getElementById('successMsg').textContent = 'Nossa equipe técnica foi notificada e já iniciou a execução dos itens aprovados.';
+          document.getElementById('successTotal').textContent = `Total Autorizado: ${formatMoeda(data.totalAprovado)}`;
+        }
+
+      } catch (err) {
+        alert('Falha ao enviar resposta. Verifique sua conexão.');
+        btn.disabled = false;
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', carregarDados);
+  </script>
+</body>
+</html>

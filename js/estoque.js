@@ -2,22 +2,61 @@
    PÁTIO CRM — MÓDULO DE ESTOQUE, ALMOXARIFADO & ENTRADA DE NOTAS
 ===================================================================== */
 
+function calcularSaldosPeca(p) {
+  const fisico = Number(p.qtd ?? p.estoqueFisico ?? 0);
+  let reservado = Number(p.reservado ?? 0);
+  if (Array.isArray(S.os)) {
+    for (const o of S.os) {
+      if (o.st === 'cancelada' || o.st === 'finalizada') continue;
+      for (const item of (o.pecas || [])) {
+        if ((item.pecaId === p.id || item.id === p.id) && (item.st === 'reservada' || item.status === 'reservada')) {
+          reservado += Number(item.qtd || 0);
+        }
+      }
+    }
+  }
+  const disponivel = Math.max(0, fisico - reservado);
+  return { fisico, reservado, disponivel };
+}
+
 function viewEstoque() {
   const pecas = S.pecas || [];
+  const abaAtiva = S.ui.abaEstoque || 'almoxarifado';
   const filtro = S.ui.filtroEstoque || 'todos';
   const busca = (S.ui.buscaEstoque || '').toLowerCase().trim();
 
   // Cálculos de KPIs de Estoque
-  const totalItensFisicos = soma(pecas, p => p.qtd);
-  const valorTotalCusto = soma(pecas, p => (p.qtd || 0) * (p.custo || 0));
-  const valorTotalVenda = soma(pecas, p => (p.qtd || 0) * (p.venda || 0));
-  const pecasCriticas = pecas.filter(p => (p.qtd || 0) <= (p.min || 1));
+  let totalFisico = 0;
+  let totalReservado = 0;
+  let totalDisponivel = 0;
+  let valorTotalCusto = 0;
+  let valorTotalVenda = 0;
+  let pecasCriticasCount = 0;
 
-  // Filtragem
-  let filtradas = pecas;
+  const pecasComSaldos = pecas.map(p => {
+    const saldos = calcularSaldosPeca(p);
+    totalFisico += saldos.fisico;
+    totalReservado += saldos.reservado;
+    totalDisponivel += saldos.disponivel;
+    valorTotalCusto += (saldos.fisico * (p.custo || 0));
+    valorTotalVenda += (saldos.fisico * (p.venda || 0));
+    const isCritico = saldos.disponivel <= (p.min || 1);
+    if (isCritico) pecasCriticasCount++;
+    return { ...p, saldos, isCritico };
+  });
+
+  const reqsPendentes = (S.partRequirements || []).filter(r => r.status !== 'atendida' && r.status !== 'cancelada');
+  const cotacoesAbertas = (S.purchaseQuotes || []).filter(q => q.status === 'aberta');
+  const pedidosAtivos = (S.purchaseOrders || []).filter(p => p.status === 'aprovado' || p.status === 'aguardando_aprovacao');
+
+  // Filtragem Almoxarifado
+  let filtradas = pecasComSaldos;
   if (filtro === 'critico') {
-    filtradas = pecasCriticas;
+    filtradas = filtradas.filter(p => p.isCritico);
+  } else if (filtro === 'reservado') {
+    filtradas = filtradas.filter(p => p.saldos.reservado > 0);
   }
+
   if (busca) {
     filtradas = filtradas.filter(p => {
       return (p.nome || '').toLowerCase().includes(busca) ||
@@ -27,116 +66,267 @@ function viewEstoque() {
     });
   }
 
-  return `
+  const kpisHtml = `
   <div class="kpis" style="margin-bottom:14px">
     <div class="kpi bom">
-      <div class="r">${ico('pecas', 14)} Variedade de Peças</div>
-      <div class="v">${pecas.length}</div>
-      <div class="d">${totalItensFisicos} unidades em almoxarifado</div>
+      <div class="r">${ico('pecas', 14)} Estoque Físico vs Disponível</div>
+      <div class="v">${totalDisponivel} <span style="font-size:13px;font-weight:normal;color:var(--aco-500)">/ ${totalFisico} un</span></div>
+      <div class="d">${totalReservado} un reservadas para OSs</div>
     </div>
     <div class="kpi neutro">
-      <div class="r">${ico('caixa', 14)} Capital Imobilizado (Custo)</div>
+      <div class="r">${ico('caixa', 14)} Capital Imobilizado</div>
       <div class="v">${brlCurto(valorTotalCusto)}</div>
       <div class="d">Projetado Venda: ${brlCurto(valorTotalVenda)}</div>
     </div>
-    <div class="kpi ${pecasCriticas.length ? 'alerta' : 'bom'}">
-      <div class="r">${ico('alerta', 14)} Estoque Crítico</div>
-      <div class="v">${pecasCriticas.length}</div>
+    <div class="kpi ${pecasCriticasCount ? 'alerta' : 'bom'}">
+      <div class="r">${ico('alerta', 14)} Estoque Crítico / Ruptura</div>
+      <div class="v">${pecasCriticasCount}</div>
       <div class="d">Itens abaixo do estoque mínimo</div>
     </div>
-    <div class="kpi bom">
-      <div class="r">${ico('grana', 14)} Margem Média</div>
-      <div class="v">${valorTotalCusto > 0 ? (((valorTotalVenda - valorTotalCusto) / valorTotalCusto) * 100).toFixed(0) + '%' : '—'}</div>
-      <div class="d">Markup global praticado</div>
+    <div class="kpi ${reqsPendentes.length ? 'alerta' : 'bom'}">
+      <div class="r">${ico('carrinho', 14)} Compras & Suprimentos</div>
+      <div class="v">${reqsPendentes.length}</div>
+      <div class="d">${pedidosAtivos.length} pedidos / ${cotacoesAbertas.length} cotações</div>
     </div>
-  </div>
+  </div>`;
 
-  <div class="entre" style="margin-bottom:12px;flex-wrap:wrap;gap:8px">
-    <div style="display:flex;gap:8px;align-items:center">
-      <button class="chip" data-act="filtro-estoque" data-f="todos" aria-pressed="${filtro === 'todos'}">
-        Todas as Peças <span class="n">${pecas.length}</span>
-      </button>
-      <button class="chip" data-act="filtro-estoque" data-f="critico" aria-pressed="${filtro === 'critico'}" style="${pecasCriticas.length ? 'color:var(--tijolo)' : ''}">
-        Estoque Crítico <span class="n">${pecasCriticas.length}</span>
-      </button>
-    </div>
+  const subAbasHtml = `
+  <div class="abas" style="margin-bottom:14px">
+    <button data-act="aba-estoque" data-a="almoxarifado" aria-selected="${abaAtiva === 'almoxarifado'}">
+      Almoxarifado & Saldos (${pecas.length})
+    </button>
+    <button data-act="aba-estoque" data-a="necessidades" aria-selected="${abaAtiva === 'necessidades'}">
+      Necessidades de Compra (${reqsPendentes.length})
+    </button>
+    <button data-act="aba-estoque" data-a="cotacoes" aria-selected="${abaAtiva === 'cotacoes'}">
+      Cotações (${cotacoesAbertas.length})
+    </button>
+    <button data-act="aba-estoque" data-a="pedidos" aria-selected="${abaAtiva === 'pedidos'}">
+      Pedidos de Compra (${pedidosAtivos.length})
+    </button>
+  </div>`;
 
-    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-      <div class="campo-busca" style="position:relative">
-        <input type="text" class="campo-texto" placeholder="Buscar código, peça ou local..." data-act="busca-estoque" value="${esc(S.ui.buscaEstoque || '')}" style="width:220px;padding-left:30px;height:34px;font-size:13px;border-radius:20px">
-        <span style="position:absolute;left:10px;top:8px;color:var(--aco-400);pointer-events:none">${ico('busca', 14)}</span>
+  let conteudoSubAba = '';
+  if (abaAtiva === 'necessidades') {
+    conteudoSubAba = viewNecessidadesCompra();
+  } else if (abaAtiva === 'cotacoes') {
+    conteudoSubAba = viewCotacoesCompra();
+  } else if (abaAtiva === 'pedidos') {
+    conteudoSubAba = viewPedidosCompra();
+  } else {
+    conteudoSubAba = `
+    <div class="entre" style="margin-bottom:12px;flex-wrap:wrap;gap:8px">
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="chip" data-act="filtro-estoque" data-f="todos" aria-pressed="${filtro === 'todos'}">
+          Todas as Peças <span class="n">${pecas.length}</span>
+        </button>
+        <button class="chip" data-act="filtro-estoque" data-f="critico" aria-pressed="${filtro === 'critico'}" style="${pecasCriticasCount ? 'color:var(--tijolo)' : ''}">
+          Estoque Crítico <span class="n">${pecasCriticasCount}</span>
+        </button>
+        <button class="chip" data-act="filtro-estoque" data-f="reservado" aria-pressed="${filtro === 'reservado'}">
+          Com Reserva <span class="n">${pecasComSaldos.filter(p => p.saldos.reservado > 0).length}</span>
+        </button>
       </div>
 
-      <button class="btn btn-secundario" data-act="importar-xml" style="height:34px;font-size:13px;border-radius:20px">
-        ${ico('upload', 14)} Importar XML NF-e
-      </button>
-      <button class="btn btn-secundario" data-act="ocr-entrada" style="height:34px;font-size:13px;border-radius:20px">
-        ${ico('doc', 14)} Leitura OCR / Danfe
-      </button>
-      <button class="btn btn-primario" data-act="nova-peca" style="height:34px;font-size:13px;border-radius:20px">
-        ${ico('mais', 14)} Nova Peça
-      </button>
-    </div>
-  </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <div class="campo-busca" style="position:relative">
+          <input type="text" class="campo-texto" placeholder="Buscar código, peça ou local..." data-act="busca-estoque" value="${esc(S.ui.buscaEstoque || '')}" style="width:220px;padding-left:30px;height:34px;font-size:13px;border-radius:20px">
+          <span style="position:absolute;left:10px;top:8px;color:var(--aco-400);pointer-events:none">${ico('busca', 14)}</span>
+        </div>
 
+        <button class="btn btn-secundario" data-act="importar-xml" style="height:34px;font-size:13px;border-radius:20px">
+          ${ico('upload', 14)} Importar XML NF-e
+        </button>
+        <button class="btn btn-secundario" data-act="ocr-entrada" style="height:34px;font-size:13px;border-radius:20px">
+          ${ico('doc', 14)} Leitura OCR / Danfe
+        </button>
+        <button class="btn btn-primario" data-act="nova-peca" style="height:34px;font-size:13px;border-radius:20px">
+          ${ico('mais', 14)} Nova Peça
+        </button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="tabela-responsiva">
+        <table class="tabela">
+          <thead>
+            <tr>
+              <th>Código / Peça</th>
+              <th>Localização</th>
+              <th style="width:75px;text-align:center">Físico</th>
+              <th style="width:80px;text-align:center">Reservado</th>
+              <th style="width:90px;text-align:center">Disponível</th>
+              <th style="width:65px;text-align:center">Mín.</th>
+              <th style="width:95px;text-align:right">Custo Médio</th>
+              <th style="width:95px;text-align:right">Venda</th>
+              <th style="width:75px;text-align:center">Margem</th>
+              <th style="width:90px;text-align:center">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${filtradas.length ? filtradas.map(p => {
+              const margem = p.custo > 0 ? (((p.venda - p.custo) / p.custo) * 100).toFixed(0) : 0;
+              return `
+              <tr style="${p.isCritico ? 'background:rgba(239, 68, 68, 0.04)' : ''}">
+                <td>
+                  <div style="font-weight:600;color:var(--aco-900)">${esc(p.nome)}</div>
+                  <div class="mini"><span class="mono">${esc(p.cod || 'S/CÓD')}</span> · ${esc(p.un || 'un')} · ${esc(p.forn || '—')}</div>
+                </td>
+                <td><span class="selo" style="background:var(--aco-100)">${esc(p.loc || '—')}</span></td>
+                <td style="text-align:center;font-weight:600" class="num">${p.saldos.fisico}</td>
+                <td style="text-align:center" class="num">
+                  ${p.saldos.reservado > 0 ? `<span class="selo" style="background:#e1effe;color:#1e429f;font-weight:700">${p.saldos.reservado}</span>` : '<span style="color:var(--aco-300)">0</span>'}
+                </td>
+                <td style="text-align:center">
+                  <span class="num ${p.isCritico ? 'texto-alerta' : ''}" style="font-weight:700;font-size:13px">
+                    ${p.saldos.disponivel}
+                  </span>
+                </td>
+                <td style="text-align:center;color:var(--aco-500)" class="mini">${p.min || 1}</td>
+                <td style="text-align:right" class="num">${brl(p.custo)}</td>
+                <td style="text-align:right;font-weight:600" class="num">${brl(p.venda)}</td>
+                <td style="text-align:center">
+                  <span class="selo ${margem >= 50 ? 'selo-finalizada' : 'selo-aprovacao'}" style="font-size:11px">
+                    +${margem}%
+                  </span>
+                </td>
+                <td style="text-align:center">
+                  <div style="display:inline-flex;gap:4px">
+                    <button class="btn-icone" data-act="ver-peca" data-id="${p.id}" title="Editar Peça">${ico('edit', 14)}</button>
+                    <button class="btn-icone-perigo" data-act="excluir-peca-id" data-id="${p.id}" title="Excluir Peça">${ico('lixo', 14)}</button>
+                  </div>
+                </td>
+              </tr>`;
+            }).join('') : `
+              <tr>
+                <td colspan="10" style="text-align:center;padding:36px;color:var(--aco-400)">
+                  Nenhuma peça cadastrada ou encontrada com esses filtros.
+                </td>
+              </tr>
+            `}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+  }
+
+  return `${kpisHtml}${subAbasHtml}${conteudoSubAba}`;
+}
+
+function viewNecessidadesCompra() {
+  const reqs = S.partRequirements || [];
+  return `
   <div class="card">
+    <div class="entre" style="margin-bottom:12px">
+      <h3 style="font-size:15px;font-weight:700">Necessidades de Compra de Peças</h3>
+      <div class="mini">Geradas automaticamente por falta de estoque em OSs aprovadas</div>
+    </div>
     <div class="tabela-responsiva">
       <table class="tabela">
         <thead>
           <tr>
-            <th>Código / Peça</th>
-            <th>Localização</th>
-            <th>Fornecedor</th>
-            <th style="width:110px;text-align:center">Estoque / Mín.</th>
-            <th style="width:110px;text-align:right">Custo</th>
-            <th style="width:110px;text-align:right">Venda</th>
-            <th style="width:80px;text-align:center">Margem</th>
-            <th style="width:100px;text-align:center">Ações</th>
+            <th>Origem OS</th>
+            <th>Peça / Descrição</th>
+            <th style="text-align:center;width:100px">Qtd Solicitada</th>
+            <th style="text-align:center;width:100px">Atendida</th>
+            <th style="text-align:center;width:100px">Urgência</th>
+            <th style="text-align:center;width:120px">Status</th>
+            <th style="text-align:right;width:120px">Data</th>
           </tr>
         </thead>
         <tbody>
-          ${filtradas.length ? filtradas.map(p => {
-            const isCritico = (p.qtd || 0) <= (p.min || 1);
-            const margem = p.custo > 0 ? (((p.venda - p.custo) / p.custo) * 100).toFixed(0) : 0;
+          ${reqs.length ? reqs.map(r => `
+            <tr>
+              <td><b>OS #${esc(r.osNum || r.osId || '—')}</b></td>
+              <td><b>${esc(r.pecaNome || r.nome || 'Peça')}</b></td>
+              <td style="text-align:center;font-weight:700">${r.quantidadeSolicitada || r.qtd || 1}</td>
+              <td style="text-align:center">${r.quantidadeAtendida || 0}</td>
+              <td style="text-align:center"><span class="selo ${r.urgencia === 'alta' ? 'selo-bloqueado' : 'selo-aprovacao'}">${(r.urgencia || 'normal').toUpperCase()}</span></td>
+              <td style="text-align:center"><span class="selo">${(r.status || 'pendente').toUpperCase()}</span></td>
+              <td style="text-align:right" class="mini">${r.criadoEm ? new Date(r.criadoEm).toLocaleDateString('pt-BR') : '—'}</td>
+            </tr>
+          `).join('') : `
+            <tr><td colspan="7" style="text-align:center;padding:24px;color:var(--aco-400)">Nenhuma necessidade de compra pendente.</td></tr>
+          `}
+        </tbody>
+      </table>
+    </div>
+  </div>`;
+}
 
-            return `
-            <tr style="${isCritico ? 'background:rgba(239, 68, 68, 0.04)' : ''}">
-              <td>
-                <div style="font-weight:600;color:var(--aco-900)">${esc(p.nome)}</div>
-                <div class="mini"><span class="mono">${esc(p.cod || 'S/CÓD')}</span> · Unidade: ${esc(p.un || 'un')}</div>
-              </td>
-              <td><span class="selo" style="background:var(--aco-100)">${esc(p.loc || '—')}</span></td>
-              <td style="font-size:13px;color:var(--aco-600)">${esc(p.forn || '—')}</td>
+function viewCotacoesCompra() {
+  const quotes = S.purchaseQuotes || [];
+  return `
+  <div class="card">
+    <div class="entre" style="margin-bottom:12px">
+      <h3 style="font-size:15px;font-weight:700">Cotações com Fornecedores</h3>
+      <div class="mini">Comparativo determinístico de preços, prazos e impacto em OS</div>
+    </div>
+    <div class="tabela-responsiva">
+      <table class="tabela">
+        <thead>
+          <tr>
+            <th>Cotação #</th>
+            <th>Itens Solicitados</th>
+            <th>Fornecedores Consultados</th>
+            <th style="text-align:center;width:120px">Status</th>
+            <th style="text-align:right;width:120px">Abertura</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${quotes.length ? quotes.map(q => `
+            <tr>
+              <td><b>#${esc(q.numero || q.id)}</b></td>
+              <td>${(q.itens || []).map(i => esc(i.nome || i.pecaNome)).join(', ') || '—'}</td>
+              <td>${(q.fornecedores || []).length} fornecedor(es)</td>
+              <td style="text-align:center"><span class="selo ${q.status === 'aberta' ? 'selo-aprovacao' : 'selo-finalizada'}">${(q.status || 'aberta').toUpperCase()}</span></td>
+              <td style="text-align:right" class="mini">${q.criadoEm ? new Date(q.criadoEm).toLocaleDateString('pt-BR') : '—'}</td>
+            </tr>
+          `).join('') : `
+            <tr><td colspan="5" style="text-align:center;padding:24px;color:var(--aco-400)">Nenhuma cotação cadastrada.</td></tr>
+          `}
+        </tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
+function viewPedidosCompra() {
+  const orders = S.purchaseOrders || [];
+  return `
+  <div class="card">
+    <div class="entre" style="margin-bottom:12px">
+      <h3 style="font-size:15px;font-weight:700">Pedidos de Compra</h3>
+      <div class="mini">Ordens emitidas, alçadas de aprovação e recebimento de mercadorias</div>
+    </div>
+    <div class="tabela-responsiva">
+      <table class="tabela">
+        <thead>
+          <tr>
+            <th>Pedido #</th>
+            <th>Fornecedor</th>
+            <th style="text-align:right;width:120px">Valor Total</th>
+            <th style="text-align:center;width:120px">Previsão</th>
+            <th style="text-align:center;width:150px">Status / Alçada</th>
+            <th style="text-align:right;width:120px">Data</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${orders.length ? orders.map(o => `
+            <tr>
+              <td><b>#${esc(o.numero || o.id)}</b></td>
+              <td>${esc(o.fornecedorNome || o.fornecedorId || '—')}</td>
+              <td style="text-align:right;font-weight:700" class="num">${brl(o.valorTotal || 0)}</td>
+              <td style="text-align:center" class="mini">${o.previsaoEntrega ? new Date(o.previsaoEntrega).toLocaleDateString('pt-BR') : '—'}</td>
               <td style="text-align:center">
-                <div style="display:inline-flex;align-items:center;gap:4px">
-                  <button class="btn-micro" data-act="mov-peca-grid" data-id="${p.id}" data-d="-1">−</button>
-                  <span class="num ${isCritico ? 'texto-alerta' : ''}" style="font-weight:700;min-width:26px">
-                    ${p.qtd}
-                  </span>
-                  <button class="btn-micro" data-act="mov-peca-grid" data-id="${p.id}" data-d="1">+</button>
-                </div>
-                <div class="mini">mín: ${p.min || 1}</div>
-              </td>
-              <td style="text-align:right" class="num">${brl(p.custo)}</td>
-              <td style="text-align:right;font-weight:600" class="num">${brl(p.venda)}</td>
-              <td style="text-align:center">
-                <span class="selo ${margem >= 50 ? 'selo-finalizada' : 'selo-aprovacao'}" style="font-size:11px">
-                  +${margem}%
+                <span class="selo ${o.status === 'aguardando_aprovacao' ? 'selo-alerta' : o.status === 'recebido' ? 'selo-finalizada' : 'selo-aprovacao'}">
+                  ${(o.status || 'rascunho').toUpperCase().replace('_', ' ')}
                 </span>
               </td>
-              <td style="text-align:center">
-                <div style="display:inline-flex;gap:4px">
-                  <button class="btn-icone" data-act="ver-peca" data-id="${p.id}" title="Editar Peça">${ico('edit', 14)}</button>
-                  <button class="btn-icone-perigo" data-act="excluir-peca-id" data-id="${p.id}" title="Excluir Peça">${ico('lixo', 14)}</button>
-                </div>
-              </td>
-            </tr>`;
-          }).join('') : `
-            <tr>
-              <td colspan="8" style="text-align:center;padding:36px;color:var(--aco-400)">
-                Nenhuma peça cadastrada ou encontrada com esses filtros.
-              </td>
+              <td style="text-align:right" class="mini">${o.criadoEm ? new Date(o.criadoEm).toLocaleDateString('pt-BR') : '—'}</td>
             </tr>
+          `).join('') : `
+            <tr><td colspan="6" style="text-align:center;padding:24px;color:var(--aco-400)">Nenhum pedido de compra emitido.</td></tr>
           `}
         </tbody>
       </table>

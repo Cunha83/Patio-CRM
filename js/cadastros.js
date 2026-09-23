@@ -338,6 +338,66 @@ function viewEmpresa() {
       <div><label class="mini">Inscrição Estadual (IE)</label><input type="text" class="campo-texto" value="${esc(c.ie||'')}" style="width:100%"></div>
       <div><label class="mini">Inscrição Municipal (IM)</label><input type="text" class="campo-texto" value="${esc(c.im||'')}" style="width:100%"></div>
     </div>
+
+    <div style="margin-bottom:16px;border-bottom:1px solid var(--aco-150);padding-bottom:12px">
+      <h3 style="font-weight:600;font-size:16px;margin:0">Identidade Visual & Documentos (OS / Orçamento)</h3>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;align-items:center">
+      <div>
+        <label class="mini">Logotipo da Oficina (PNG, JPEG ou WEBP, máx. 2MB)</label>
+        <input type="file" accept="image/png,image/jpeg,image/webp" class="campo-texto" style="width:100%;padding:6px" onchange="
+          const file = this.files[0];
+          if (file) {
+            if (file.size > 2 * 1024 * 1024) { torrar('O arquivo excede o limite máximo de 2MB.'); return; }
+            const reader = new FileReader();
+            reader.onload = (e) => {
+              if (!S.cfg) S.cfg = {};
+              if (!S.cfg.identidadeVisual) S.cfg.identidadeVisual = {};
+              S.cfg.identidadeVisual.logo = e.target.result;
+              torrar('Logotipo carregado! Clique em Salvar para persistir.');
+              render();
+            };
+            reader.readAsDataURL(file);
+          }
+        ">
+        <div class="mini" style="margin-top:4px;color:var(--aco-500)">Exibido no cabeçalho de Ordens de Serviço, Orçamentos e Relatórios.</div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:center;background:#f8fafc;border:1px dashed var(--aco-200);border-radius:8px;min-height:90px;padding:8px">
+        ${c.identidadeVisual?.logo ? `
+          <div style="text-align:center">
+            <img src="${c.identidadeVisual.logo}" alt="Logotipo" style="max-height:70px;max-width:200px;object-fit:contain;display:block;margin:0 auto 6px auto">
+            <button class="btn btn-perigo" style="padding:2px 8px;font-size:11px" onclick="if(S.cfg?.identidadeVisual) S.cfg.identidadeVisual.logo = null; render();">Remover Logo</button>
+          </div>
+        ` : `
+          <span class="mini" style="color:var(--aco-400)">Nenhum logotipo configurado (usando nome da oficina)</span>
+        `}
+      </div>
+    </div>
+
+    <div class="entre" style="margin-bottom:16px;border-bottom:1px solid var(--aco-150);padding-bottom:12px">
+      <div>
+        <h3 style="font-weight:600;font-size:16px;margin:0">Assistente Virtual & WhatsApp</h3>
+        <div class="mini" style="color:var(--aco-500)">Personalize a identidade da IA operacional do seu negócio.</div>
+      </div>
+      <button type="button" class="btn btn-neutro btn-pequeno" style="gap:6px;display:flex;align-items:center" onclick="if(typeof abrirConfiguracoesAgente === 'function') abrirConfiguracoesAgente();">
+        ⚙️ Configurar Voz Avançada & Testar
+      </button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:24px">
+      <div>
+        <label class="mini">Nome do Agente / Assistente</label>
+        <input type="text" class="campo-texto" value="${esc(c.assistente?.displayName || 'Verônica')}" style="width:100%" oninput="if(!S.cfg.assistente)S.cfg.assistente={};S.cfg.assistente.displayName=this.value;salvar()" placeholder="Ex: Verônica, Bia, Carlos...">
+        <div class="mini" style="margin-top:4px;color:var(--aco-500)">Nome com o qual o agente se apresenta nas mensagens e áudios.</div>
+      </div>
+      <div>
+        <label class="mini">Voz do Agente (Síntese de Voz / TTS)</label>
+        <select class="campo-texto" style="width:100%" onchange="if(!S.cfg.assistente)S.cfg.assistente={};S.cfg.assistente.voiceGender=this.value;salvar()">
+          <option value="female" ${(c.assistente?.voiceGender !== 'male') ? 'selected' : ''}>👩 Feminina</option>
+          <option value="male" ${(c.assistente?.voiceGender === 'male') ? 'selected' : ''}>👨 Masculina</option>
+        </select>
+        <div class="mini" style="margin-top:4px;color:var(--aco-500)">Gênero de voz aplicado nas respostas faladas do sistema.</div>
+      </div>
+    </div>
   </div>
   `;
 }
@@ -459,9 +519,8 @@ function folhaCadastro() {
           <div>
             <label style="font-weight:600;display:block;margin-bottom:4px">CNPJ / CPF:</label>
             <div style="display:flex;gap:4px">
-              <input type="text" class="campo-texto" placeholder="00.000.000/0000-00" data-act="rc" data-c="doc" value="${esc(r.doc || '')}" style="width:100%;height:34px" id="doc_cli">
-              <button class="btn btn-secundario" onclick="if(typeof buscarCNPJ==='function')buscarCNPJ(document.getElementById('doc_cli').value, 'cli')" style="padding:0 8px;font-size:12px" title="Consultar Receita WS">CNPJ</button>
-              <button class="btn btn-secundario" onclick="if(typeof consultarSintegra==='function')consultarSintegra(document.getElementById('doc_cli').value, 'cli')" style="padding:0 8px;font-size:12px" title="Buscar Inscrição Estadual">Sintegra</button>
+              <input type="text" class="campo-texto" placeholder="00.000.000/0000-00" data-act="rc" data-c="doc" value="${esc(r.doc || '')}" style="width:100%;height:34px" id="doc_cli" oninput="if(this.value && this.value.replace(/\D/g,'').length===14)verificarAutoConsultaCnpj(this.value)" onchange="if(this.value && this.value.replace(/\D/g,'').length >= 11) abrirModalConsultaCliente(this.value)">
+              <button type="button" class="btn btn-primario" onclick="abrirModalConsultaCliente(document.getElementById('doc_cli').value)" style="padding:0 10px;font-size:12px;font-weight:600;white-space:nowrap" title="Consultar dados via API (Sintegra & Serasa)" id="btn_consultar_cli">🔍 Consultar</button>
             </div>
           </div>
         </div>
@@ -504,6 +563,26 @@ function folhaCadastro() {
           <div>
             <label style="font-weight:600;display:block;margin-bottom:4px">UF:</label>
             <input type="text" class="campo-texto" placeholder="SP" data-act="rc" data-c="uf" value="${esc(r.uf || '')}" style="width:100%;height:34px;text-transform:uppercase">
+          </div>
+        </div>
+
+        <div style="background:var(--aco-50);border:1px solid var(--aco-150);border-radius:8px;padding:10px 14px">
+          <div style="font-weight:700;font-size:12px;color:#1e293b;margin-bottom:8px;display:flex;align-items:center;gap:6px">
+            <span>🛡️ Análise de Crédito & Birô (Serasa Experian)</span>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1.5fr 1fr;gap:10px">
+            <div>
+              <label style="font-weight:600;display:block;margin-bottom:4px;font-size:11.5px">Score Serasa (0-1000):</label>
+              <input type="number" class="campo-texto" placeholder="Ex: 720" data-act="rc" data-c="scoreSerasa" value="${r.scoreSerasa ?? ''}" id="score_serasa_input" style="width:100%;height:32px">
+            </div>
+            <div>
+              <label style="font-weight:600;display:block;margin-bottom:4px;font-size:11.5px">Situação de Risco / Crédito:</label>
+              <input type="text" class="campo-texto" placeholder="Ex: Baixo Risco / Regular" data-act="rc" data-c="situacaoSerasa" value="${esc(r.situacaoSerasa || '')}" id="situacao_serasa_input" style="width:100%;height:32px">
+            </div>
+            <div>
+              <label style="font-weight:600;display:block;margin-bottom:4px;font-size:11.5px">Consulta Realizada:</label>
+              <input type="text" class="campo-texto" readonly value="${r.consultaSerasaRealizada ? 'Sim (Verificado)' : (r.scoreSerasa ? 'Manual' : 'Pendente')}" id="consulta_serasa_status" style="width:100%;height:32px;background:var(--aco-100);color:#475569">
+            </div>
           </div>
         </div>
       </div>
@@ -1326,3 +1405,230 @@ function viewAPI() {
     </div>
   </div>`;
 }
+
+/* ---------------- Consulta Integrada de Clientes (Sintegra & Pop-up Serasa) ---------------- */
+let _docConsultaPendente = '';
+let _ultimoDocConsultado = '';
+
+function verificarAutoConsultaCnpj(val) {
+  if (!val) return;
+  const digitos = String(val).replace(/\D/g, '');
+  if (digitos.length === 14 && digitos !== _ultimoDocConsultado) {
+    _ultimoDocConsultado = digitos;
+    abrirModalConsultaCliente(val);
+  }
+}
+
+function abrirModalConsultaCliente(doc) {
+  const val = String(doc || (document.getElementById('doc_cli') && document.getElementById('doc_cli').value) || '').trim();
+  const digitos = val.replace(/\D/g, '');
+  if (!digitos || (digitos.length !== 11 && digitos.length !== 14)) {
+    if (typeof torrar === 'function') {
+      torrar('Informe um CPF (11 dígitos) ou CNPJ (14 dígitos) para consulta.', 'alerta');
+    }
+    return;
+  }
+
+  _docConsultaPendente = digitos;
+  const tipoDoc = digitos.length === 14 ? 'CNPJ' : 'CPF';
+  const docFmt = digitos.length === 14
+    ? digitos.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5')
+    : digitos.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4');
+
+  let modalEl = document.getElementById('modal-consulta-cliente') || document.getElementById('modal-dialog-serasa');
+  if (!modalEl) {
+    modalEl = document.createElement('div');
+    modalEl.id = 'modal-consulta-cliente';
+    modalEl.className = 'modal-consulta-cliente modal-dialog-serasa';
+    modalEl.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(15,23,42,0.65);backdrop-filter:blur(4px);z-index:999999;display:flex;align-items:center;justify-content:center;padding:16px';
+    document.body.appendChild(modalEl);
+  }
+
+  modalEl.innerHTML = `
+    <div style="background:#ffffff;color:#0f172a;border-radius:12px;max-width:440px;width:100%;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);padding:24px;border:1px solid #e2e8f0;animation:fadeIn 0.15s ease">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+        <div style="width:42px;height:42px;border-radius:10px;background:#eff6ff;color:#2563eb;display:flex;align-items:center;justify-content:center;font-size:22px">🔍</div>
+        <div>
+          <h3 style="margin:0;font-size:16px;font-weight:700;color:#0f172a">Consulta de Cliente</h3>
+          <div style="font-size:12px;color:#64748b">${tipoDoc}: <b>${docFmt}</b></div>
+        </div>
+      </div>
+
+      <div style="margin-bottom:20px;font-size:14px;color:#334155;line-height:1.5">
+        <p style="margin:0 0 8px 0;font-weight:700;color:#0f172a;font-size:15px">Deseja consultar também junto ao SERASA?</p>
+        <p style="margin:0;font-size:13px;color:#64748b">
+          Caso selecione <b>Sim</b>, o sistema consultará o score de crédito e restrições financeiras além dos dados fiscais do Sintegra. Caso selecione <b>Não</b>, puxará apenas a Inscrição Estadual, razão social e endereço.
+        </p>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <button type="button" id="btn-modal-serasa-sim" class="btn btn-primario" onclick="confirmarConsultaCliente(true)" style="height:40px;justify-content:center;font-weight:600;font-size:13px;background:#2563eb;color:#fff;border:none;border-radius:6px;cursor:pointer">
+          Sim, consultar também junto ao SERASA
+        </button>
+        <button type="button" id="btn-modal-serasa-nao" class="btn btn-secundario" onclick="confirmarConsultaCliente(false)" style="height:40px;justify-content:center;font-weight:600;font-size:13px;background:#f8fafc;color:#1e293b;border:1px solid #cbd5e1;border-radius:6px;cursor:pointer">
+          Não, consultar apenas Sintegra
+        </button>
+        <button type="button" class="btn btn-neutro" onclick="fecharModalConsultaCliente()" style="height:32px;justify-content:center;font-size:12px;background:transparent;color:#94a3b8;border:none;cursor:pointer">
+          Cancelar
+        </button>
+      </div>
+    </div>
+  `;
+  modalEl.style.display = 'flex';
+}
+
+function fecharModalConsultaCliente() {
+  const modalEl = document.getElementById('modal-consulta-cliente') || document.getElementById('modal-dialog-serasa');
+  if (modalEl) modalEl.style.display = 'none';
+  _docConsultaPendente = '';
+}
+
+async function confirmarConsultaCliente(incluirSerasa) {
+  const doc = _docConsultaPendente;
+  fecharModalConsultaCliente();
+  if (!doc) return;
+  await executarConsultaCliente(doc, incluirSerasa);
+}
+
+async function executarConsultaCliente(doc, incluirSerasa) {
+  if (typeof torrar === 'function') {
+    torrar(incluirSerasa ? 'Consultando Sintegra + SERASA...' : 'Consultando Sintegra...', 'neutro');
+  }
+
+  const tagEl = document.getElementById('tag_serasa');
+  if (tagEl && incluirSerasa) {
+    tagEl.textContent = 'Consultando Serasa...';
+    tagEl.style.background = 'var(--aco-200)';
+    tagEl.style.color = 'inherit';
+  }
+
+  try {
+    const headers = typeof obterHeadersRequisicao === 'function'
+      ? obterHeadersRequisicao({ 'Content-Type': 'application/json' })
+      : {
+          'Content-Type': 'application/json',
+          'x-tenant-id': (typeof window !== 'undefined' && (window.__PATIO_TENANT_ID || window.sessionStorage?.getItem('patio_tenant'))) || 'default'
+        };
+
+    const res = await fetch('/api/integracoes/consulta-cliente', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ doc, incluirSerasa })
+    });
+
+    const body = await res.json();
+    if (!res.ok || !body.success) {
+      if (body.disponivel === false || body.codigo === 'INTEGRACAO_NAO_CONFIGURADA') {
+        if (tagEl) {
+          tagEl.textContent = 'Consulta externa não configurada';
+          tagEl.style.background = 'var(--aco-150)';
+          tagEl.style.color = 'var(--aco-600)';
+        }
+        const inpStatus = document.getElementById('consulta_serasa_status');
+        if (inpStatus) inpStatus.value = 'Não configurado (Manual)';
+        if (typeof torrar === 'function') {
+          torrar(body.mensagem || 'Consulta externa indisponível. Campos liberados para preenchimento manual.', 'alerta');
+        }
+        return;
+      }
+      if (typeof torrar === 'function') {
+        torrar(body.error || body.erro || 'Não foi possível consultar os dados externos. Preencha manualmente.', 'erro');
+      }
+      return;
+    }
+
+    const d = body.dados;
+    if (!d) return;
+
+    if (typeof S !== 'undefined') {
+      S.ui = S.ui || {};
+      S.ui.rascCad = S.ui.rascCad || {};
+      S.ui.rascCad.doc = d.doc || d.cnpj || d.cpf || doc;
+      S.ui.rascCad.nome = d.nome || '';
+      S.ui.rascCad.fantasia = d.fantasia || '';
+      S.ui.rascCad.ie = d.ie || '';
+      S.ui.rascCad.cep = d.cep || '';
+      S.ui.rascCad.endereco = d.endereco || '';
+      S.ui.rascCad.bairro = d.bairro || '';
+      S.ui.rascCad.cidade = d.cidade || '';
+      S.ui.rascCad.uf = d.uf || '';
+      S.ui.rascCad.fone = d.fone || '';
+      if (d.scoreSerasa !== null && d.scoreSerasa !== undefined) {
+        S.ui.rascCad.scoreSerasa = d.scoreSerasa;
+        S.ui.rascCad.situacaoSerasa = d.situacaoSerasa;
+        S.ui.rascCad.consultaSerasaRealizada = Boolean(d.consultaSerasaRealizada);
+      }
+    }
+
+    // Preenchimento automático nos inputs do DOM
+    const camposMap = {
+      doc: d.doc || d.cnpj || d.cpf || doc,
+      nome: d.nome || '',
+      fantasia: d.fantasia || '',
+      ie: d.ie || '',
+      cep: d.cep || '',
+      endereco: d.endereco || '',
+      bairro: d.bairro || '',
+      cidade: d.cidade || '',
+      uf: d.uf || '',
+      fone: d.fone || ''
+    };
+
+    for (const [k, val] of Object.entries(camposMap)) {
+      const el = document.querySelector(`input[data-act="rc"][data-c="${k}"]`);
+      if (el) el.value = val;
+    }
+
+    const inpDoc = document.getElementById('doc_cli');
+    if (inpDoc && camposMap.doc) inpDoc.value = camposMap.doc;
+
+    const inpCep = document.getElementById('cep_cli');
+    if (inpCep && camposMap.cep) inpCep.value = camposMap.cep;
+
+    if (tagEl) {
+      if (d.scoreSerasa) {
+        tagEl.textContent = `Score Serasa: ${d.scoreSerasa} (${d.scoreSerasa >= 700 ? '✔️ Alto' : d.scoreSerasa >= 500 ? '⚠️ Regular' : '❌ Baixo'})`;
+        tagEl.style.background = d.scoreSerasa >= 500 ? 'var(--verde)' : 'var(--tijolo)';
+        tagEl.style.color = '#fff';
+      } else {
+        tagEl.textContent = d.consultaSerasaRealizada ? 'Score: Não retornado' : 'Serasa não consultado';
+        tagEl.style.background = 'var(--aco-200)';
+        tagEl.style.color = 'inherit';
+      }
+    }
+
+    const inpScore = document.getElementById('score_serasa_input');
+    if (inpScore && d.scoreSerasa !== undefined && d.scoreSerasa !== null) {
+      inpScore.value = d.scoreSerasa;
+    }
+    const inpSit = document.getElementById('situacao_serasa_input');
+    if (inpSit && d.situacaoSerasa) {
+      inpSit.value = d.situacaoSerasa;
+    }
+    const inpStatus = document.getElementById('consulta_serasa_status');
+    if (inpStatus) {
+      inpStatus.value = d.consultaSerasaRealizada ? 'Sim (Verificado)' : (d.scoreSerasa ? 'Manual' : 'Pendente');
+    }
+
+    if (typeof torrar === 'function') {
+      const msg = incluirSerasa
+        ? `Dados carregados com sucesso! Score Serasa: ${d.scoreSerasa || '—'}`
+        : 'Dados cadastrais e Sintegra importados com sucesso!';
+      torrar(msg, 'sucesso');
+    }
+  } catch (err) {
+    console.error('Erro ao executar consulta cliente:', err);
+    if (typeof torrar === 'function') {
+      torrar('Erro ao conectar com serviço de consulta.', 'erro');
+    }
+  }
+}
+
+if (typeof window !== 'undefined') {
+  window.abrirModalConsultaCliente = abrirModalConsultaCliente;
+  window.fecharModalConsultaCliente = fecharModalConsultaCliente;
+  window.confirmarConsultaCliente = confirmarConsultaCliente;
+  window.executarConsultaCliente = executarConsultaCliente;
+  window.verificarAutoConsultaCnpj = verificarAutoConsultaCnpj;
+}
+

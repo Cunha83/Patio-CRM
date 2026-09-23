@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Criar Conta — Pátio CRM</title>
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    body { background-color: #0f172a; color: #f8fafc; font-family: system-ui, -apple-system, sans-serif; margin: 0; display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
+    .auth-card { background: #1e293b; border: 1px solid #334155; border-radius: 16px; width: 100%; max-width: 460px; padding: 36px 32px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5); }
+    .auth-logo { text-align: center; margin-bottom: 24px; }
+    .auth-logo h2 { margin: 0; color: #38bdf8; font-size: 1.8rem; }
+    .auth-logo p { margin: 6px 0 0 0; color: #94a3b8; font-size: 0.95rem; }
+    .form-group { margin-bottom: 18px; }
+    .form-group label { display: block; margin-bottom: 6px; font-size: 0.85rem; font-weight: 600; color: #cbd5e1; }
+    .form-control { width: 100%; box-sizing: border-box; background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 12px 14px; color: white; font-size: 0.95rem; outline: none; }
+    .form-control:focus { border-color: #38bdf8; ring: 2px solid #0284c7; }
+    .terms-box { display: flex; align-items: flex-start; gap: 10px; font-size: 0.8rem; color: #94a3b8; margin-bottom: 24px; line-height: 1.4; }
+    .terms-box input { margin-top: 3px; }
+    .btn-submit { width: 100%; background: #0284c7; color: white; border: none; padding: 14px; border-radius: 8px; font-size: 1rem; font-weight: 700; cursor: pointer; transition: background 0.2s; }
+    .btn-submit:hover { background: #0369a1; }
+    .alert-error { background: #ef444420; border: 1px solid #ef4444; color: #fca5a5; padding: 10px 14px; border-radius: 8px; font-size: 0.85rem; margin-bottom: 18px; display: none; }
+    .badge-trial { display: inline-block; background: #0369a130; border: 1px solid #0284c7; color: #38bdf8; font-size: 0.8rem; padding: 4px 10px; border-radius: 6px; margin-bottom: 18px; text-align: center; width: 100%; box-sizing: border-box; }
+    .auth-footer { text-align: center; margin-top: 20px; font-size: 0.85rem; color: #64748b; }
+    .auth-footer a { color: #38bdf8; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="auth-card">
+    <div class="auth-logo">
+      <h2>🚛 Pátio CRM</h2>
+      <p>CRM Operacional para Oficinas Pesadas • Integrado ao ERP da sua Empresa</p>
+    </div>
+
+    <div class="badge-trial">✨ 14 dias de Trial Pro grátis • Sem cartão de crédito</div>
+    <div id="msgError" class="alert-error"></div>
+
+    <form id="formCadastro">
+      <div class="form-group">
+        <label for="nome">Seu Nome Completo</label>
+        <input type="text" id="nome" class="form-control" placeholder="Ex: Carlos Silva" required>
+      </div>
+
+      <div class="form-group">
+        <label for="empresa">Nome da sua Oficina Mecânica</label>
+        <input type="text" id="empresa" class="form-control" placeholder="Ex: Auto Molas São Cristóvão" required>
+      </div>
+
+      <div class="form-group">
+        <label for="whatsapp">WhatsApp / Celular da Oficina</label>
+        <input type="tel" id="whatsapp" class="form-control" placeholder="62999998888" required>
+      </div>
+
+      <div class="form-group">
+        <label for="email">E-mail Profissional</label>
+        <input type="email" id="email" class="form-control" placeholder="contato@suaoficina.com.br" required>
+      </div>
+
+      <div class="form-group">
+        <label for="senha">Crie uma Senha de Acesso Forte</label>
+        <input type="password" id="senha" class="form-control" placeholder="Mínimo 12 caracteres (maiúsculas, números e símbolos)" minlength="12" required>
+      </div>
+
+      <div class="terms-box">
+        <input type="checkbox" id="aceitouTermos" required checked>
+        <label for="aceitouTermos">Li e concordo com os <a href="/termos.html" target="_blank" style="color:#38bdf8;text-decoration:underline">Termos de Uso</a> e a <a href="/privacidade.html" target="_blank" style="color:#38bdf8;text-decoration:underline">Política de Privacidade</a> do Pátio CRM em conformidade com a LGPD.</label>
+      </div>
+
+      <button type="submit" id="btnSubmit" class="btn-submit">Criar Conta e Acessar Pátio</button>
+    </form>
+
+    <div class="auth-footer">
+      Já possui conta? <a href="/index.html">Fazer login</a> • <a href="/precos">Ver planos</a>
+    </div>
+  </div>
+
+  <script>
+    const form = document.getElementById('formCadastro');
+    const msgError = document.getElementById('msgError');
+    const btnSubmit = document.getElementById('btnSubmit');
+
+    // Extrai parâmetros de marketing da URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const utmSource = urlParams.get('utm_source');
+    const utmMedium = urlParams.get('utm_medium');
+    const utmCampaign = urlParams.get('utm_campaign');
+    const utmContent = urlParams.get('utm_content');
+    const referralCode = urlParams.get('ref') || urlParams.get('referral');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      msgError.style.display = 'none';
+      btnSubmit.disabled = true;
+      btnSubmit.innerText = 'Provisionando sua oficina...';
+
+      const payload = {
+        nome: document.getElementById('nome').value.trim(),
+        empresa: document.getElementById('empresa').value.trim(),
+        whatsapp: document.getElementById('whatsapp').value.trim(),
+        email: document.getElementById('email').value.trim(),
+        senha: document.getElementById('senha').value,
+        aceitouTermos: document.getElementById('aceitouTermos').checked,
+        utm_source: utmSource,
+        utm_medium: utmMedium,
+        utm_campaign: utmCampaign,
+        utm_content: utmContent,
+        referralCode
+      };
+
+      try {
+        const res = await fetch('/api/auth/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+
+        if (!res.ok || !data.ok) {
+          throw new Error(data.error || 'Erro ao criar conta.');
+        }
+
+        // Salva credenciais locais temporárias para login direto
+        localStorage.setItem('patio_tenant_id', data.tenantId);
+        localStorage.setItem('patio_username', data.user.username);
+        window.location.href = data.redirect || '/#onboarding';
+      } catch (err) {
+        msgError.innerText = err.message;
+        msgError.style.display = 'block';
+        btnSubmit.disabled = false;
+        btnSubmit.innerText = 'Criar Conta e Acessar Pátio';
+      }
+    });
+  </script>
+</body>
+</html>

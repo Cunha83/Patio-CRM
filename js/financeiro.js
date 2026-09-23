@@ -12,11 +12,11 @@ function viewFinanceiro() {
   const totalRec = soma(rec, c => c.valor);
   const totalPag = soma(pag, c => c.valor);
   const abas = [
-    ['dashboard', 'Dashboard'],
+    ['dashboard', 'Dashboard Executivo 📊'],
     ['receber', 'A Receber (' + rec.length + ')'],
     ['pagar', 'A Pagar (' + pag.length + ')'],
     ['caixa', 'Fluxo de Caixa'],
-    ['dre', 'DRE Gerencial'],
+    ['dre', 'Resultado Gerencial de Caixa'],
     ['banco', 'Conciliação Bancária']
   ];
   const a = S.ui.abaFin || 'dashboard';
@@ -30,6 +30,7 @@ function viewFinanceiro() {
   else corpo = blocoBanco();
 
   return `
+  ${a !== 'dashboard' ? `
   <div class="kpis" style="margin-bottom:14px">
     <div class="kpi bom">
       <div class="r">${ico('grana', 14)} Saldo em Caixa</div>
@@ -51,7 +52,7 @@ function viewFinanceiro() {
       <div class="v">${brlCurto(entradaMes - saidaMes)}</div>
       <div class="d">Entradas: ${brlCurto(entradaMes)} | Saídas: ${brlCurto(saidaMes)}</div>
     </div>
-  </div>
+  </div>` : ''}
 
   <div class="abas" style="margin-bottom:14px">
     ${abas.map(([k, r]) => `<button data-act="aba-fin" data-k="${k}" aria-selected="${a === k}">${r}</button>`).join('')}
@@ -60,71 +61,610 @@ function viewFinanceiro() {
   ${corpo}`;
 }
 
-/* ===== DASHBOARD FINANCEIRO ===== */
+/* ===== MOTOR FINANCEIRO CLIENTE (CONSISTENTE COM SERVER) ===== */
+function calcularDashboardFin(filtro = '30d', customDe = null, customAte = null) {
+  const ref = hoje();
+  let de = addDias(ref, -29);
+  let ate = ref;
+
+  if (filtro === 'hoje') {
+    de = ref; ate = ref;
+  } else if (filtro === '7d') {
+    de = addDias(ref, -6); ate = ref;
+  } else if (filtro === '15d') {
+    de = addDias(ref, -14); ate = ref;
+  } else if (filtro === '30d') {
+    de = addDias(ref, -29); ate = ref;
+  } else if (filtro === 'mes') {
+    const dObj = new Date(ref + 'T12:00:00');
+    const ano = dObj.getFullYear();
+    const mes = String(dObj.getMonth() + 1).padStart(2, '0');
+    de = `${ano}-${mes}-01`;
+    const ult = new Date(ano, dObj.getMonth() + 1, 0).getDate();
+    ate = `${ano}-${mes}-${String(ult).padStart(2, '0')}`;
+  } else if (filtro === 'mes_anterior') {
+    const dObj = new Date(ref + 'T12:00:00');
+    const ant = new Date(dObj.getFullYear(), dObj.getMonth() - 1, 1);
+    const ano = ant.getFullYear();
+    const mes = String(ant.getMonth() + 1).padStart(2, '0');
+    de = `${ano}-${mes}-01`;
+    const ult = new Date(ano, ant.getMonth() + 1, 0).getDate();
+    ate = `${ano}-${mes}-${String(ult).padStart(2, '0')}`;
+  } else if (filtro === 'custom' && customDe && customAte) {
+    de = customDe; ate = customAte;
+  }
+
+  const ini = Number(S.cfg?.saldoInicial) || 0;
+  const movs = S.movimentos || [];
+  const contas = S.contas || [];
+
+  // Saldo geral consolidado (Toda a história)
+  const totalEnt = soma(movs.filter(m => m.tipo === 'entrada'), m => m.valor);
+  const totalSai = soma(movs.filter(m => m.tipo === 'saida'), m => m.valor);
+  const saldoConsolidado = +(ini + totalEnt - totalSai).toFixed(2);
+
+  // No período selecionado
+  const movsPeriodo = movs.filter(m => (m.data || '').slice(0, 10) >= de && (m.data || '').slice(0, 10) <= ate);
+  const entPeriodo = soma(movsPeriodo.filter(m => m.tipo === 'entrada'), m => m.valor);
+  const saiPeriodo = soma(movsPeriodo.filter(m => m.tipo === 'saida'), m => m.valor);
+  const resultadoPeriodo = +(entPeriodo - saiPeriodo).toFixed(2);
+
+  // Contas em aberto
+  const emAb = contas.filter(c => !c.pago);
+  const rec = emAb.filter(c => c.tipo === 'receber');
+  const pag = emAb.filter(c => c.tipo === 'pagar');
+
+  const totRec = soma(rec, c => c.valor);
+  const totPag = soma(pag, c => c.valor);
+  const recVenc = soma(rec.filter(c => c.venc < ref), c => c.valor);
+  const pagVenc = soma(pag.filter(c => c.venc < ref), c => c.valor);
+  const recHoje = soma(rec.filter(c => c.venc === ref), c => c.valor);
+  const pagHoje = soma(pag.filter(c => c.venc === ref), c => c.valor);
+
+  const taxaInad = totRec > 0 ? +((recVenc / totRec) * 100).toFixed(1) : 0;
+
+  // Projeção 30 dias
+  const d30 = addDias(ref, 30);
+  const recFut = soma(rec.filter(c => c.venc >= ref && c.venc <= d30), c => c.valor);
+  const pagFut = soma(pag.filter(c => c.venc >= ref && c.venc <= d30), c => c.valor);
+  const saldoProjetado30d = +(saldoConsolidado + recFut - pagFut).toFixed(2);
+
+  return {
+    filtro, de, ate, ref,
+    saldoConsolidado, saldoInicial: ini,
+    entPeriodo, saiPeriodo, resultadoPeriodo,
+    totRec, totPag, recVenc, pagVenc, recHoje, pagHoje,
+    qtdRec: rec.length, qtdPag: pag.length,
+    qtdRecVenc: rec.filter(c => c.venc < ref).length,
+    qtdPagVenc: pag.filter(c => c.venc < ref).length,
+    taxaInad, saldoProjetado30d,
+    movsPeriodo
+  };
+}
+
+/* ===== DASHBOARD FINANCEIRO EXECUTIVO (BI) ===== */
 function blocoDashboardFin() {
-  const rec = emAberto('receber'), pag = emAberto('pagar');
-  const totalRec = soma(rec, c => c.valor), totalPag = soma(pag, c => c.valor);
-  const vencidasR = rec.filter(c => c.venc < hoje()), vencidasP = pag.filter(c => c.venc < hoje());
-  const previsto = saldoCaixa() + totalRec - totalPag;
-  const aging = agingReceber();
-  const catPagar = categorizarContas('pagar');
+  const filtro = S.ui.filtroFin || '30d';
+  const customDe = S.ui.filtroFinDe || null;
+  const customAte = S.ui.filtroFinAte || null;
+  const fin = calcularDashboardFin(filtro, customDe, customAte);
+
+  const filtros = [
+    ['hoje', 'Hoje'],
+    ['7d', '7 Dias'],
+    ['15d', '15 Dias'],
+    ['30d', '30 Dias'],
+    ['mes', 'Este Mês'],
+    ['mes_anterior', 'Mês Anterior'],
+    ['custom', 'Personalizado']
+  ];
+
+  // Agenda de próximos vencimentos (top 6)
+  const proximos = (S.contas || [])
+    .filter(c => !c.pago)
+    .sort((a, b) => (a.venc || '').localeCompare(b.venc || ''))
+    .slice(0, 6);
 
   return `
-  <div class="kpis" style="grid-template-columns:repeat(3,1fr);margin-bottom:14px">
-    <div class="card card-p" style="text-align:center">
-      <div class="mini" style="font-weight:600">Saldo Projetado (30 Dias)</div>
-      <div class="num" style="font-size:26px;font-weight:700;margin-top:6px;color:${previsto >= 0 ? 'var(--verde)' : 'var(--tijolo)'}">${brl(previsto)}</div>
-      <div class="mini" style="margin-top:4px">Caixa + A Receber − A Pagar</div>
+  <!-- Barra de Filtros & Ações Rápidas Executivas -->
+  <div class="barra-filtros-fin">
+    <div class="grupo-chips-filtro">
+      <span class="mini" style="font-weight:700;color:var(--aco-600);margin-right:4px">Período:</span>
+      ${filtros.map(([k, r]) => `
+        <button class="chip-filtro ${filtro === k ? 'ativo' : ''}" data-act="filtro-fin" data-f="${k}">
+          ${r}
+        </button>
+      `).join('')}
+      ${filtro === 'custom' ? `
+        <div style="display:inline-flex;gap:4px;align-items:center;margin-left:6px">
+          <input type="date" class="campo-texto" id="fin_filtro_de" value="${fin.de}" style="height:28px;font-size:11px;padding:2px 6px">
+          <span class="mini">até</span>
+          <input type="date" class="campo-texto" id="fin_filtro_ate" value="${fin.ate}" style="height:28px;font-size:11px;padding:2px 6px">
+          <button class="btn btn-primario btn-pequeno" data-act="aplicar-filtro-fin-custom">OK</button>
+        </div>
+      ` : ''}
     </div>
-    <div class="card card-p" style="text-align:center">
-      <div class="mini" style="font-weight:600">Total Inadimplente</div>
-      <div class="num" style="font-size:26px;font-weight:700;margin-top:6px;color:var(--tijolo)">${brl(soma(vencidasR, c => c.valor))}</div>
-      <div class="mini" style="margin-top:4px">${vencidasR.length} títulos vencidos aguardando cobrança</div>
-    </div>
-    <div class="card card-p" style="text-align:center">
-      <div class="mini" style="font-weight:600">A Pagar em Atraso</div>
-      <div class="num" style="font-size:26px;font-weight:700;margin-top:6px;color:var(--sinal)">${brl(soma(vencidasP, c => c.valor))}</div>
-      <div class="mini" style="margin-top:4px">${vencidasP.length} contas vencidas</div>
+
+    <div class="acoes-topo-fin">
+      <button class="btn btn-secundario" data-act="ver-imagem-preview" style="font-size:12px;padding:5px 12px">
+        🖼️ Imagem WhatsApp (JPG)
+      </button>
+      <button class="btn btn-primario" data-act="disparar-grupo-admin" style="font-size:12px;padding:5px 12px;font-weight:600">
+        🚀 Disparar para Admin
+      </button>
     </div>
   </div>
 
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+  <!-- Cards Superiores de KPIs Financeiros (6 Cards Executivos) -->
+  <div class="kpis-fin-grid">
+    <div class="card-fin-kpi" style="--cor:#2563eb">
+      <div class="kpi-topo-rotulo">
+        <span>💵 Saldo em Caixa</span>
+        <span class="mini" style="color:var(--verde)">● Conciliado</span>
+      </div>
+      <div class="kpi-valor-grande num" style="color:${fin.saldoConsolidado >= 0 ? 'var(--verde)' : 'var(--tijolo)'}">
+        ${brl(fin.saldoConsolidado)}
+      </div>
+      <div class="kpi-sub-desc">Saldo consolidado disponível</div>
+    </div>
+
+    <div class="card-fin-kpi" style="--cor:#10b981">
+      <div class="kpi-topo-rotulo">
+        <span>🟢 A Receber</span>
+        <span class="mini">${fin.qtdRec} títulos</span>
+      </div>
+      <div class="kpi-valor-grande num" style="color:var(--verde)">
+        ${brl(fin.totRec)}
+      </div>
+      <div class="kpi-sub-desc">${fin.qtdRecVenc > 0 ? `<b style="color:var(--tijolo)">${brl(fin.recVenc)} vencidos</b>` : 'Nenhum título vencido'}</div>
+    </div>
+
+    <div class="card-fin-kpi" style="--cor:#ef4444">
+      <div class="kpi-topo-rotulo">
+        <span>🔴 A Pagar</span>
+        <span class="mini">${fin.qtdPag} contas</span>
+      </div>
+      <div class="kpi-valor-grande num" style="color:var(--tijolo)">
+        ${brl(fin.totPag)}
+      </div>
+      <div class="kpi-sub-desc">${fin.qtdPagVenc > 0 ? `<b style="color:var(--tijolo)">${brl(fin.pagVenc)} em atraso</b>` : 'Compromissos em dia'}</div>
+    </div>
+
+    <div class="card-fin-kpi" style="--cor:${fin.resultadoPeriodo >= 0 ? 'var(--verde)' : 'var(--sinal)'}">
+      <div class="kpi-topo-rotulo">
+        <span>⚖️ Resultado (${filtro.toUpperCase()})</span>
+      </div>
+      <div class="kpi-valor-grande num" style="color:${fin.resultadoPeriodo >= 0 ? 'var(--verde)' : 'var(--tijolo)'}">
+        ${fin.resultadoPeriodo >= 0 ? '+' : ''}${brl(fin.resultadoPeriodo)}
+      </div>
+      <div class="kpi-sub-desc">+${brlCurto(fin.entPeriodo)} ent | -${brlCurto(fin.saiPeriodo)} saí</div>
+    </div>
+
+    <div class="card-fin-kpi" style="--cor:#38bdf8">
+      <div class="kpi-topo-rotulo">
+        <span>📈 Projeção (30d)</span>
+      </div>
+      <div class="kpi-valor-grande num" style="color:var(--petroleo)">
+        ${brl(fin.saldoProjetado30d)}
+      </div>
+      <div class="kpi-sub-desc">Caixa + A Receber − A Pagar</div>
+    </div>
+
+    <div class="card-fin-kpi" style="--cor:${fin.taxaInad > 0 ? 'var(--sinal)' : 'var(--verde)'}">
+      <div class="kpi-topo-rotulo">
+        <span>⚠️ Inadimplência</span>
+      </div>
+      <div class="kpi-valor-grande num" style="color:${fin.taxaInad > 0 ? 'var(--sinal)' : 'var(--verde)'}">
+        ${fin.taxaInad}%
+      </div>
+      <div class="kpi-sub-desc">${fin.qtdRecVenc} títulos em cobrança</div>
+    </div>
+  </div>
+
+  <!-- Linha 1 de Gráficos: Fluxo de Caixa (1) & Receber x Pagar (2) -->
+  <div class="grid-graficos-duplo">
     <div class="card card-p">
-      <div style="font-weight:700;font-size:14px;margin-bottom:8px">Aging de Contas a Receber (Vencimentos)</div>
-      <div class="mini" style="margin-bottom:12px">Distribuição dos títulos a receber por prazo</div>
-      <div style="display:flex;flex-direction:column;gap:8px">
-        <div class="entre" style="font-size:13px">
-          <span style="color:var(--tijolo);font-weight:600">Vencidas / Em Atraso:</span>
-          <b class="num" style="color:var(--tijolo)">${brl(aging.vencido)}</b>
+      <div class="entre" style="margin-bottom:12px;border-bottom:1px solid var(--aco-200);padding-bottom:8px">
+        <div>
+          <div style="font-weight:700;font-size:14px;color:var(--aco-900)">📊 Gráfico 1 — Fluxo de Caixa (Entradas vs Saídas)</div>
+          <div class="mini">Movimentações financeiras realizadas no período selecionado</div>
         </div>
-        <div class="entre" style="font-size:13px">
-          <span>A Vencer (Próximos 7 dias):</span>
-          <b class="num">${brl(aging.ate7d)}</b>
-        </div>
-        <div class="entre" style="font-size:13px">
-          <span>A Vencer (8 a 30 dias):</span>
-          <b class="num">${brl(aging.ate30d)}</b>
-        </div>
-        <div class="entre" style="font-size:13px">
-          <span>A Vencer (> 30 dias):</span>
-          <b class="num">${brl(aging.mais30d)}</b>
-        </div>
+        <span class="badge-periodo-atual">${dataBR(fin.de)} a ${dataBR(fin.ate)}</span>
+      </div>
+      <div class="chart-box-container">
+        <canvas id="grafico-fin-fluxo"></canvas>
       </div>
     </div>
 
     <div class="card card-p">
-      <div style="font-weight:700;font-size:14px;margin-bottom:8px">Categorias de Despesas A Pagar</div>
-      <div class="mini" style="margin-bottom:12px">Compromissos agrupados por centro de custo</div>
-      <div style="display:flex;flex-direction:column;gap:8px">
-        ${catPagar.map(c => `
-          <div class="entre" style="font-size:13px">
-            <span>${esc(c.cat)}:</span>
-            <b class="num">${brl(c.total)}</b>
-          </div>
-        `).join('')}
+      <div class="entre" style="margin-bottom:12px;border-bottom:1px solid var(--aco-200);padding-bottom:8px">
+        <div>
+          <div style="font-weight:700;font-size:14px;color:var(--aco-900)">⚖️ Gráfico 2 — Comparativo Receber x Pagar</div>
+          <div class="mini">Títulos em aberto agrupados por prazo de vencimento</div>
+        </div>
+        <span class="badge-periodo-atual">Aging de Contas</span>
+      </div>
+      <div class="chart-box-container">
+        <canvas id="grafico-fin-rxp"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Linha 2 de Gráficos: Evolução do Saldo (3) & Projeção Financeira (4) -->
+  <div class="grid-graficos-duplo">
+    <div class="card card-p">
+      <div class="entre" style="margin-bottom:12px;border-bottom:1px solid var(--aco-200);padding-bottom:8px">
+        <div>
+          <div style="font-weight:700;font-size:14px;color:var(--aco-900)">📈 Gráfico 3 — Evolução do Saldo de Caixa</div>
+          <div class="mini">Curva acumulada de disponibilidade de caixa ao longo do período</div>
+        </div>
+        <span class="badge-periodo-atual">Histórico de Liquidez</span>
+      </div>
+      <div class="chart-box-container">
+        <canvas id="grafico-fin-saldo"></canvas>
+      </div>
+    </div>
+
+    <div class="card card-p">
+      <div class="entre" style="margin-bottom:12px;border-bottom:1px solid var(--aco-200);padding-bottom:8px">
+        <div>
+          <div style="font-weight:700;font-size:14px;color:var(--aco-900)">🎯 Gráfico 4 — Projeção Financeira (Próximos 30 Dias)</div>
+          <div class="mini">Estimativa de saldo considerando vencimentos futuros cadastrados</div>
+        </div>
+        <span class="badge-periodo-atual">Projeção Futura</span>
+      </div>
+      <div class="chart-box-container">
+        <canvas id="grafico-fin-projecao"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Linha 3: Distribuição das Despesas (5) & Próximos Vencimentos -->
+  <div class="grid-graficos-duplo">
+    <div class="card card-p">
+      <div class="entre" style="margin-bottom:12px;border-bottom:1px solid var(--aco-200);padding-bottom:8px">
+        <div>
+          <div style="font-weight:700;font-size:14px;color:var(--aco-900)">🍩 Gráfico 5 — Distribuição das Despesas</div>
+          <div class="mini">Gastos e contas a pagar agrupados por centro de custo</div>
+        </div>
+        <span class="badge-periodo-atual">Categorias</span>
+      </div>
+      <div class="chart-box-container">
+        <canvas id="grafico-fin-despesas"></canvas>
+      </div>
+    </div>
+
+    <div class="card card-p">
+      <div class="entre" style="margin-bottom:12px;border-bottom:1px solid var(--aco-200);padding-bottom:8px">
+        <div>
+          <div style="font-weight:700;font-size:14px;color:var(--aco-900)">📅 Próximos Vencimentos Prioritários</div>
+          <div class="mini">Compromissos e recebimentos mais urgentes da oficina</div>
+        </div>
+        <button class="btn btn-secundario btn-pequeno" onclick="S.ui.abaFin='pagar';render()">Ver Todas</button>
+      </div>
+      <div class="tabela-responsiva">
+        <table class="tabela">
+          <thead>
+            <tr>
+              <th>Tipo</th>
+              <th>Descrição / Parceiro</th>
+              <th style="text-align:center">Vencimento</th>
+              <th style="text-align:right">Valor</th>
+              <th style="text-align:center">Ação</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${proximos.length ? proximos.map(c => {
+              const vencida = c.venc < hoje();
+              const hojeVenc = c.venc === hoje();
+              const isRec = c.tipo === 'receber';
+              return `
+              <tr style="${vencida ? 'background:rgba(239, 68, 68, 0.04)' : ''}">
+                <td>
+                  <span class="selo ${isRec ? 'selo-finalizada' : 'selo-peca'}" style="font-size:10px">
+                    ${isRec ? 'Receber' : 'Pagar'}
+                  </span>
+                </td>
+                <td>
+                  <b>${esc(c.parte)}</b>
+                  <div class="mini">${esc(c.desc)}</div>
+                </td>
+                <td style="text-align:center">
+                  <span class="mono">${dataBR(c.venc)}</span>
+                  ${vencida ? `<div class="mini" style="color:var(--tijolo);font-weight:700">Atrasado</div>` : hojeVenc ? `<div class="mini" style="color:var(--sinal);font-weight:700">Hoje</div>` : ''}
+                </td>
+                <td style="text-align:right;font-weight:700" class="num">${brl(c.valor)}</td>
+                <td style="text-align:center">
+                  <button class="btn btn-sucesso btn-pequeno" data-act="baixar" data-id="${c.id}" title="Baixar">
+                    ${ico('check', 11)}
+                  </button>
+                </td>
+              </tr>`;
+            }).join('') : `
+              <tr><td colspan="5" style="text-align:center;padding:24px;color:var(--aco-400)">Nenhum vencimento pendente registrado.</td></tr>
+            `}
+          </tbody>
+        </table>
       </div>
     </div>
   </div>`;
+}
+
+function renderGraficosFinanceiro() {
+  if (typeof Chart === 'undefined') return;
+
+  const filtro = S.ui.filtroFin || '30d';
+  const customDe = S.ui.filtroFinDe || null;
+  const customAte = S.ui.filtroFinAte || null;
+  const fin = calcularDashboardFin(filtro, customDe, customAte);
+  const ref = hoje();
+
+  // 1. Gráfico de Fluxo de Caixa (Entradas vs Saídas)
+  const ctxFluxo = document.getElementById('grafico-fin-fluxo');
+  if (ctxFluxo) {
+    if (window._chartFinFluxo) window._chartFinFluxo.destroy();
+
+    const listaDias = [];
+    let curr = fin.de;
+    while (curr <= fin.ate && listaDias.length < 60) {
+      listaDias.push(curr);
+      curr = addDias(curr, 1);
+    }
+
+    const mapaE = {}, mapaS = {};
+    (S.movimentos || []).forEach(m => {
+      const d = (m.data || '').slice(0, 10);
+      const v = Number(m.valor) || 0;
+      if (m.tipo === 'entrada') mapaE[d] = (mapaE[d] || 0) + v;
+      else if (m.tipo === 'saida') mapaS[d] = (mapaS[d] || 0) + v;
+    });
+
+    const labels = listaDias.map(d => dataBR(d));
+    const entradas = listaDias.map(d => +(mapaE[d] || 0).toFixed(2));
+    const saidas = listaDias.map(d => +(mapaS[d] || 0).toFixed(2));
+
+    window._chartFinFluxo = new Chart(ctxFluxo, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [
+          { label: 'Entradas (R$)', data: entradas, backgroundColor: '#10b981', borderRadius: 4 },
+          { label: 'Saídas (R$)', data: saidas, backgroundColor: '#ef4444', borderRadius: 4 }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'top', labels: { boxWidth: 12, font: { size: 11 } } },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => ` ${ctx.dataset.label}: ${brl(ctx.raw)}`
+            }
+          }
+        },
+        scales: {
+          x: { grid: { display: false }, ticks: { maxTicksLimit: 12, font: { size: 10 } } },
+          y: { beginAtZero: true, ticks: { callback: v => brlCurto(v), font: { size: 10 } } }
+        }
+      }
+    });
+  }
+
+  // 2. Gráfico Receber x Pagar (Faixas de Aging)
+  const ctxRxP = document.getElementById('grafico-fin-rxp');
+  if (ctxRxP) {
+    if (window._chartFinRxP) window._chartFinRxP.destroy();
+
+    const emAb = (S.contas || []).filter(c => !c.pago);
+    const faixas = [
+      { l: 'Vencidos', min: -9999, max: -1 },
+      { l: 'Hoje', min: 0, max: 0 },
+      { l: 'Até 7d', min: 1, max: 7 },
+      { l: '8 a 15d', min: 8, max: 15 },
+      { l: '16 a 30d', min: 16, max: 30 },
+      { l: '> 30d', min: 31, max: 9999 }
+    ];
+
+    const lRxP = faixas.map(f => f.l);
+    const dRec = faixas.map(f => {
+      return soma(emAb.filter(c => c.tipo === 'receber' && diasEntre(ref, c.venc) >= f.min && diasEntre(ref, c.venc) <= f.max), c => c.valor);
+    });
+    const dPag = faixas.map(f => {
+      return soma(emAb.filter(c => c.tipo === 'pagar' && diasEntre(ref, c.venc) >= f.min && diasEntre(ref, c.venc) <= f.max), c => c.valor);
+    });
+
+    window._chartFinRxP = new Chart(ctxRxP, {
+      type: 'bar',
+      data: {
+        labels: lRxP,
+        datasets: [
+          { label: 'A Receber', data: dRec, backgroundColor: '#34d399', borderRadius: 4 },
+          { label: 'A Pagar', data: dPag, backgroundColor: '#f87171', borderRadius: 4 }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'top', labels: { boxWidth: 12, font: { size: 11 } } },
+          tooltip: {
+            callbacks: { label: ctx => ` ${ctx.dataset.label}: ${brl(ctx.raw)}` }
+          }
+        },
+        scales: {
+          x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+          y: { beginAtZero: true, ticks: { callback: v => brlCurto(v), font: { size: 10 } } }
+        }
+      }
+    });
+  }
+
+  // 3. Gráfico Evolução do Saldo
+  const ctxSaldo = document.getElementById('grafico-fin-saldo');
+  if (ctxSaldo) {
+    if (window._chartFinSaldo) window._chartFinSaldo.destroy();
+
+    const listaDias = [];
+    let curr = fin.de;
+    while (curr <= fin.ate && listaDias.length < 60) {
+      listaDias.push(curr);
+      curr = addDias(curr, 1);
+    }
+
+    const ini = Number(S.cfg?.saldoInicial) || 0;
+    const movs = S.movimentos || [];
+    const entAntes = soma(movs.filter(m => m.tipo === 'entrada' && (m.data || '').slice(0, 10) < fin.de), m => m.valor);
+    const saiAntes = soma(movs.filter(m => m.tipo === 'saida' && (m.data || '').slice(0, 10) < fin.de), m => m.valor);
+    let acumulado = ini + entAntes - saiAntes;
+
+    const mapaE = {}, mapaS = {};
+    movs.forEach(m => {
+      const d = (m.data || '').slice(0, 10);
+      const v = Number(m.valor) || 0;
+      if (m.tipo === 'entrada') mapaE[d] = (mapaE[d] || 0) + v;
+      else if (m.tipo === 'saida') mapaS[d] = (mapaS[d] || 0) + v;
+    });
+
+    const labels = listaDias.map(d => dataBR(d));
+    const dadosSaldo = listaDias.map(d => {
+      acumulado = +(acumulado + (mapaE[d] || 0) - (mapaS[d] || 0)).toFixed(2);
+      return acumulado;
+    });
+
+    window._chartFinSaldo = new Chart(ctxSaldo, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Saldo Acumulado (R$)',
+          data: dadosSaldo,
+          borderColor: '#2563eb',
+          backgroundColor: 'rgba(37, 99, 235, 0.08)',
+          fill: true,
+          tension: 0.35,
+          pointRadius: dadosSaldo.length > 15 ? 1 : 3,
+          pointHoverRadius: 5
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: { label: ctx => ` Saldo: ${brl(ctx.raw)}` }
+          }
+        },
+        scales: {
+          x: { grid: { display: false }, ticks: { maxTicksLimit: 12, font: { size: 10 } } },
+          y: { ticks: { callback: v => brlCurto(v), font: { size: 10 } } }
+        }
+      }
+    });
+  }
+
+  // 4. Gráfico Projeção Financeira (Próximos 30 Dias)
+  const ctxProj = document.getElementById('grafico-fin-projecao');
+  if (ctxProj) {
+    if (window._chartFinProj) window._chartFinProj.destroy();
+
+    const saldoHoje = saldoCaixa();
+    const emAb = (S.contas || []).filter(c => !c.pago);
+    const labels = [];
+    const dados = [];
+
+    for (let i = 0; i <= 30; i += 3) {
+      const diaProj = addDias(ref, i);
+      const recAte = soma(emAb.filter(c => c.tipo === 'receber' && c.venc >= ref && c.venc <= diaProj), c => c.valor);
+      const pagAte = soma(emAb.filter(c => c.tipo === 'pagar' && c.venc >= ref && c.venc <= diaProj), c => c.valor);
+      labels.push(i === 0 ? 'Hoje' : dataBR(diaProj));
+      dados.push(+(saldoHoje + recAte - pagAte).toFixed(2));
+    }
+
+    window._chartFinProj = new Chart(ctxProj, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Saldo Projetado (R$)',
+          data: dados,
+          borderColor: '#0284c7',
+          backgroundColor: 'rgba(2, 132, 199, 0.08)',
+          borderDash: [5, 5],
+          fill: true,
+          tension: 0.3,
+          pointRadius: 4,
+          pointHoverRadius: 6,
+          pointBackgroundColor: '#0284c7'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: { label: ctx => ` Projeção: ${brl(ctx.raw)}` }
+          }
+        },
+        scales: {
+          x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+          y: { ticks: { callback: v => brlCurto(v), font: { size: 10 } } }
+        }
+      }
+    });
+  }
+
+  // 5. Gráfico Distribuição das Despesas por Categoria
+  const ctxDesp = document.getElementById('grafico-fin-despesas');
+  if (ctxDesp) {
+    if (window._chartFinDesp) window._chartFinDesp.destroy();
+
+    const mapaCat = {};
+    (fin.movsPeriodo || [])
+      .filter(m => m.tipo === 'saida')
+      .forEach(m => {
+        const cat = m.cat || 'Geral';
+        mapaCat[cat] = (mapaCat[cat] || 0) + (Number(m.valor) || 0);
+      });
+
+    // Se sem saídas no período, usa contas a pagar
+    if (Object.keys(mapaCat).length === 0) {
+      (S.contas || [])
+        .filter(c => c.tipo === 'pagar' && !c.pago)
+        .forEach(c => {
+          const cat = c.cat || 'Fornecedores Peças';
+          mapaCat[cat] = (mapaCat[cat] || 0) + (Number(c.valor) || 0);
+        });
+    }
+
+    const pares = Object.entries(mapaCat).sort((a, b) => b[1] - a[1]).slice(0, 6);
+    const labels = pares.map(p => p[0]);
+    const dados = pares.map(p => +p[1].toFixed(2));
+    const cores = ['#2563eb', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#64748b'];
+
+    window._chartFinDesp = new Chart(ctxDesp, {
+      type: 'doughnut',
+      data: {
+        labels: labels.length ? labels : ['Sem despesas'],
+        datasets: [{
+          data: dados.length ? dados : [1],
+          backgroundColor: dados.length ? cores.slice(0, labels.length) : ['#e2e8f0']
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 11 } } },
+          tooltip: {
+            callbacks: { label: ctx => ` ${ctx.label}: ${brl(ctx.raw)}` }
+          }
+        }
+      }
+    });
+  }
 }
 
 function agingReceber() {
@@ -375,34 +915,38 @@ function blocoDRE() {
 
   return `
   <div class="card card-p" style="max-width:700px;margin:0 auto">
-    <div class="entre" style="border-bottom:2px solid var(--aco-900);padding-bottom:10px;margin-bottom:16px">
+    <div class="entre" style="border-bottom:2px solid var(--aco-900);padding-bottom:10px;margin-bottom:14px">
       <div>
-        <h3 style="font-size:18px;font-weight:700">DRE — Demonstrativo de Resultado Gerencial</h3>
-        <div class="mini">Competência: <b>Mês Atual (${dataBR(hoje())})</b></div>
+        <h3 style="font-size:17px;font-weight:700">Demonstrativo Gerencial de Resultados (Regime de Caixa)</h3>
+        <div class="mini">Apurado a partir de movimentações financeiras de caixa realizadas (${dataBR(hoje())})</div>
       </div>
       <div class="num" style="font-size:22px;font-weight:700;color:${lucroLiq >= 0 ? 'var(--verde)' : 'var(--tijolo)'}">
         ${brl(lucroLiq)} <span style="font-size:13px">(${margemLiq}%)</span>
       </div>
     </div>
 
+    <div style="background:var(--aco-050);border-left:4px solid var(--primario);padding:10px 14px;border-radius:6px;font-size:12px;color:var(--aco-700);margin-bottom:16px;line-height:1.4">
+      📊 <b>Critério Gerencial Operacional:</b> Este demonstrativo é apurado exclusivamente a partir de movimentações financeiras de caixa realizadas (entradas e saídas efetivas) para acompanhamento da saúde operacional da oficina mecânica. Não se confunde com DRE Contábil societária ou escrituração fiscal oficial, que devem ser emitidas através do ERP fiscal-contábil externo integrado da empresa.
+    </div>
+
     <div style="display:flex;flex-direction:column;gap:10px;font-size:13.5px">
       <div class="entre" style="font-weight:700;font-size:14.5px;color:var(--aco-900);background:var(--aco-050);padding:8px">
-        <span>(+) RECEITA BRUTA OPERACIONAL</span>
+        <span>(+) RECEITA BRUTA OPERACIONAL REALIZADA</span>
         <span class="num">${brl(recMes)}</span>
       </div>
 
       <div class="entre" style="padding-left:14px;color:var(--aco-700)">
-        <span>(−) Custos de Peças e Insumos Aplicados (CMV)</span>
+        <span>(−) Custos de Peças e Insumos Pagos (CMV Caixa)</span>
         <span class="num">${brl(despesasPecas)}</span>
       </div>
 
       <div class="entre" style="padding-left:14px;color:var(--aco-700)">
-        <span>(−) Despesas com Folha de Pagamento / Mecânicos</span>
+        <span>(−) Despesas com Folha de Pagamento / Mecânicos Pagas</span>
         <span class="num">${brl(despesasPessoal)}</span>
       </div>
 
       <div class="entre" style="padding-left:14px;color:var(--aco-700)">
-        <span>(−) Despesas Fixas (Aluguel, Luz, Água, Internet)</span>
+        <span>(−) Despesas Fixas Pagas (Aluguel, Luz, Água, Internet)</span>
         <span class="num">${brl(despesasFixas)}</span>
       </div>
 
@@ -412,7 +956,7 @@ function blocoDRE() {
       </div>
 
       <div class="entre" style="font-weight:700;font-size:15px;border-top:2px solid var(--aco-300);padding-top:12px;margin-top:8px">
-        <span>(=) RESULTADO LÍQUIDO DO EXERCÍCIO</span>
+        <span>(=) RESULTADO OPERACIONAL GERENCIAL DE CAIXA</span>
         <span class="num" style="color:${lucroLiq >= 0 ? 'var(--verde)' : 'var(--tijolo)'}">${brl(lucroLiq)}</span>
       </div>
     </div>
@@ -502,25 +1046,30 @@ function imprimirRecibo(contaId) {
   const janela = window.open('', '_blank');
   if (!janela) return;
 
-  janela.document.write(`
-  <!DOCTYPE html>
-  <html lang="pt-BR">
-  <head>
-    <meta charset="utf-8">
-    <title>Recibo de Pagamento — ${cfg.empresa}</title>
-    <style>
-      body { font-family: sans-serif; font-size: 13px; max-width: 600px; margin: 20px auto; padding: 20px; border: 2px solid #334155; border-radius: 8px; }
-      .topo { text-align: center; border-bottom: 2px solid #cbd5e1; padding-bottom: 12px; margin-bottom: 16px; }
-      .valor { font-size: 24px; font-weight: bold; color: #10b981; margin: 14px 0; text-align: right; }
-      .corpo { line-height: 1.6; margin-bottom: 24px; }
-      .ass { margin-top: 40px; text-align: center; border-top: 1px solid #000; width: 60%; margin-left: auto; margin-right: auto; padding-top: 6px; }
-    </style>
-  </head>
-  <body>
-    <div class="topo">
-      <h2>${esc(cfg.empresa)}</h2>
-      <div>CNPJ: ${esc(cfg.cnpj)} · ${esc(cfg.endereco)}</div>
-    </div>
+    const logoRaw = cfg.identidadeVisual?.logo || cfg.identidadeVisual?.imagemInstitucional;
+    const logoUrl = (typeof logoRaw === 'string') ? logoRaw : (logoRaw?.url || null);
+    const logoHtml = logoUrl ? `<img src="${logoUrl}" style="max-height:50px;max-width:160px;object-fit:contain;margin-bottom:8px" alt="Logo"><br>` : '';
+
+    janela.document.write(`
+    <!DOCTYPE html>
+    <html lang="pt-BR">
+    <head>
+      <meta charset="utf-8">
+      <title>Recibo de Pagamento — ${cfg.empresa}</title>
+      <style>
+        body { font-family: sans-serif; font-size: 13px; max-width: 600px; margin: 20px auto; padding: 20px; border: 2px solid #334155; border-radius: 8px; }
+        .topo { text-align: center; border-bottom: 2px solid #cbd5e1; padding-bottom: 12px; margin-bottom: 16px; }
+        .valor { font-size: 24px; font-weight: bold; color: #10b981; margin: 14px 0; text-align: right; }
+        .corpo { line-height: 1.6; margin-bottom: 24px; }
+        .ass { margin-top: 40px; text-align: center; border-top: 1px solid #000; width: 60%; margin-left: auto; margin-right: auto; padding-top: 6px; }
+      </style>
+    </head>
+    <body>
+      <div class="topo">
+        ${logoHtml}
+        <h2>${esc(cfg.empresa)}</h2>
+        <div>CNPJ: ${esc(cfg.cnpj)} · ${esc(cfg.endereco)}</div>
+      </div>
     <div class="valor">RECIBO: ${brl(c.valor)}</div>
     <div class="corpo">
       Recebemos de <b>${esc(c.parte)}</b> a quantia de <b>${brl(c.valor)}</b> referente a <b>${esc(c.desc)}</b> (${esc(c.doc || 'Doc S/N')}).<br>

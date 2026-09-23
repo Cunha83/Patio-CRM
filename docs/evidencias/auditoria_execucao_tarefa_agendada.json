@@ -1,0 +1,33 @@
+{
+  "timestamp": "2026-09-22T18:17:30.184Z",
+  "taskName": "\\PatioCRM_Backup_WAL",
+  "schedulerStatus": "Pronto",
+  "schedulerLastResult": "N/A",
+  "sqliteRecord": {
+    "isNew": true,
+    "id": "bck_1790101047696_ac9063",
+    "status": "local_completed",
+    "executedBy": "scheduler_windows",
+    "createdAt": "2026-09-22T18:17:27.796Z",
+    "sizeBytes": 217238,
+    "checksumSha256": "2f90414c213a90f4875c216e29176708d783ab343b56b4febdf69fd1ef32b7b7",
+    "filepath": "C:\\Users\\AutoMolasFort\\.gemini\\antigravity-ide\\scratch\\Patio-CRM-main\\deploy-piloto\\backups\\package_bck_1790101047696_ac9063_2026-09-22T18-17-27-696Z"
+  },
+  "physicalIntegrity": {
+    "packageExists": true,
+    "manifestExists": true,
+    "snapshotDbExists": true
+  },
+  "externalProtection": {
+    "status": "pending_hardware_connection",
+    "alert": {
+      "timestamp": "2026-09-22T18:17:27.804Z",
+      "error": "Destino externo inacessível ou inexistente: \"D:\\PatioCRM_Backups\". Snapshot local preservado em \"C:\\Users\\AutoMolasFort\\.gemini\\antigravity-ide\\scratch\\Patio-CRM-main\\deploy-piloto\\backups\\package_bck_1790101047696_ac9063_2026-09-22T18-17-27-696Z\", mas proteção externa pendente/falhou.",
+      "localSnapshotPreserved": true,
+      "localPackageDir": "C:\\Users\\AutoMolasFort\\.gemini\\antigravity-ide\\scratch\\Patio-CRM-main\\deploy-piloto\\backups\\package_bck_1790101047696_ac9063_2026-09-22T18-17-27-696Z",
+      "externalDir": "D:\\PatioCRM_Backups",
+      "remoteUrl": null,
+      "requireExternal": true
+    }
+  }
+}

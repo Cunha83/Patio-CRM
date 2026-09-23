@@ -1,0 +1,44 @@
+▶ P1: Validação de Instalação Limpa a Partir do Manifesto de Release
+  ✔ 1. Todos os arquivos mapeados conferem SHA-256 no repositório (94.8624ms)
+  ✔ 2. Cópia, Integridade Criptográfica e Sintaxe de Código a partir do Manifesto (1073.0921ms)
+  ✔ 3. Execução de Boot Funcional em Diretório Limpo com Verificação de /health e /ready (4481.6334ms)
+✔ P1: Validação de Instalação Limpa a Partir do Manifesto de Release (5821.219ms)
+
+======================================================
+MEDIÇÕES EFETIVAS DE CONTINUIDADE OPERACIONAL:
+- Criação do Backup Atômico WAL: 55.59 ms
+- Validação do Arquivo (SHA-256 + Integrity Check): 9.67 ms
+- Restauração Física (Cópia Exclusiva + Trava Fiscal): 30.91 ms
+- Recuperação Operacional (Boot + Auth + Read + Write): 2124.28 ms
+- RTO Operacional Total Medido: 2155.19 ms
+======================================================
+
+✔ Recuperação Operacional Completa: Backup -> Restauração -> Inicialização -> Operação -> Medições RTO/RPO (2779.3394ms)
+◇ injected env (14) from .env // tip: ⌘ enable debugging { debug: true }
+▶ P0: Backup Operacional Autocontido com Cópia Externa Verificada
+  ✔ 1. Falha com código != 0 e alerta quando BACKUP_EXTERNAL_DIR aponta para destino inexistente (600.977ms)
+  ✔ 2. Sucesso completo com cópia externa de banco, anexos e manifesto SHA-256 verificado (512.8879ms)
+  ✔ 3. Detecção de corrupção ou divergência de hash rejeita a réplica externa (20.3865ms)
+✔ P0: Backup Operacional Autocontido com Cópia Externa Verificada (1287.2691ms)
+▶ P2: Configuração e Validação do Agendador de Tarefas do Windows (Task Scheduler)
+  ✔ 1. Definição XML contém declaração UTF-8, MultipleInstancesPolicy=IgnoreNew e intervalo horário (2.4914ms)
+  ✔ 2. Script gerador produz XML consistente com parâmetros personalizados (0.6061ms)
+  ✔ 3. Documentação SUPERVISAO_WINDOWS.md não atribui anti-sobreposição a /np e documenta IgnoreNew (5.3772ms)
+  ✔ 4. Validação com parser XML real do Windows (.NET XmlReader) no arquivo oficial (1320.0334ms)
+  ✔ 5. Parser XML real valida caminhos complexos contendo "&" e preserva integridade sem corromper entidades (1406.265ms)
+  ✔ 6. Função escapeXml escapa adequadamente todos os caracteres reservados XML (0.4447ms)
+✔ P2: Configuração e Validação do Agendador de Tarefas do Windows (Task Scheduler) (2739.7428ms)
+▶ P1: Supervisor Unificado com Trava Atômica, Recuperação e Port Check
+  ✔ 1. Trava atômica impede duas instâncias simultâneas do supervisor (1847.6871ms)
+  ✔ 2. Detecção de porta ocupada impede nova inicialização (254.854ms)
+  ✔ 3. Recuperação de trava abandonada (PID inativo) (2533.3064ms)
+  ✔ 4. Recuperação do processo filho com retenção contínua da trava do supervisor e bloqueio de concorrência (4424.1853ms)
+✔ P1: Supervisor Unificado com Trava Atômica, Recuperação e Port Check (9080.1624ms)
+ℹ tests 21
+ℹ suites 0
+ℹ pass 21
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 15709.9784

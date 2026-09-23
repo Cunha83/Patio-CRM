@@ -5,7 +5,10 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node --require ./scripts/test-preload.cjs --test --test-concurrency=2 --test-timeout=120000 tests/*.test.cjs",
+    "seed:demo": "node scripts/seedDemoDataset.js --generate",
+    "verify:demo": "node scripts/seedDemoDataset.js --verify",
+    "purge:demo": "node scripts/seedDemoDataset.js --purge"
   },
   "keywords": [],
   "author": "",

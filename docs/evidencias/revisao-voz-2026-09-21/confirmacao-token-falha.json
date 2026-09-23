@@ -1,0 +1,19 @@
+{
+  "pending": true,
+  "failed": {
+    "status": 500,
+    "data": {
+      "error": "AUDIT_FAILURE"
+    }
+  },
+  "retry": {
+    "status": 400,
+    "data": {
+      "success": false,
+      "ok": false,
+      "resposta": "Token já utilizado anteriormente. Ação duplicada rejeitada.",
+      "error": "Token já utilizado anteriormente. Ação duplicada rejeitada."
+    }
+  },
+  "osPreserved": true
+}

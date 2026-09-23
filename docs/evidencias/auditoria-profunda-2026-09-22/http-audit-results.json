@@ -1,0 +1,172 @@
+[
+  {
+    "case": "anonymous",
+    "path": "/api/estado",
+    "status": 401
+  },
+  {
+    "case": "anonymous",
+    "path": "/.env",
+    "status": 401
+  },
+  {
+    "case": "anonymous",
+    "path": "/patio.db",
+    "status": 401
+  },
+  {
+    "case": "anonymous",
+    "path": "/package.json",
+    "status": 401
+  },
+  {
+    "case": "anonymous",
+    "path": "/scripts/supervise_patio.cjs",
+    "status": 401
+  },
+  {
+    "case": "role_read",
+    "role": "tenant_admin",
+    "status": 200,
+    "financialAccounts": 1,
+    "osTotalVisible": true,
+    "servicePriceVisible": true
+  },
+  {
+    "case": "role_read",
+    "role": "atendente",
+    "status": 200,
+    "financialAccounts": 0,
+    "osTotalVisible": false,
+    "servicePriceVisible": false
+  },
+  {
+    "case": "role_read",
+    "role": "mecanico",
+    "status": 200,
+    "financialAccounts": 0,
+    "osTotalVisible": false,
+    "servicePriceVisible": false
+  },
+  {
+    "case": "cross_tenant",
+    "status": 403
+  },
+  {
+    "case": "role_endpoint",
+    "role": "atendente",
+    "path": "/api/backup/listar",
+    "status": 403
+  },
+  {
+    "case": "role_endpoint",
+    "role": "atendente",
+    "path": "/api/financeiro/dashboard",
+    "status": 403
+  },
+  {
+    "case": "role_endpoint",
+    "role": "atendente",
+    "path": "/api/pecas",
+    "status": 403
+  },
+  {
+    "case": "role_endpoint",
+    "role": "mecanico",
+    "path": "/api/backup/listar",
+    "status": 403
+  },
+  {
+    "case": "role_endpoint",
+    "role": "mecanico",
+    "path": "/api/financeiro/dashboard",
+    "status": 403
+  },
+  {
+    "case": "role_endpoint",
+    "role": "mecanico",
+    "path": "/api/pecas",
+    "status": 200
+  },
+  {
+    "case": "mechanic_state_write",
+    "status": 200
+  },
+  {
+    "case": "csrf",
+    "status": 403
+  },
+  {
+    "case": "optimistic_version",
+    "first": 200,
+    "stale": 409
+  },
+  {
+    "case": "mechanic_whatsapp_settings",
+    "status": 200,
+    "secretReturned": false,
+    "stored": false
+  },
+  {
+    "case": "authenticated_read_latency",
+    "samples": 20,
+    "p50": 61.618900000000394,
+    "p95": 80.8771999999999
+  },
+  {
+    "case": "browser_boot",
+    "title": "Pátio — Gestão de Oficina Pesada",
+    "app": true,
+    "nav": true,
+    "errors": []
+  },
+  {
+    "case": "browser_tab",
+    "tab": "operacao",
+    "appTextLength": 8744
+  },
+  {
+    "case": "browser_tab",
+    "tab": "patio",
+    "appTextLength": 2420
+  },
+  {
+    "case": "browser_tab",
+    "tab": "mensagens",
+    "appTextLength": 2198
+  },
+  {
+    "case": "browser_tab",
+    "tab": "painel",
+    "appTextLength": 2198
+  },
+  {
+    "case": "browser_tab",
+    "tab": "estoque",
+    "appTextLength": 2198
+  },
+  {
+    "case": "browser_tab",
+    "tab": "financeiro",
+    "appTextLength": 2198
+  },
+  {
+    "case": "browser_tab",
+    "tab": "relatorios",
+    "appTextLength": 2198
+  },
+  {
+    "case": "browser_tab",
+    "tab": "cadastros",
+    "appTextLength": 2198
+  },
+  {
+    "case": "browser_tab",
+    "tab": "configuracoes",
+    "appTextLength": 2198
+  },
+  {
+    "case": "browser_final_errors",
+    "errors": []
+  }
+]

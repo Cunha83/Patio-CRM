@@ -1,0 +1,10 @@
+{
+  "nextCalled": true,
+  "status": null,
+  "role": "platform_support",
+  "permissions": [
+    "platform:read",
+    "platform:manage",
+    "*"
+  ]
+}

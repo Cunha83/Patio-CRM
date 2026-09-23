@@ -1,0 +1,12 @@
+{
+  "tipo": "IMPLANTACAO_REAL_HOST_OFICINA",
+  "dataExecucao": "2026-09-23T14:08:48.291Z",
+  "host": "AMF01",
+  "nodeVersion": "v24.19.0",
+  "plataforma": "win32 (x64)",
+  "deployDir": "C:\\Users\\AUTOMO~1\\AppData\\Local\\Temp\\patio-preflight-guard-OjWGJD",
+  "externalBackupDir": "C:\\Users\\AutoMolasFort\\PatioCRM_Backups_Externos",
+  "etapas": [],
+  "erroGeral": "INSTALACAO_JA_EXISTE: Destino \"C:\\Users\\AUTOMO~1\\AppData\\Local\\Temp\\patio-preflight-guard-OjWGJD\" já contém uma instalação ativa (detectados: patio.db, .env, public). Implantação abortada antes de qualquer escrita para proteger dados operacionais.",
+  "parecerFinal": "FALHOU"
+}

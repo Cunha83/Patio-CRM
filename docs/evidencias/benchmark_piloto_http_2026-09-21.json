@@ -1,0 +1,91 @@
+{
+  "timestamp": "2026-09-21T19:11:35.949Z",
+  "benchmarkType": "http_concurrency_real_with_verified_ids",
+  "environment": {
+    "nodeVersion": "v24.19.0",
+    "platform": "win32",
+    "arch": "x64"
+  },
+  "workload": {
+    "totalHttpRequests": 130,
+    "successfulRequests": 130,
+    "conflictErrors": 0,
+    "otherErrors": 0,
+    "successRatePercent": 100,
+    "durationSeconds": 1.19,
+    "requestsPerSecond": 108.9
+  },
+  "durabilityAndPersistenceVerification": {
+    "durabilityStatus": "PASSED_100_PERCENT",
+    "immediateChecks": {
+      "fornecedoresFound": 20,
+      "fornecedoresExpected": 20,
+      "frotasFound": 20,
+      "frotasExpected": 20,
+      "pecasFound": 20,
+      "pecasExpected": 20,
+      "apontamentosFound": 10,
+      "apontamentosExpected": 10
+    },
+    "postRestartChecks": {
+      "fornecedoresFound": 20,
+      "fornecedoresExpected": 20,
+      "frotasFound": 20,
+      "frotasExpected": 20,
+      "pecasFound": 20,
+      "pecasExpected": 20,
+      "apontamentosFound": 10,
+      "apontamentosExpected": 10,
+      "allFornecedoresMatch": true,
+      "allFrotasMatch": true,
+      "allPecasMatch": true,
+      "allApontamentosMatch": true
+    },
+    "totalEntitiesCreated": 70,
+    "totalEntitiesPersistedPostRestart": 70,
+    "persistenceIntegrityPercent": 100
+  },
+  "latenciesMs": {
+    "httpWriteDomain": {
+      "samples": 70,
+      "avg": 131.7,
+      "p50": 124.47,
+      "p95": 236.05,
+      "p99": 258.07,
+      "min": 23.54,
+      "max": 258.07
+    },
+    "httpReadState": {
+      "samples": 30,
+      "avg": 46.92,
+      "p50": 46.85,
+      "p95": 78.97,
+      "p99": 80.99,
+      "min": 16.45,
+      "max": 80.99
+    },
+    "httpProbeReady": {
+      "samples": 30,
+      "avg": 302.57,
+      "p50": 303.22,
+      "p95": 326.39,
+      "p99": 328.22,
+      "min": 273.01,
+      "max": 328.22
+    }
+  },
+  "serverProcessMemoryMB": {
+    "initial": {
+      "rss": 86.11,
+      "heapUsed": 17.47,
+      "heapTotal": 34.4
+    },
+    "final": {
+      "rss": 87.73,
+      "heapUsed": 18.59,
+      "heapTotal": 34.81
+    },
+    "deltaRss": 1.62,
+    "deltaHeapUsed": 1.12
+  }
+}

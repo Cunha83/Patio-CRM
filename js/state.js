@@ -1,101 +1,273 @@
-/* =====================================================================
-   PÁTIO CRM — ESTADO CENTRAL, PERSISTÊNCIA & UTILITÁRIOS
-===================================================================== */
-const CHAVE = 'patio_oficina_v1';
+/* Estado central e sincronização com controle de versão multi-tenant. */
+function obterContextoIdentidade() {
+  let tenantId = 'oficina';
+  let userId = 'v1';
+  if (typeof window !== 'undefined') {
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const paramTenant = urlParams.get('tenant') || urlParams.get('tenantId');
+      if (paramTenant) {
+        window.sessionStorage?.setItem('patio_tenant', paramTenant);
+      }
+    } catch (_) {}
+    tenantId = window.__PATIO_TENANT_ID || window.sessionStorage?.getItem('patio_tenant') || 'oficina';
+    userId = window.__PATIO_USER_ID || window.sessionStorage?.getItem('patio_user') || 'v1';
+  }
+  return { tenantId, userId };
+}
+
+const { tenantId: _initTenant, userId: _initUser } = obterContextoIdentidade();
+let CHAVE = (_initTenant === 'oficina' && _initUser === 'v1') ? 'patio_oficina_v1' : `patio_${_initTenant}_${_initUser}_v1`;
+let CHAVE_RASCUNHO = CHAVE + '_pendente';
+
+function atualizarChaveStorage(tenantId = 'oficina', userId = 'v1') {
+  CHAVE = `patio_${tenantId}_${userId}_v1`;
+  CHAVE_RASCUNHO = CHAVE + '_pendente';
+}
+
+function obterHeadersRequisicao(customHeaders = {}) {
+  const headers = { ...customHeaders };
+  if (typeof window !== 'undefined') {
+    const tid = window.__PATIO_TENANT_ID || window.sessionStorage?.getItem('patio_tenant');
+    if (tid && !headers['x-tenant-id']) {
+      headers['x-tenant-id'] = tid;
+    }
+    if (window.__PATIO_TEST_CONSULTA_ADAPTER && !headers['x-test-consulta-adapter']) {
+      headers['x-test-consulta-adapter'] = window.__PATIO_TEST_CONSULTA_ADAPTER;
+    }
+  }
+  return headers;
+}
+
 let S = null;
+if (typeof window !== 'undefined') {
+  Object.defineProperty(window, 'S', {
+    get() { return S; },
+    set(v) { S = v; },
+    configurable: true
+  });
+}
 let salvarTimer = null;
 let folhaAtual = null;
 let confirmando = null;
 let pendingLocalSave = false;
+let localGeneration = 0;
+let saving = false;
 
-// Sistema de Armazenamento Inteligente (API Servidor + LocalStorage Fallback)
+function isPerfilMecanico() {
+  const role = (typeof S !== 'undefined' && S && ((S.user && S.user.role) || S.perfil)) || '';
+  if (role === 'mecanico') return true;
+  if (role && role !== 'mecanico') return false;
+  const perfil = typeof S !== 'undefined' && S && S.ui && S.ui.perfilAtivo;
+  return perfil === 'mecanico';
+}
+if (typeof window !== 'undefined') {
+  window.isPerfilMecanico = isPerfilMecanico;
+}
+
+function cacheRascunho(obj) {
+  try {
+    localStorage.setItem(CHAVE_RASCUNHO, JSON.stringify({ state: obj, base: armazem.base }));
+    return true;
+  } catch (error) {
+    mostrarFalhaSync('Sem espaço para o rascunho local. Mantenha esta página aberta e exporte suas alterações.');
+    return false;
+  }
+}
+
+function mostrarFalhaSync(message) {
+  let banner = document.getElementById('sync-error');
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'sync-error';
+    banner.setAttribute('role', 'alert');
+    banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#fff1d6;color:#582600;padding:12px;box-shadow:0 2px 8px #0003';
+    document.body.appendChild(banner);
+  }
+  banner.replaceChildren();
+  const text = document.createElement('span');
+  text.textContent = message + ' ';
+  banner.appendChild(text);
+  const button = (label, action) => {
+    const b = document.createElement('button');
+    b.textContent = label;
+    b.style.margin = '4px';
+    b.onclick = action;
+    banner.appendChild(b);
+  };
+  button('Tentar salvar', () => salvar());
+  button('Exportar minhas alterações', () => {
+    const url = URL.createObjectURL(new Blob([JSON.stringify(S, null, 2)], { type: 'application/json' }));
+    const a = document.createElement('a');
+    a.href = url; a.download = 'patio-rascunho-pendente.json'; a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  });
+  button('Usar dados do servidor', async () => {
+    if (!window.confirm('Descartar as alterações locais pendentes? Exporte o rascunho antes se precisar mantê-las.')) return;
+    try {
+      const res = await fetch('/api/estado', { headers: obterHeadersRequisicao() });
+      if (!res.ok) throw new Error('Servidor indisponível.');
+      const data = await res.json();
+      if (!data.os) throw new Error('Estado inválido.');
+      clearTimeout(salvarTimer);
+      if (saving) throw new Error('Aguarde a gravação atual terminar.');
+      S = { ...data, ui: S.ui };
+      armazem.base = PatioSync.clone(data);
+      localGeneration++;
+      pendingLocalSave = false;
+      localStorage.setItem(CHAVE, JSON.stringify(S));
+      localStorage.removeItem(CHAVE_RASCUNHO);
+      banner.remove();
+      if (typeof fecharFolha === 'function') fecharFolha();
+      render();
+    } catch (error) { mostrarFalhaSync(error.message); }
+  });
+}
+
 const armazem = {
-  MAX_STORAGE_BYTES: 5 * 1024 * 1024, // 5MB safety limit
+  base: {},
   async ler() {
-    // 1. Tenta sincronizar com o banco central do servidor
+    let draft;
+    try { draft = JSON.parse(localStorage.getItem(CHAVE_RASCUNHO) || 'null'); } catch (_) {}
+    if (draft?.state) {
+      this.base = draft.base || {};
+      pendingLocalSave = true;
+      mostrarFalhaSync('Há alterações pendentes recuperadas deste navegador.');
+      return draft.state;
+    }
     try {
-      const res = await fetch('/api/estado');
-      if (res.ok) {
-        const data = await res.json();
-        if (data && typeof data === 'object' && Object.keys(data).length > 0) {
-          try { localStorage.setItem(CHAVE, JSON.stringify(data)); } catch (_) {}
-          return data;
+      const reqHeaders = obterHeadersRequisicao();
+      const res = Object.keys(reqHeaders).length > 0
+        ? await fetch('/api/estado', { headers: reqHeaders })
+        : await fetch('/api/estado');
+      if (res.status === 401 || res.status === 403) {
+        if (typeof window !== 'undefined' && window.sessionStorage) {
+          window.sessionStorage.removeItem('patio_tenant');
+          window.sessionStorage.removeItem('patio_user');
         }
+        throw new Error('Sessão expirada ou acesso não autorizado (HTTP ' + res.status + ').');
       }
-    } catch (e) {
-      console.warn('[Armazém] Falha ao ler da API do servidor, usando fallback local:', e);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      this.base = PatioSync.clone(data);
+      if (Object.keys(data).length) {
+        try { localStorage.setItem(CHAVE, JSON.stringify(data)); } catch (_) {}
+        return data;
+      }
+      return null;
+    } catch (error) {
+      if (error.message.includes('401') || error.message.includes('403') || error.message.includes('não autorizado')) {
+        return null;
+      }
+      try {
+        const local = JSON.parse(localStorage.getItem(CHAVE) || 'null');
+        this.base = PatioSync.clone(local || {});
+        return local;
+      } catch (_) { return null; }
     }
-    // 2. Fallback para localStorage
-    try {
-      const local = localStorage.getItem(CHAVE);
-      if (local) return JSON.parse(local);
-    } catch (e) {
-      console.warn('Erro ao ler do localStorage:', e);
-    }
-    return null;
   },
   async gravar(obj) {
-    // 1. Envia para o servidor para atualizar o SQLite e sincronizar com todos os aparelhos
-    let apiSuccess = false;
-    try {
+    const original = PatioSync.clone(obj);
+    let candidate = PatioSync.clone(obj);
+    let base = PatioSync.clone(this.base);
+    cacheRascunho(obj);
+    for (let attempt = 0; attempt < 3; attempt++) {
       const res = await fetch('/api/estado', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(obj)
+        headers: obterHeadersRequisicao({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify(candidate)
       });
-      if (res.ok) apiSuccess = true;
-      else throw new Error('HTTP Status ' + res.status);
-    } catch (e) {
-      console.warn('[Armazém] Falha ao enviar estado para o servidor:', e);
-      throw e;
-    }
-    // 2. Grava no cache local do navegador com limite de segurança
-    try {
-      const serialized = JSON.stringify(obj);
-      if (serialized.length > this.MAX_STORAGE_BYTES) {
-        console.error(`[Segurança] Dados excedem limite de ${(this.MAX_STORAGE_BYTES / 1024 / 1024).toFixed(0)}MB.`);
-        return;
+      if (res.status === 401 || res.status === 403) {
+        if (typeof window !== 'undefined' && window.sessionStorage) {
+          window.sessionStorage.removeItem('patio_tenant');
+          window.sessionStorage.removeItem('patio_user');
+        }
+        throw new Error('Sessão expirada ou acesso negado (HTTP ' + res.status + ').');
       }
-      localStorage.setItem(CHAVE, serialized);
-    } catch (e) {
-      console.warn('Erro ao gravar no localStorage:', e);
+      if (res.status === 409) {
+        const reqHeaders = obterHeadersRequisicao();
+        const fresh = Object.keys(reqHeaders).length > 0
+          ? await fetch('/api/estado', { headers: reqHeaders })
+          : await fetch('/api/estado');
+        if (!fresh.ok) throw new Error('Não foi possível atualizar os dados do servidor.');
+        const remote = await fresh.json();
+        const merged = PatioSync.merge(base, candidate, remote);
+        if (merged.conflicts.length) {
+          throw new Error('Conflito de edição em: ' + merged.conflicts.slice(0, 5).join(', ') + '. Seu rascunho foi mantido.');
+        }
+        candidate = merged.state;
+        base = remote;
+        continue;
+      }
+      if (!res.ok) throw new Error('Falha ao salvar (HTTP ' + res.status + '). Suas alterações continuam pendentes.');
+      const result = await res.json();
+      candidate.versao = result.versao;
+      this.base = PatioSync.clone(candidate);
+      // Preserva digitação ocorrida enquanto a requisição estava em andamento.
+      const updated = PatioSync.merge(original, obj, candidate);
+      for (const key of Object.keys(obj)) delete obj[key];
+      Object.assign(obj, updated.state);
+      try { localStorage.setItem(CHAVE, JSON.stringify(candidate)); } catch (_) {}
+      if (updated.conflicts.length) throw new Error('Há novas edições sobre dados conciliados. Confira o rascunho antes de tentar salvar.');
+      return result;
     }
+    throw new Error('Outros operadores estão atualizando os dados. Tente salvar novamente.');
   }
 };
 
 function salvar() {
+  localGeneration++;
+  pendingLocalSave = true;
+  cacheRascunho(S);
   clearTimeout(salvarTimer);
-  const statusEl = document.getElementById('status-salvo');
-  if (statusEl) statusEl.textContent = 'Salvando...';
-  if (typeof pendingLocalSave !== 'undefined') pendingLocalSave = true;
-  salvarTimer = setTimeout(async () => {
-    try {
+  const status = document.getElementById('status-salvo');
+  if (status) status.textContent = 'Salvando...';
+  salvarTimer = setTimeout(flushSave, 300);
+}
+
+async function flushSave() {
+  if (saving || !pendingLocalSave) return;
+  saving = true;
+  try {
+    while (pendingLocalSave) {
+      const generation = localGeneration;
       await armazem.gravar(S);
-      if (statusEl) {
-        statusEl.textContent = '● Salvo';
-        setTimeout(() => { if (statusEl) statusEl.textContent = ''; }, 2000);
-      }
-    } catch (e) {
-      if (statusEl) {
-        statusEl.textContent = '⚠️ Erro ao salvar';
-        statusEl.style.color = 'var(--tijolo)';
-        setTimeout(() => { if (statusEl) statusEl.textContent = ''; }, 3000);
-      }
-    } finally {
-      if (typeof pendingLocalSave !== 'undefined') pendingLocalSave = false;
+      if (generation !== localGeneration) { cacheRascunho(S); continue; }
+      pendingLocalSave = false;
+      localStorage.removeItem(CHAVE_RASCUNHO);
+      document.getElementById('sync-error')?.remove();
+      const status = document.getElementById('status-salvo');
+      if (status) status.textContent = '● Salvo';
     }
-  }, 300);
+  } catch (error) {
+    pendingLocalSave = true;
+    cacheRascunho(S);
+    mostrarFalhaSync(error.message);
+  } finally { saving = false; }
+}
+if (typeof window !== 'undefined') {
+  window.addEventListener('online', () => { if (pendingLocalSave) flushSave(); });
+  window.addEventListener('beforeunload', event => {
+    if (!pendingLocalSave) return;
+    cacheRascunho(S);
+    event.preventDefault(); event.returnValue = '';
+  });
 }
 
 /* ---------------- Utilitários Gerais ---------------- */
 // Crypto-safe unique ID generator (replaces Math.random)
 const uid = (p = 'id') => {
-  if (window.crypto && window.crypto.getRandomValues) {
+  if (typeof window !== 'undefined' && window.crypto && window.crypto.getRandomValues) {
     const arr = new Uint8Array(7);
     window.crypto.getRandomValues(arr);
     return p + '_' + Array.from(arr, b => b.toString(36).padStart(2, '0')).join('').slice(0, 9);
   }
-  // Fallback (should never hit in modern browsers)
+  if (typeof globalThis !== 'undefined' && globalThis.crypto && globalThis.crypto.getRandomValues) {
+    const arr = new Uint8Array(7);
+    globalThis.crypto.getRandomValues(arr);
+    return p + '_' + Array.from(arr, b => b.toString(36).padStart(2, '0')).join('').slice(0, 9);
+  }
+  // Fallback (should never hit in modern environments)
   return p + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 };
 
@@ -115,13 +287,77 @@ function apiThrottle(key, cooldownMs = 2000) {
   _apiThrottles[key] = now;
   return true;
 }
-const brl = (n) => (Number(n) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-const brlCurto = (n) => {
-  n = Number(n) || 0;
-  return Math.abs(n) >= 1000
-    ? 'R$ ' + (n / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + 'k'
-    : brl(n);
-};
+function isValidMoney(val) {
+  if (val === null || val === undefined) return false;
+  if (typeof val === 'boolean') return false;
+  if (Array.isArray(val)) return false;
+  if (typeof val === 'object') return false;
+  if (typeof val === 'number') return Number.isFinite(val);
+  if (typeof val === 'string') {
+    const s = val.trim();
+    if (!s) return false;
+    const limpo = s.replace(/^R\$\s*/i, '').replace(/\s+/g, '');
+    if (!limpo) return false;
+    const isPtBrWithThousands = /^[-+]?\d{1,3}(\.\d{3})+(,\d+)?$/.test(limpo);
+    const isPtBrDecimal = /^[-+]?\d+,\d+$/.test(limpo);
+    const isCanonicalNumber = /^[-+]?\d+(\.\d+)?$/.test(limpo);
+    return isPtBrWithThousands || isPtBrDecimal || isCanonicalNumber;
+  }
+  return false;
+}
+
+function parseBRL(val) {
+  if (typeof val === 'number') return Number.isFinite(val) ? val : 0;
+  if (!isValidMoney(val)) return 0;
+  const s = String(val).trim().replace(/^R\$\s*/i, '').replace(/\s+/g, '');
+  if (s.includes(',')) {
+    const numStr = s.replace(/\./g, '').replace(',', '.');
+    const n = parseFloat(numStr);
+    return Number.isFinite(n) ? n : 0;
+  }
+  const dotCount = (s.match(/\./g) || []).length;
+  if (dotCount > 1) {
+    const n = parseFloat(s.replace(/\./g, ''));
+    return Number.isFinite(n) ? n : 0;
+  }
+  if (dotCount === 1) {
+    if (/^[-+]?\d{1,3}\.\d{3}$/.test(s)) {
+      const n = parseFloat(s.replace(/\./g, ''));
+      return Number.isFinite(n) ? n : 0;
+    }
+    const n = parseFloat(s);
+    return Number.isFinite(n) ? n : 0;
+  }
+  const n = parseFloat(s);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function brl(n) {
+  const num = parseBRL(n);
+  return num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+
+function brlCurto(n) {
+  const num = parseBRL(n);
+  return Math.abs(num) >= 1000
+    ? 'R$ ' + (num / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + 'k'
+    : brl(num);
+}
+
+if (typeof window !== 'undefined') {
+  window.isValidMoney = isValidMoney;
+  window.parseBRL = parseBRL;
+  window.brl = brl;
+  window.brlCurto = brlCurto;
+  window.formatBRL = brl;
+}
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports.isValidMoney = isValidMoney;
+  module.exports.parseBRL = parseBRL;
+  module.exports.brl = brl;
+  module.exports.brlCurto = brlCurto;
+  module.exports.formatBRL = brl;
+}
 const hoje = () => new Date().toISOString().slice(0, 10);
 const dataBR = (d) => (d ? d.slice(8, 10) + '/' + d.slice(5, 7) : '');
 const dataBRfull = (d) => (d ? d.slice(8, 10) + '/' + d.slice(5, 7) + '/' + d.slice(0, 4) : '');
@@ -195,6 +431,22 @@ function sementes() {
       bancoNome: 'Banco do Brasil (Ag: 1234-5 / CC: 56789-0)',
       garantiaMeses: 3,
       termoGarantia: 'Garantia de 90 dias para serviços mecânicos e peças aplicadas com defeito de fabricação.',
+      assistente: {
+        displayName: 'Verônica',
+        voiceGender: 'female',
+        voiceURI: '',
+        voiceName: '',
+        pitch: 1.0,
+        rate: 1.0,
+        enabled: true,
+        briefingDiarioAtivo: false,
+        briefingDiarioHorario: '07:30',
+        briefingDiarioDias: ['segunda', 'terca', 'quarta', 'quinta', 'sexta'],
+        briefingSemanalAtivo: false,
+        briefingSemanalDia: 'segunda',
+        briefingSemanalHorario: '08:00',
+        briefingDestinatarios: 'gestores'
+      },
       apibrasil: { deviceToken: '', bearerToken: '' },
       regimeTributario: 'Simples Nacional',
       ie: '123.456.789.000',

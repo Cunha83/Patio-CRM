@@ -1,0 +1,77 @@
+[
+  {
+    "route": "/api/frotas",
+    "attempts": 20,
+    "http200": 20,
+    "reportedSuccess": 20,
+    "persisted": 20
+  },
+  {
+    "route": "/api/fornecedores",
+    "attempts": 20,
+    "http200": 20,
+    "reportedSuccess": 20,
+    "persisted": 20
+  },
+  {
+    "route": "/api/comando-voz",
+    "attempts": 20,
+    "http200": 20,
+    "reportedSuccess": 20,
+    "actions": [
+      "abrir_os"
+    ],
+    "returnedUniqueOsIds": 20,
+    "persistedOs": 1,
+    "matchedIds": 1,
+    "firstResponse": {
+      "status": 200,
+      "data": {
+        "success": true,
+        "ok": true,
+        "acao": "abrir_os",
+        "osId": "os_1790010257386_7f4c13",
+        "numOS": 1041,
+        "veiculoId": "v_1790010257383_ba6907",
+        "clienteId": "c_1790010257383_0bec3f",
+        "preOSId": "pre_1790010257386_807143",
+        "possivelGarantia": false,
+        "resposta": "Certo, registrei a entrada do Onix Branco do cliente cliente0.",
+        "interpretado": {
+          "intencao": "abrir_os",
+          "risco": "baixo",
+          "cliente": {
+            "nome": "cliente0",
+            "fone": ""
+          },
+          "veiculo": {
+            "marca": "Chevrolet",
+            "modelo": "Onix",
+            "ano": "2021",
+            "cor": "Branco",
+            "km": 82000,
+            "placa": "NCO2021",
+            "tipo": "Passeio"
+          },
+          "os": {
+            "box": null,
+            "km": 82000,
+            "reclamacoes": [
+              "Quando freia, faz um barulho na roda dianteira direita",
+              "Volante tá vibrando"
+            ]
+          },
+          "correcoes": [],
+          "itens_solicitados": {
+            "servicos": [],
+            "pecas": []
+          },
+          "resposta_falada": "Certo, registrei a entrada do Onix Branco do cliente cliente0."
+        },
+        "novoEstado": {
+          "versao": 1790010257351
+        }
+      }
+    }
+  }
+]

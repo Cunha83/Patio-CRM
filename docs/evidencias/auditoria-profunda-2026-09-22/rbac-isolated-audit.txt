@@ -1,0 +1,15 @@
+▶ P0: Auditoria Rigorosa de Credenciais e Permissões RBAC dos Operadores
+  ✔ 1. Senhas de exemplo antigas são estritamente rejeitadas (533.6213ms)
+  ✔ 2. Todas as novas credenciais definitivas autenticam com sucesso (200 OK) (220.7321ms)
+  ✔ 3. Gestor (tenant_admin) possui permissões administrativas e financeiras integrais (79.0876ms)
+  ✔ 4. Atendente possui permissão de leitura/escrita de OS, mas bloqueio a gestão de backups (132.8238ms)
+  ✔ 5. Mecânico possui blindagem financeira ativa no payload (67.3257ms)
+✔ P0: Auditoria Rigorosa de Credenciais e Permissões RBAC dos Operadores (1420.7486ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1777.5931

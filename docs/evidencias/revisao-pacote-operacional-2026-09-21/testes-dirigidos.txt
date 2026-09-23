@@ -1,0 +1,23 @@
+▶ P1: Validação de Instalação Limpa a Partir do Manifesto de Release
+  ✔ 1. Todos os arquivos mapeados conferem SHA-256 no repositório (513.8755ms)
+  ✔ 2. Instalação em diretório limpo e verificação de sintaxe (2301.8648ms)
+✔ P1: Validação de Instalação Limpa a Partir do Manifesto de Release (2951.202ms)
+◇ injected env (14) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+▶ P0: Backup Operacional Autocontido com Cópia Externa Verificada
+  ✔ 1. Falha com código != 0 e alerta quando BACKUP_EXTERNAL_DIR aponta para destino inexistente (1862.3734ms)
+  ✔ 2. Sucesso completo com cópia externa de banco, anexos e manifesto SHA-256 verificado (818.678ms)
+  ✔ 3. Detecção de corrupção ou divergência de hash rejeita a réplica externa (16.2848ms)
+✔ P0: Backup Operacional Autocontido com Cópia Externa Verificada (3016.5243ms)
+▶ P1: Supervisor Unificado com Trava Atômica, Recuperação e Port Check
+  ✔ 1. Trava atômica impede duas instâncias simultâneas do supervisor (1558.6232ms)
+  ✔ 2. Detecção de porta ocupada impede nova inicialização (522.1051ms)
+  ✔ 3. Recuperação de trava abandonada (PID inativo) (2536.3819ms)
+✔ P1: Supervisor Unificado com Trava Atômica, Recuperação e Port Check (4630.8477ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 9036.9473

@@ -1,0 +1,28 @@
+{
+  "totalOperations": 100,
+  "successes": 100,
+  "conflicts": 0,
+  "errors": 0,
+  "totalDurationMs": 2040.54,
+  "throughputOpsPerSec": 49.01,
+  "readMetricsMs": {
+    "p50": 0.83,
+    "p95": 4.95,
+    "min": 0.11,
+    "max": 5.55,
+    "avg": 1.1
+  },
+  "writeMetricsMs": {
+    "p50": 37.8,
+    "p95": 91.35,
+    "min": 5.44,
+    "max": 1393.14,
+    "avg": 53.39
+  },
+  "averagePayloadKb": 4.78,
+  "memoryMb": {
+    "rssDeltaMb": 3.89,
+    "heapUsedDeltaMb": 1.93,
+    "finalHeapUsedMb": 7.51
+  }
+}

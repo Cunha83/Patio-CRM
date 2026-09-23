@@ -2,6 +2,17 @@
    PÁTIO CRM — MÓDULO DE PÁTIO, BOXES & ORDENS DE SERVIÇO (OS)
 ===================================================================== */
 
+function isPerfilMecanico() {
+  const role = (typeof S !== 'undefined' && S && ((S.user && S.user.role) || S.perfil)) || '';
+  if (role === 'mecanico') return true;
+  if (role && role !== 'mecanico') return false;
+  const perfil = typeof S !== 'undefined' && S && S.ui && S.ui.perfilAtivo;
+  return perfil === 'mecanico';
+}
+if (typeof window !== 'undefined') {
+  window.isPerfilMecanico = isPerfilMecanico;
+}
+
 function viewPatio() {
   const osLista = S.os || [];
   const filtro = S.ui.filtro || 'todos';
@@ -132,9 +143,10 @@ function cardOS(o, b) {
         <small>${esc(b ? (b.tipo || 'Geral') : 'Livre')}</small>
       </div>
       <div style="min-width:0;flex:1">
-        <div style="display:flex;align-items:center;gap:6px">
-          <span class="placa">${esc(v.placa)}</span>
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+          <span class="placa" style="color:#000000;font-weight:bold">${esc(v.placa)}</span>
           <span class="selo" data-st="${o.st}">${stInfo.r}</span>
+          ${(o.pendenciaCadastral || v.pendenciaCadastral || v.placa === 'SEM-PLACA') ? '<span class="selo" style="background:#fff3cd;color:#856404;border:1px solid #ffeeba;font-size:10px" title="Pendência Cadastral: Placa não confirmada">⚠️ Placa Pendente</span>' : ''}
         </div>
         <div class="modelo">${esc(v.marca ? v.marca + ' ' : '')}${esc(v.modelo)}</div>
         <div class="cliente" title="${esc(c.nome)}">${esc(c.fantasia || c.nome)}</div>
@@ -147,7 +159,7 @@ function cardOS(o, b) {
       <span class="mini" style="display:flex;align-items:center;gap:4px">
         ${ico('relogio', 12)} OS ${o.num} · ${qtdItens} itens
       </span>
-      <div class="val">${brl(total)}</div>
+      ${!isPerfilMecanico() ? `<div class="val">${brl(total)}</div>` : ''}
     </div>
 
     <!-- Controle Rápido de Status e Alocação de Box -->
@@ -212,15 +224,20 @@ function folhaOS() {
   const cabecalho = `
   <div class="entre" style="border-bottom:1px solid var(--aco-150);padding-bottom:12px;margin-bottom:14px">
     <div>
-      <div style="display:flex;align-items:center;gap:8px">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
         <h2 style="font-size:18px;font-weight:700">OS ${o.num} — <span class="placa">${esc(v.placa)}</span></h2>
         <span class="selo" data-st="${o.st}">${ST[o.st].r}</span>
+        ${(o.pendenciaCadastral || v.pendenciaCadastral || v.placa === 'SEM-PLACA') ? '<span class="selo" style="background:#fff3cd;color:#856404;border:1px solid #ffeeba;" title="Pendência Cadastral: Placa não confirmada">⚠️ Placa Pendente</span>' : ''}
       </div>
       <div class="mini" style="margin-top:4px">
         ${esc(v.marca ? v.marca + ' ' : '')}${esc(v.modelo)} · Cliente: <b>${esc(c.nome)}</b> · ${esc(b.nome)}
       </div>
     </div>
-    <div style="display:flex;gap:6px">
+    <div style="display:flex;gap:6px;align-items:center">
+      <label class="btn btn-secundario" style="cursor:pointer;margin:0;font-size:12px;padding:5px 10px;display:flex;align-items:center;gap:4px" title="Anexar foto da placa para conciliação automática">
+        📷 Foto Placa
+        <input type="file" accept="image/*" data-act="upload-foto-os" data-os="${o.id}" style="display:none">
+      </label>
       <button class="btn btn-secundario" data-act="imprimir-os" title="Imprimir Ordem de Serviço">${ico('imprimir', 14)} Imprimir</button>
       <button class="btn btn-secundario" data-act="copiar-orc" title="Copiar orçamento para WhatsApp">${ico('copiar', 14)} WhatsApp</button>
       <button class="btn btn-perigo" data-act="excluir-os" title="Excluir OS">${ico('lixo', 14)}</button>
@@ -228,9 +245,27 @@ function folhaOS() {
     </div>
   </div>`;
 
+  const bannerPendencia = (o.pendenciaCadastral || v.pendenciaCadastral || v.placa === 'SEM-PLACA') ? `
+  <div style="background:#fff3cd;border:1px solid #ffeeba;border-radius:8px;padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+    <div style="display:flex;align-items:center;gap:10px">
+      <span style="font-size:22px">⚠️</span>
+      <div>
+        <div style="font-weight:700;color:#856404;font-size:13px">Pendência Cadastral: Placa não identificada</div>
+        <div style="font-size:12px;color:#856404">A OS está operando normalmente (<b>${ST[o.st].r}</b>). Anexe a foto da placa para conciliação automática com IA/OCR.</div>
+      </div>
+    </div>
+    <div>
+      <label class="btn btn-primario" style="cursor:pointer;margin:0;font-size:12px;padding:6px 14px;display:inline-flex;align-items:center;gap:6px">
+        📷 Anexar Foto da Placa
+        <input type="file" accept="image/*" data-act="upload-foto-os" data-os="${o.id}" style="display:none">
+      </label>
+    </div>
+  </div>` : '';
+
   const tabs = [
     ['servicos', 'Serviços & Mão de Obra (' + (o.servicos ? o.servicos.length : 0) + ')'],
     ['pecas', 'Peças Aplicadas (' + (o.pecas ? o.pecas.length : 0) + ')'],
+    ['inspecao', isPerfilMecanico() ? 'Inspeção Técnica' : 'Inspeção & Orçamento'],
     ['ficha', 'Ficha & Diagnóstico'],
     ['historico', 'Histórico do Veículo']
   ];
@@ -245,6 +280,7 @@ function folhaOS() {
   let conteudoAba = '';
   if (aba === 'servicos') conteudoAba = abaItens(o, 'servicos');
   else if (aba === 'pecas') conteudoAba = abaItens(o, 'pecas');
+  else if (aba === 'inspecao') conteudoAba = abaInspecaoOrcamento(o, v, c);
   else if (aba === 'ficha') conteudoAba = abaFicha(o, v, c, b);
   else conteudoAba = abaHistoricoVeiculo(v);
 
@@ -252,6 +288,7 @@ function folhaOS() {
   const rodapeHtml = `
   <div class="os-rodape-fixo" style="margin-top:18px;padding-top:14px;border-top:1px solid var(--aco-150);background:var(--branco);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
     <div style="display:flex;gap:12px;align-items:center">
+      ${!isPerfilMecanico() ? `
       <div>
         <div class="mini">Mão de Obra: <b>${brl(totServ)}</b> · Peças: <b>${brl(totPec)}</b></div>
         <div style="font-size:18px;font-weight:700;color:var(--aco-900)">Total: ${brl(total)}</div>
@@ -260,6 +297,12 @@ function folhaOS() {
         <label class="mini" style="font-weight:600">Desconto (R$):</label>
         <input type="number" class="campo-texto" style="width:90px;height:30px;font-size:13px" value="${o.desc || 0}" data-act="campo-os" data-c="desc" min="0" step="10">
       </div>
+      ` : `
+      <div>
+        <div class="mini">Itens da OS: <b>${(o.servicos || []).length} serviços</b> · <b>${(o.pecas || []).length} peças</b></div>
+        <div style="font-size:14px;font-weight:700;color:var(--aco-700)">Execução Técnica de Oficina</div>
+      </div>
+      `}
     </div>
 
     <div style="display:flex;gap:8px;align-items:center">
@@ -271,17 +314,17 @@ function folhaOS() {
         <option value="finalizada" ${o.st === 'finalizada' ? 'selected' : ''}>Finalizada</option>
       </select>
 
-      ${o.st !== 'finalizada' ? `
+      ${!isPerfilMecanico() ? (o.st !== 'finalizada' ? `
         <button class="btn btn-sucesso" data-act="faturar-os-modal" style="height:34px;padding:0 16px;font-weight:600">
           ${ico('check', 14)} Faturar & Entregar
         </button>
       ` : `
         <span class="selo selo-finalizada" style="font-size:13px;padding:6px 12px">OS Faturada / Finalizada</span>
-      `}
+      `) : ''}
     </div>
   </div>`;
 
-  return `<div class="folha-os-container">${cabecalho}${abasHtml}${conteudoAba}${rodapeHtml}</div>`;
+  return `<div class="folha-os-container">${cabecalho}${bannerPendencia}${abasHtml}${conteudoAba}${rodapeHtml}</div>`;
 }
 
 function abaItens(o, tipo) {
@@ -306,8 +349,10 @@ function abaItens(o, tipo) {
         <tr>
           <th>Descrição</th>
           <th style="width:90px;text-align:center">Qtd</th>
+          ${!isPerfilMecanico() ? `
           <th style="width:120px;text-align:right">Valor Unit.</th>
           <th style="width:120px;text-align:right">Subtotal</th>
+          ` : ''}
           <th style="width:50px"></th>
         </tr>
       </thead>
@@ -315,7 +360,24 @@ function abaItens(o, tipo) {
         ${itens.length ? itens.map(item => `
           <tr>
             <td>
-              <div style="font-weight:600;color:var(--aco-900)">${esc(item.nome)}</div>
+              <div style="font-weight:600;color:var(--aco-900);display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+                <span>${esc(item.nome)}</span>
+                ${item.autorizado ? ' <span class="selo" style="background:#def7ec;color:#03543f;font-size:10px;padding:2px 6px">AUTORIZADO</span>' : ''}
+                ${isPeca ? `
+                  <span class="selo" style="${
+                    (item.st === 'consumida' || item.status === 'consumida') ? 'background:#def7ec;color:#03543f' :
+                    (item.st === 'reservada' || item.status === 'reservada') ? 'background:#e1effe;color:#1e429f' :
+                    (item.st === 'comprada' || item.status === 'comprada') ? 'background:#fef08a;color:#854d0e' :
+                    (item.st === 'aguardando_compra' || item.status === 'aguardando_compra') ? 'background:#feecdc;color:#b43403' :
+                    'background:var(--aco-100);color:var(--aco-700)'
+                  };font-size:10px;padding:2px 6px">
+                    ${(item.st || item.status || 'SOLICITADA').toUpperCase().replace('_', ' ')}
+                  </span>
+                  ${(item.st === 'reservada' || item.status === 'reservada') ? `
+                    <button class="btn-micro" data-act="consumir-peca-os" data-peca-id="${esc(item.pecaId || item.id)}" data-item-id="${esc(item.id)}" style="background:var(--verde);color:#fff;padding:2px 6px;font-size:10px" title="Consumir / Aplicar no Veículo">Consumir</button>
+                  ` : ''}
+                ` : ''}
+              </div>
               ${item.cod ? `<div class="mini">Cód: ${esc(item.cod)}</div>` : ''}
             </td>
             <td style="text-align:center">
@@ -325,26 +387,37 @@ function abaItens(o, tipo) {
                 <button class="btn-micro" data-act="qtd" data-t="${tipo}" data-i="${item.id}" data-d="1">+</button>
               </div>
             </td>
+            ${!isPerfilMecanico() ? `
             <td style="text-align:right">
               <input type="number" class="campo-texto" style="width:95px;text-align:right;height:28px;font-size:13px" value="${item.valor}" data-act="val-item" data-t="${tipo}" data-i="${item.id}" step="0.50">
             </td>
             <td style="text-align:right;font-weight:600" class="num">
               ${brl(item.qtd * item.valor)}
             </td>
+            ` : ''}
             <td style="text-align:center">
               <button class="btn-icone-perigo" data-act="rm-item" data-t="${tipo}" data-i="${item.id}" title="Remover item">${ico('lixo', 14)}</button>
             </td>
           </tr>
         `).join('') : `
           <tr>
-            <td colspan="5" style="text-align:center;color:var(--aco-400);padding:24px">
+            <td colspan="${isPerfilMecanico() ? 3 : 5}" style="text-align:center;color:var(--aco-400);padding:24px">
               Nenhum ${isPeca ? 'peça lançada' : 'serviço lançado'} nesta OS.
             </td>
           </tr>
         `}
       </tbody>
     </table>
-  </div>`;
+  </div>
+  ${(o.itensRecusados && o.itensRecusados.length) ? `
+    <div style="margin-top:14px;background:#fde8e8;border:1px solid #fbd5d5;border-radius:6px;padding:10px 14px">
+      <div style="font-weight:700;color:#9b1c1c;font-size:13px">⚠️ Itens NÃO Autorizados pelo Cliente (Recusados)</div>
+      <div class="mini" style="color:#9b1c1c;margin-top:2px">Estes serviços/peças foram expressamente recusados na aprovação do orçamento e NÃO devem ser executados pelo mecânico:</div>
+      <ul style="margin:6px 0 0 16px;font-size:12.5px;color:#9b1c1c">
+        ${o.itensRecusados.map(r => `<li><b>${esc(r.nome)}</b> (${r.tipo === 'peca' ? 'Peça' : 'Serviço'}) — ${esc(r.motivoRecusa || 'Dispensado')}</li>`).join('')}
+      </ul>
+    </div>
+  ` : ''}`;
 }
 
 function painelPicker(o, tipo) {
@@ -375,7 +448,7 @@ function painelPicker(o, tipo) {
             <div class="mini">${isPeca ? `Cód: ${esc(item.cod)} · Estoque: <b>${item.qtd} ${item.un}</b> · ${esc(item.loc || '—')}` : `Tempo est.: ${item.horas}h`}</div>
           </div>
           <div style="display:flex;align-items:center;gap:8px">
-            <span class="num" style="font-weight:600">${brl(isPeca ? item.venda : item.valor)}</span>
+            ${!isPerfilMecanico() ? `<span class="num" style="font-weight:600">${brl(isPeca ? item.venda : item.valor)}</span>` : ''}
             <button class="btn btn-primario" data-act="add-item" data-t="${tipo}" data-r="${item.id}" style="padding:3px 10px;font-size:12px">
               ${ico('mais', 12)} Inserir
             </button>
@@ -461,19 +534,164 @@ function abaHistoricoVeiculo(v) {
             Serviços: ${(pass.servicos || []).map(s => esc(s.nome)).join(', ') || 'Nenhum'} | 
             Peças: ${(pass.pecas || []).map(p => esc(p.nome)).join(', ') || 'Nenhuma'}
           </div>
+          ${!isPerfilMecanico() ? `
           <div class="num" style="font-weight:700;font-size:13px;margin-top:4px;color:var(--aco-900)">
             Valor Total: ${brl(totOS(pass))}
           </div>
+          ` : ''}
         </div>
       `).join('')}
     </div>
   </div>`;
 }
 
+function abaInspecaoOrcamento(o, v, c) {
+  const inspecoes = (S.inspections || []).filter(i => i.osId === o.id || i.id === o.inspectionId);
+  const orcamentos = (S.quotations || []).filter(q => q.osId === o.id || q.id === o.quotationId);
+
+  const orcAtual = orcamentos[0] || null;
+  const inspAtual = inspecoes[0] || null;
+
+  return `
+  <div class="card card-p" style="margin-bottom:14px">
+    <div class="entre" style="margin-bottom:12px;border-bottom:1px solid var(--aco-150);padding-bottom:10px">
+      <div>
+        <div style="font-weight:700;font-size:15px">🔍 Inspeção Técnica & Diagnóstico Físico</div>
+        <div class="mini">Validação obrigatória por mecânico credenciado com registro de fotos e laudos</div>
+      </div>
+      <div>
+        <span class="selo" style="${inspAtual ? 'background:#def7ec;color:#03543f' : 'background:#fef08a;color:#713f12'}">
+          ${inspAtual ? (inspAtual.status === 'concluida' ? 'Inspeção Concluída' : 'Em Inspeção') : 'Não Iniciada'}
+        </span>
+      </div>
+    </div>
+
+    ${inspAtual ? `
+      <div style="margin-bottom:12px">
+        ${inspAtual.laudoGeral ? `<div style="font-size:13px;margin-bottom:8px"><b>Laudo Geral:</b> ${esc(inspAtual.laudoGeral)}</div>` : ''}
+        <div style="display:flex;flex-direction:column;gap:8px">
+          ${(inspAtual.items || []).map(item => `
+            <div style="border:1px solid var(--aco-150);border-radius:6px;padding:10px;background:var(--aco-50)">
+              <div class="entre">
+                <span style="font-weight:600;font-size:13.5px">${esc(item.componente)} <span class="mini">(${esc(item.categoria)})</span></span>
+                <span class="selo ${item.severidade === 'critico' ? 'selo-perigo' : 'selo-alerta'}">${esc(item.condicao)} • ${esc(item.severidade)}</span>
+              </div>
+              <div class="mini" style="margin-top:4px">${esc(item.descricao || item.observacoes || 'Sem observações adicionais.')}</div>
+              ${item.diagnostico && item.diagnostico.confirmado ? `
+                <div style="margin-top:6px;font-size:12px;color:var(--verde-700)">
+                  👨‍🔧 <b>Diagnóstico Confirmado por:</b> ${esc(item.diagnostico.confirmadoPor)} (${dataBRfull(item.diagnostico.confirmadoEm)})
+                  <div style="font-style:italic">"${esc(item.diagnostico.laudo)}"</div>
+                </div>
+              ` : `
+                <div style="margin-top:6px;font-size:12px;color:var(--amarelo-700)">
+                  ⚠️ Aguardando validação presencial do mecânico responsável.
+                </div>
+              `}
+              ${item.fotos && item.fotos.length ? `
+                <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">
+                  ${item.fotos.map(f => `<img src="${f.fotoBase64 || f.url}" style="width:60px;height:45px;object-fit:cover;border-radius:4px;border:1px solid var(--aco-200)">`).join('')}
+                </div>
+              ` : ''}
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    ` : `
+      <div style="padding:16px;text-align:center;color:var(--aco-500);font-size:13px">
+        Nenhuma inspeção formal vinculada a esta OS até o momento.
+      </div>
+    `}
+  </div>
+
+  ${!isPerfilMecanico() ? `
+  <div class="card card-p">
+    <div class="entre" style="margin-bottom:12px;border-bottom:1px solid var(--aco-150);padding-bottom:10px">
+      <div>
+        <div style="font-weight:700;font-size:15px">💰 Orçamento Comercial & Aprovação Digital</div>
+        <div class="mini">Valoração, versionamento e link seguro de autorização para o cliente</div>
+      </div>
+      <div>
+        ${orcAtual ? `
+          <span class="selo" style="font-weight:700">
+            ${esc(orcAtual.codigo)} (${esc(orcAtual.status)})
+          </span>
+        ` : '<span class="selo">Sem Orçamento Ativo</span>'}
+      </div>
+    </div>
+
+    ${orcAtual ? `
+      <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(140px, 1fr));gap:10px;margin-bottom:14px">
+        <div style="padding:8px;background:var(--aco-50);border-radius:6px">
+          <div class="mini">Subtotal Mão de Obra</div>
+          <div style="font-size:15px;font-weight:700">${brl(orcAtual.subtotalServicos)}</div>
+        </div>
+        <div style="padding:8px;background:var(--aco-50);border-radius:6px">
+          <div class="mini">Subtotal Peças</div>
+          <div style="font-size:15px;font-weight:700">${brl(orcAtual.subtotalPecas)}</div>
+        </div>
+        <div style="padding:8px;background:var(--aco-50);border-radius:6px">
+          <div class="mini">Total Geral Proposto</div>
+          <div style="font-size:15px;font-weight:700">${brl(orcAtual.totalGeral)}</div>
+        </div>
+        <div style="padding:8px;background:#def7ec;border-radius:6px">
+          <div class="mini" style="color:#03543f">Total Autorizado Cliente</div>
+          <div style="font-size:16px;font-weight:700;color:#03543f">${brl(orcAtual.totalAprovado || 0)}</div>
+        </div>
+      </div>
+
+      <div style="margin-bottom:14px">
+        <div style="font-size:13px;font-weight:600;margin-bottom:6px">Itens do Orçamento:</div>
+        <table class="tabela">
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th style="width:70px;text-align:center">Tipo</th>
+              <th style="width:70px;text-align:center">Qtd</th>
+              <th style="width:100px;text-align:right">Subtotal</th>
+              <th style="width:130px;text-align:center">Decisão Cliente</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${(orcAtual.itens || []).map(it => `
+              <tr>
+                <td><b>${esc(it.nome)}</b></td>
+                <td style="text-align:center"><span class="mini">${it.tipo === 'peca' ? 'Peça' : 'Serviço'}</span></td>
+                <td style="text-align:center">${it.quantidade}</td>
+                <td style="text-align:right">${brl(it.valorTotal)}</td>
+                <td style="text-align:center">
+                  ${it.status === 'aprovado' 
+                    ? '<span class="selo" style="background:#def7ec;color:#03543f;font-weight:600">✅ AUTORIZADO</span>' 
+                    : (it.status === 'recusado' 
+                      ? '<span class="selo" style="background:#fde8e8;color:#9b1c1c;font-weight:600">❌ RECUSADO</span>' 
+                      : '<span class="selo" style="background:#fef08a;color:#713f12">⏳ PENDENTE</span>')}
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    ` : `
+      <div style="padding:16px;text-align:center;color:var(--aco-500);font-size:13px">
+        Nenhum orçamento gerado para esta OS ainda.
+      </div>
+    `}
+  </div>` : ''}
+</div>`;
+}
+
 /* =====================================================================
    MODAL DE FATURAMENTO / CHECKOUT DA OS COM BAIXA DE ESTOQUE
 ===================================================================== */
 function folhaFaturarOS() {
+  if (isPerfilMecanico()) {
+    return `
+    <div class="card card-p" style="max-width:500px;margin:0 auto;text-align:center;padding:32px 20px">
+      <div style="font-size:36px;margin-bottom:12px">🔒</div>
+      <h3 style="font-size:18px;font-weight:700;color:var(--aco-800)">Acesso Restrito</h3>
+      <p style="color:var(--aco-500);font-size:13px;margin:10px 0 20px">O perfil técnico Mecânico não possui permissão para faturamento, emissão de cobrança ou visualização de valores financeiros.</p>
+      <button class="btn btn-secundario" data-act="fechar" style="padding:0 20px;height:36px">Fechar</button>
+    </div>`;
+  }
   const o = OSatual();
   if (!o) return '<div class="card card-p">Nenhuma OS selecionada.</div>';
 
@@ -615,6 +833,7 @@ function imprimirOS(o) {
 
   const v = V(o.vei), c = C(o.cli);
   const cfg = S.cfg;
+  const isMec = isPerfilMecanico();
   const total = totOS(o);
   const totServ = soma(o.servicos, i => (i.qtd || 1) * (i.valor || 0));
   const totPec = soma(o.pecas, i => (i.qtd || 1) * (i.valor || 0));
@@ -630,7 +849,7 @@ function imprimirOS(o) {
   <html lang="pt-BR">
   <head>
     <meta charset="utf-8">
-    <title>OS ${o.num} — ${cfg.empresa}</title>
+    <title>OS ${esc(o.num)} — ${esc(cfg.empresa)}</title>
     <style>
       body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; font-size: 13px; color: #1e293b; padding: 20px; max-width: 800px; margin: 0 auto; line-height: 1.4; }
       .topo { display: flex; justify-content: space-between; border-bottom: 2px solid #0f172a; padding-bottom: 12px; margin-bottom: 16px; }
@@ -650,13 +869,16 @@ function imprimirOS(o) {
   </head>
   <body>
     <div class="topo">
-      <div>
-        <div class="empresa">${esc(cfg.empresa)}</div>
-        <div>CNPJ: ${esc(cfg.cnpj)} · Tel: ${esc(cfg.fone)}</div>
-        <div>${esc(cfg.endereco)}</div>
+      <div style="display:flex;align-items:center;gap:16px">
+        ${(cfg.identidadeVisual?.logo && /^https?:\/\/|^data:image\//i.test(cfg.identidadeVisual.logo)) ? `<img src="${esc(cfg.identidadeVisual.logo)}" alt="${esc(cfg.empresa)}" style="max-height:60px;max-width:160px;object-fit:contain">` : ''}
+        <div>
+          <div class="empresa">${esc(cfg.empresa)}</div>
+          <div>CNPJ: ${esc(cfg.cnpj)} · Tel: ${esc(cfg.fone)}</div>
+          <div>${esc(cfg.endereco)}</div>
+        </div>
       </div>
       <div>
-        <div class="num-os">ORDEM DE SERVIÇO Nº ${o.num}</div>
+        <div class="num-os">${isMec ? 'ORDEM DE SERVIÇO TÉCNICA (VIA DE OFICINA)' : `ORDEM DE SERVIÇO Nº ${o.num}`}</div>
         <div>Emissão: ${dataBRfull(o.abertura)} ${horaBR()}</div>
         <div>Previsão: ${dataBRfull(o.prev)}</div>
       </div>
@@ -677,32 +899,33 @@ function imprimirOS(o) {
 
     ${o.queixa ? `<div style="margin-bottom:14px;background:#fff;padding:8px;border-left:3px solid #f59e0b"><b>Diagnóstico / Queixa do Cliente:</b> ${esc(o.queixa)}</div>` : ''}
 
-    <div style="font-weight:bold;margin-bottom:6px">1. SERVIÇOS EXECUTADOS / MÃO DE OBRA</div>
+    <div style="font-weight:bold;margin-bottom:6px">1. SERVIÇOS A EXECUTAR / MÃO DE OBRA</div>
     <table>
       <thead>
-        <tr><th>Descrição do Serviço</th><th style="width:60px;text-align:center">Qtd</th><th style="width:100px;text-align:right">Valor Unit.</th><th style="width:100px;text-align:right">Subtotal</th></tr>
+        <tr><th>Descrição do Serviço</th><th style="width:60px;text-align:center">Qtd</th>${!isMec ? '<th style="width:100px;text-align:right">Valor Unit.</th><th style="width:100px;text-align:right">Subtotal</th>' : ''}</tr>
       </thead>
       <tbody>
-        ${(o.servicos || []).map(s => `<tr><td>${esc(s.nome)}</td><td style="text-align:center">${s.qtd}</td><td style="text-align:right">${brl(s.valor)}</td><td style="text-align:right">${brl(s.qtd * s.valor)}</td></tr>`).join('')}
+        ${(o.servicos || []).map(s => `<tr><td>${esc(s.nome)}</td><td style="text-align:center">${s.qtd}</td>${!isMec ? `<td style="text-align:right">${brl(s.valor)}</td><td style="text-align:right">${brl(s.qtd * s.valor)}</td>` : ''}</tr>`).join('')}
       </tbody>
     </table>
 
-    <div style="font-weight:bold;margin-bottom:6px">2. PEÇAS E MATERIAIS APLICADOS</div>
+    <div style="font-weight:bold;margin-bottom:6px">2. PEÇAS E MATERIAIS REQUISITADOS</div>
     <table>
       <thead>
-        <tr><th>Descrição da Peça / Código</th><th style="width:60px;text-align:center">Qtd</th><th style="width:100px;text-align:right">Valor Unit.</th><th style="width:100px;text-align:right">Subtotal</th></tr>
+        <tr><th>Descrição da Peça / Código</th><th style="width:60px;text-align:center">Qtd</th>${!isMec ? '<th style="width:100px;text-align:right">Valor Unit.</th><th style="width:100px;text-align:right">Subtotal</th>' : ''}</tr>
       </thead>
       <tbody>
-        ${(o.pecas || []).map(p => `<tr><td>${esc(p.nome)}</td><td style="text-align:center">${p.qtd}</td><td style="text-align:right">${brl(p.valor)}</td><td style="text-align:right">${brl(p.qtd * p.valor)}</td></tr>`).join('')}
+        ${(o.pecas || []).map(p => `<tr><td>${esc(p.nome)}</td><td style="text-align:center">${p.qtd}</td>${!isMec ? `<td style="text-align:right">${brl(p.valor)}</td><td style="text-align:right">${brl(p.qtd * p.valor)}</td>` : ''}</tr>`).join('')}
       </tbody>
     </table>
 
+    ${!isMec ? `
     <div class="totais">
       <div class="tot-linha"><span>Total de Serviços:</span><span>${brl(totServ)}</span></div>
       <div class="tot-linha"><span>Total de Peças:</span><span>${brl(totPec)}</span></div>
       ${o.desc ? `<div class="tot-linha" style="color:#ef4444"><span>Desconto Concedido:</span><span>−${brl(o.desc)}</span></div>` : ''}
       <div class="tot-linha tot-final"><span>TOTAL GERAL:</span><span>${brl(total)}</span></div>
-    </div>
+    </div>` : ''}
 
     <div style="font-size:11px;color:#64748b;margin-bottom:30px">
       <b>Termo de Garantia:</b> ${esc(cfg.termoGarantia || 'Garantia legal de 90 dias conforme CDC.')}
@@ -747,6 +970,7 @@ function novaOSFolha(boxId) {
         <label style="font-weight:600;display:block;margin-bottom:4px">Selecione o Veículo / Placa:</label>
         <select class="campo-select" data-act="rasc" data-c="vei" style="width:100%;height:36px;font-weight:600">
           <option value="">-- Escolha pela placa --</option>
+          <option value="sem_placa" ${rasc.vei === 'sem_placa' ? 'selected' : ''}>⚠️ Sem Placa (Cadastrar depois / Entrada Rápida)</option>
           ${veiculos.map(v => {
             const cl = C(v.cli);
             return `<option value="${v.id}" ${rasc.vei === v.id ? 'selected' : ''}>${esc(v.placa)} — ${esc(v.modelo)} (${esc(cl.nome)})</option>`;

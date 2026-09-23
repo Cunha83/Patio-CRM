@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Planos e Preços — Pátio CRM Linha Pesada</title>
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    body { background-color: #0f172a; color: #f8fafc; font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 0; }
+    .container { max-width: 1100px; margin: 0 auto; padding: 40px 20px; }
+    header { text-align: center; margin-bottom: 50px; }
+    h1 { font-size: 2.6rem; margin-bottom: 12px; color: #38bdf8; }
+    p.subtitle { font-size: 1.2rem; color: #94a3b8; max-width: 700px; margin: 0 auto; }
+    .badge-founder { background: #e0f2fe; color: #0369a1; padding: 4px 12px; border-radius: 9999px; font-weight: 700; font-size: 0.85rem; display: inline-block; margin-bottom: 16px; }
+    .pricing-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 30px; margin-bottom: 60px; }
+    .pricing-card { background: #1e293b; border-radius: 16px; border: 1px solid #334155; padding: 36px 30px; display: flex; flex-direction: column; position: relative; transition: transform 0.2s, border-color 0.2s; }
+    .pricing-card:hover { transform: translateY(-4px); border-color: #38bdf8; }
+    .pricing-card.featured { border: 2px solid #0284c7; background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%); box-shadow: 0 10px 25px -5px rgba(2, 132, 199, 0.3); }
+    .ribbon { position: absolute; top: -14px; right: 24px; background: #0284c7; color: white; padding: 4px 14px; font-size: 0.75rem; font-weight: bold; text-transform: uppercase; border-radius: 20px; letter-spacing: 0.05em; }
+    .card-title { font-size: 1.5rem; font-weight: 700; margin-bottom: 8px; }
+    .card-desc { color: #94a3b8; font-size: 0.95rem; margin-bottom: 24px; min-height: 48px; }
+    .price-box { margin-bottom: 24px; }
+    .price-amount { font-size: 2.8rem; font-weight: 800; color: white; }
+    .price-period { color: #94a3b8; font-size: 1rem; }
+    .feature-list { list-style: none; padding: 0; margin: 0 0 32px 0; flex-grow: 1; }
+    .feature-item { padding: 10px 0; border-bottom: 1px solid #334155; font-size: 0.95rem; display: flex; align-items: center; }
+    .feature-item:last-child { border-bottom: none; }
+    .feature-check { color: #38bdf8; margin-right: 12px; font-weight: bold; }
+    .btn-action { display: block; text-align: center; background: #0284c7; color: white; padding: 14px 24px; border-radius: 10px; font-weight: 700; text-decoration: none; transition: background 0.2s; }
+    .btn-action:hover { background: #0369a1; }
+    .btn-secondary { background: #334155; }
+    .btn-secondary:hover { background: #475569; }
+    .setup-box { background: #1e293b; border-radius: 12px; border: 1px dashed #475569; padding: 24px; text-align: center; margin-bottom: 40px; }
+    .setup-title { font-weight: 700; color: #f1f5f9; margin-bottom: 6px; }
+    .setup-desc { font-size: 0.9rem; color: #94a3b8; }
+    footer { text-align: center; color: #64748b; font-size: 0.9rem; margin-top: 40px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <span class="badge-founder">🚛 CONDIÇÃO ESPECIAL DE LANÇAMENTO — FOUNDER PRICING</span>
+      <h1>Gestão Especializada para Oficinas de Linha Pesada</h1>
+      <p class="subtitle">CRM operacional e gestão de oficina pesada, integrado ao ERP fiscal-contábil da empresa. Controle de pátio, boxes, custos reais de peças e mão de obra, orçamentos rápidos, aprovação digital e proteção de margem.</p>
+    </header>
+
+    <div class="pricing-grid">
+      <!-- PLANO ESSENCIAL -->
+      <div class="pricing-card">
+        <div class="card-title">ESSENCIAL</div>
+        <div class="card-desc">Operação completa, sem taxas ocultas, perfeita para organizar o pátio e profissionalizar o atendimento.</div>
+        <div class="price-box">
+          <span class="price-amount">R$ 179</span>
+          <span class="price-period">/mês</span>
+        </div>
+        <ul class="feature-list">
+          <li class="feature-item"><span class="feature-check">✓</span> Controle visual de Pátio e Gestão de Boxes</li>
+          <li class="feature-item"><span class="feature-check">✓</span> Ordens de Serviço (OS) e Pré-OS Inteligente</li>
+          <li class="feature-item"><span class="feature-check">✓</span> Cadastro de Clientes, Veículos e Histórico Operacional</li>
+          <li class="feature-item"><span class="feature-check">✓</span> Orçamento com Aprovação Digital via Link/WhatsApp</li>
+          <li class="feature-item"><span class="feature-check">✓</span> Estoque de Peças Pesadas com Custo Médio</li>
+          <li class="feature-item"><span class="feature-check">✓</span> Apontamento de Horas de Mecânicos e Produtividade</li>
+          <li class="feature-item"><span class="feature-check">✓</span> Resultado Gerencial de Caixa e Contas a Pagar/Receber</li>
+          <li class="feature-item"><span class="feature-check">✓</span> Exportação e Integração com ERP Fiscal-Contábil</li>
+          <li class="feature-item"><span class="feature-check">✓</span> WhatsApp Operacional para envio de status</li>
+        </ul>
+        <a href="/cadastro?plano=essencial" class="btn-action btn-secondary">Começar Teste de 14 Dias</a>
+      </div>
+
+      <!-- PLANO PRO -->
+      <div class="pricing-card featured">
+        <div class="ribbon">MAIS ESCOLHIDO</div>
+        <div class="card-title">PRO</div>
+        <div class="card-desc">Inteligência operacional com proteção de margem de lucro, frotistas e automação de pós-venda.</div>
+        <div class="price-box">
+          <span class="price-amount">R$ 299</span>
+          <span class="price-period">/mês</span>
+        </div>
+        <ul class="feature-list">
+          <li class="feature-item"><span class="feature-check">★</span> <strong>Tudo do Plano Essencial, mais:</strong></li>
+          <li class="feature-item"><span class="feature-check">✓</span> Precificação Assistida com sugestão de piso e margem alvo</li>
+          <li class="feature-item"><span class="feature-check">✓</span> Proteção de Margem (bloqueio ou alerta de desconto arriscado)</li>
+          <li class="feature-item"><span class="feature-check">✓</span> Módulo Avançado para Frotistas e Tabela Diferenciada</li>
+          <li class="feature-item"><span class="feature-check">✓</span> Manutenção Preventiva com alertas automáticos de km</li>
+          <li class="feature-item"><span class="feature-check">✓</span> Pós-Venda Ativo (D+2, D+7 e D+30 via WhatsApp)</li>
+          <li class="feature-item"><span class="feature-check">✓</span> Assistente de Voz Operacional com Contexto Contínuo</li>
+          <li class="feature-item"><span class="feature-check">✓</span> Dashboard Executivo e Relatórios de Lucratividade Gerencial</li>
+          <li class="feature-item"><span class="feature-check">✓</span> API Completa de Integração com ERP (Webhooks e Outbox)</li>
+        </ul>
+        <a href="/cadastro?plano=pro" class="btn-action">Testar Grátis por 14 Dias (PRO)</a>
+      </div>
+    </div>
+
+    <div class="setup-box">
+      <div class="setup-title">🚀 Implantação Assistida (Opcional): R$ 390</div>
+      <div class="setup-desc">Inclui migração inicial do cadastro de peças, parametrização de custos/hora da equipe e sessão de treinamento guiado com especialista em linha pesada.</div>
+    </div>
+
+    <footer>
+      <p>Pátio CRM — CRM operacional de oficinas mecânicas pesadas, integrado ao ERP fiscal-contábil da empresa.</p>
+      <p style="margin-top:8px">
+        <a href="/termos.html" style="color:#38bdf8;text-decoration:none">Termos de Uso</a> • 
+        <a href="/privacidade.html" style="color:#38bdf8;text-decoration:none">Política de Privacidade (LGPD)</a> • 
+        <a href="/docs/INTEGRACAO_ERP.md" style="color:#94a3b8;text-decoration:none">Documentação de Integração ERP</a>
+      </p>
+    </footer>
+  </div>
+</body>
+</html>

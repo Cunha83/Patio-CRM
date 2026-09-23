@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Checkout — Pátio CRM</title>
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    body { background-color: #0f172a; color: #f8fafc; font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 30px 20px; }
+    .checkout-container { max-width: 900px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
+    @media (max-width: 768px) { .checkout-container { grid-template-columns: 1fr; } }
+    .card { background: #1e293b; border: 1px solid #334155; border-radius: 14px; padding: 26px; }
+    h2 { margin-top: 0; color: #38bdf8; font-size: 1.5rem; }
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; margin-bottom: 6px; font-size: 0.85rem; color: #cbd5e1; font-weight: 600; }
+    .form-control { width: 100%; box-sizing: border-box; background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 10px 12px; color: white; font-size: 0.95rem; }
+    .summary-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #334155; font-size: 0.95rem; }
+    .summary-row.total { border-bottom: none; border-top: 2px solid #0284c7; margin-top: 10px; padding-top: 14px; font-size: 1.25rem; font-weight: 800; color: #38bdf8; }
+    .payment-methods { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
+    .pm-btn { background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 12px; text-align: center; color: #cbd5e1; cursor: pointer; font-weight: 600; font-size: 0.9rem; }
+    .pm-btn.active { border-color: #38bdf8; background: #0284c720; color: #38bdf8; }
+    .btn-pay { width: 100%; background: #0284c7; color: white; border: none; padding: 14px; border-radius: 8px; font-size: 1rem; font-weight: 700; cursor: pointer; }
+    .btn-pay:hover { background: #0369a1; }
+    .pix-box { display: none; background: #0f172a; border: 1px dashed #38bdf8; border-radius: 10px; padding: 16px; text-align: center; margin-top: 20px; }
+    .pix-code { word-break: break-all; font-family: monospace; font-size: 0.8rem; background: #1e293b; padding: 10px; border-radius: 6px; margin: 10px 0; }
+  </style>
+</head>
+<body>
+  <div class="checkout-container">
+    <!-- Formulário de Pagamento -->
+    <div class="card">
+      <h2>Dados de Faturamento</h2>
+      <div class="form-group">
+        <label for="doc">CNPJ ou CPF da Oficina</label>
+        <input type="text" id="doc" class="form-control" placeholder="00.000.000/0001-00" required>
+      </div>
+      <div class="form-group">
+        <label for="razao">Razão Social / Nome Fantasia</label>
+        <input type="text" id="razao" class="form-control" placeholder="Oficina Exemplo LTDA" required>
+      </div>
+      <div class="form-group">
+        <label for="email">E-mail para Recibo / Nota</label>
+        <input type="email" id="email" class="form-control" placeholder="financeiro@oficina.com.br" required>
+      </div>
+
+      <label style="display:block; margin-bottom:8px; font-size:0.85rem; color:#cbd5e1; font-weight:600;">Forma de Pagamento</label>
+      <div class="payment-methods">
+        <div class="pm-btn active" data-method="pix" onclick="selecionarMetodo('pix')">⚡ PIX</div>
+        <div class="pm-btn" data-method="cartao" onclick="selecionarMetodo('cartao')">💳 Cartão</div>
+        <div class="pm-btn" data-method="boleto" onclick="selecionarMetodo('boleto')">📄 Boleto</div>
+      </div>
+
+      <div class="form-group">
+        <label for="cupom">Cupom de Desconto</label>
+        <div style="display:flex; gap:8px;">
+          <input type="text" id="cupom" class="form-control" placeholder="Ex: FOUNDER2026" style="text-transform:uppercase;">
+          <button type="button" class="btn-pay" style="width:auto; padding:0 16px;" onclick="aplicarCupom()">Aplicar</button>
+        </div>
+      </div>
+
+      <button id="btnPagar" class="btn-pay" onclick="finalizarCheckout()">Confirmar Assinatura</button>
+
+      <div id="pixBox" class="pix-box">
+        <h4 style="margin:0 0 8px 0; color:#38bdf8;">Pagamento via PIX</h4>
+        <p style="font-size:0.85rem; color:#94a3b8; margin:0;">Escaneie o QR Code ou use a chave Copia e Cola:</p>
+        <div id="pixCode" class="pix-code"></div>
+        <button class="btn-pay" style="padding:8px 14px; font-size:0.85rem;" onclick="copiarPix()">Copiar Código PIX</button>
+      </div>
+    </div>
+
+    <!-- Resumo do Pedido -->
+    <div class="card">
+      <h2>Resumo da Assinatura</h2>
+      <div class="summary-row">
+        <span>Plano Selecionado:</span>
+        <strong id="resumoPlano">Plano PRO</strong>
+      </div>
+      <div class="summary-row">
+        <span>Mensalidade Recorrente:</span>
+        <span id="resumoMensal">R$ 299,00</span>
+      </div>
+      <div class="summary-row">
+        <span>Desconto Aplicado:</span>
+        <span id="resumoDesconto" style="color:#34d399;">R$ 0,00</span>
+      </div>
+      <div class="summary-row">
+        <span>Implantação Assistida:</span>
+        <span id="resumoSetup">R$ 390,00</span>
+      </div>
+      <div class="summary-row total">
+        <span>Total Hoje:</span>
+        <span id="resumoTotal">R$ 689,00</span>
+      </div>
+      <p style="font-size:0.8rem; color:#94a3b8; margin-top:16px;">
+        🔒 Cobrança segura via parceiro financeiro credenciado. Sem fidelidade forçada. Cancele quando desejar pelo painel de configurações.
+      </p>
+    </div>
+  </div>
+
+  <script>
+    let metodoAtual = 'pix';
+    let planoAtual = new URLSearchParams(window.location.search).get('plano') || 'pro';
+    let mensalidadeBase = planoAtual === 'essencial' ? 179 : 299;
+    let setupFee = 390;
+    let desconto = 0;
+
+    function atualizarResumo() {
+      document.getElementById('resumoPlano').innerText = planoAtual === 'essencial' ? 'Plano ESSENCIAL' : 'Plano PRO';
+      document.getElementById('resumoMensal').innerText = `R$ ${mensalidadeBase.toFixed(2).replace('.', ',')}`;
+      document.getElementById('resumoDesconto').innerText = `- R$ ${desconto.toFixed(2).replace('.', ',')}`;
+      document.getElementById('resumoSetup').innerText = `R$ ${setupFee.toFixed(2).replace('.', ',')}`;
+      const total = Math.max(0, (mensalidadeBase - desconto) + setupFee);
+      document.getElementById('resumoTotal').innerText = `R$ ${total.toFixed(2).replace('.', ',')}`;
+    }
+
+    function selecionarMetodo(m) {
+      metodoAtual = m;
+      document.querySelectorAll('.pm-btn').forEach(el => el.classList.remove('active'));
+      document.querySelector(`[data-method="${m}"]`).classList.add('active');
+    }
+
+    function aplicarCupom() {
+      const c = document.getElementById('cupom').value.trim().toUpperCase();
+      if (c === 'FOUNDER2026') {
+        desconto = mensalidadeBase * 0.20;
+        alert('Cupom FOUNDER2026 aplicado: 20% de desconto na mensalidade!');
+      } else if (c === 'ISENCAOSETUP') {
+        setupFee = 0;
+        alert('Cupom ISENCAOSETUP aplicado: Taxa de implantação 100% isenta!');
+      } else {
+        alert('Cupom não encontrado ou expirado.');
+      }
+      atualizarResumo();
+    }
+
+    async function finalizarCheckout() {
+      const btn = document.getElementById('btnPagar');
+      btn.disabled = true;
+      btn.innerText = 'Processando...';
+
+      const tenantId = localStorage.getItem('patio_tenant_id') || 'oficina_demo';
+      const payload = {
+        tenantId,
+        plan: planoAtual,
+        paymentMethod: metodoAtual,
+        couponCode: document.getElementById('cupom').value.trim(),
+        customerData: {
+          document: document.getElementById('doc').value.trim(),
+          legalName: document.getElementById('razao').value.trim(),
+          email: document.getElementById('email').value.trim()
+        }
+      };
+
+      try {
+        const res = await fetch('/api/billing/checkout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (!res.ok || !data.ok) throw new Error(data.error || 'Erro no checkout.');
+
+        if (metodoAtual === 'pix') {
+          document.getElementById('pixBox').style.display = 'block';
+          document.getElementById('pixCode').innerText = data.checkout.paymentDetails.pixCopiaECola;
+          btn.innerText = 'Aguardando Pagamento PIX...';
+        } else if (metodoAtual === 'boleto') {
+          window.open(data.checkout.paymentDetails.boletoUrl, '_blank');
+          alert('Boleto gerado com sucesso! Efetue o pagamento até o vencimento.');
+        } else {
+          alert('Redirecionando para interface segura de cartão...');
+          window.location.href = data.checkout.paymentDetails.providerHostedUrl;
+        }
+      } catch (err) {
+        alert(err.message);
+        btn.disabled = false;
+        btn.innerText = 'Confirmar Assinatura';
+      }
+    }
+
+    function copiarPix() {
+      const text = document.getElementById('pixCode').innerText;
+      navigator.clipboard.writeText(text);
+      alert('Código PIX copiado para a área de transferência!');
+    }
+
+    atualizarResumo();
+  </script>
+</body>
+</html>

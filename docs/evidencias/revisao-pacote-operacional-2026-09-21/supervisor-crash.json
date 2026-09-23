@@ -1,0 +1,6 @@
+{
+  "exitCode": 1,
+  "childStarts": 1,
+  "selfLockRefusal": true,
+  "logs": "◇ injected env (13) from .env // tip: ◈ encrypted .env [www.dotenvx.com]\n[2026-09-21T20:10:28.769Z] [Supervisor] Iniciando servidor Pátio CRM em 127.0.0.1:52242...\n[2026-09-21T20:10:28.770Z] [Supervisor]   Banco SQLite: C:\\Users\\AUTOMO~1\\AppData\\Local\\Temp\\patio-supervisor-crash-HQJnPp\\unused.db\n[2026-09-21T20:10:28.771Z] [Supervisor]   Anexos:       C:\\Users\\AUTOMO~1\\AppData\\Local\\Temp\\patio-supervisor-crash-HQJnPp\\uploads\n[2026-09-21T20:10:28.797Z] [Supervisor] Processo Node iniciado com PID: 712\n[2026-09-21T20:10:28.954Z] [Supervisor] Aguardando 2 segundos antes de reiniciar o processo...\n[2026-09-21T20:10:28.953Z] [Supervisor:ERROR] Processo filho PID 712 encerrou inesperadamente com código 7 / sinal null.\n[2026-09-21T20:10:30.973Z] [Supervisor:ERROR] Instância duplicada detectada! Supervisor já em execução com PID: 12924. Abortando.\n"
+}

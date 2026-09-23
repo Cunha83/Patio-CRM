@@ -1,0 +1,26 @@
+[2026-09-22T18:36:52.569Z] Iniciando ambiente isolado para homologação funcional...
+[2026-09-22T18:36:52.602Z] Porta dinâmica alocada: 56381
+[2026-09-22T18:36:52.835Z] Criando usuários admin e mecânico no SQLite com credenciais protegidas...
+{"timestamp":"2026-09-22T18:36:53.010Z","type":"metric","subsystem":"repository","op":"read","latencyMs":1.46,"success":true,"cacheHit":false,"tenantId":"e2e_tenant","error":null}
+{"timestamp":"2026-09-22T18:36:53.017Z","type":"metric","subsystem":"repository","op":"write","latencyMs":9.65,"success":true,"conflict":false,"status":200,"tenantId":"e2e_tenant","error":null}
+[2026-09-22T18:36:53.037Z] Banco SQLite isolado inicializado com sucesso.
+[2026-09-22T18:36:54.828Z] Servidor pronto na porta 56381
+[2026-09-22T18:36:54.830Z] --- JORNADA 1A: Cadastro de Cliente Manual sem Provedor Externo ---
+[2026-09-22T18:36:54.835Z] > Executando lote de 28 comandos no agent-browser (sessão: patio_verified_1790102212563, timeout: 60000ms, início: [open])...
+(node:4924) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead to security vulnerabilities, as the arguments are not escaped, only concatenated.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+[2026-09-22T18:37:54.865Z]   [BATCH TIMEOUT]: Prazo máximo de 60000ms excedido no lote iniciado por [open]. Comandos: [open -> set viewport -> set credentials -> [REDACTED] http://127.0.0.1:56381/?tenant=e2e_tenant -> wait 2000 -> click button[data-act="ir"][data-v="cadastros"] -> wait 1000 -> click button[data-act="novo-cad"][data-t="cliente"] -> wait 1000 -> fill #doc_cli -> wait 500 -> click #btn_consultar_cli -> wait 1000 -> click #btn-modal-serasa-sim -> wait 1500 -> eval JSON.stringify({
+        tagText: document.getElementById('tag_serasa')?.textContent || '',
+        nomeVal: document.querySelector('input[data-act="rc"][data-c="nome"]')?.value || '',
+        docVal: document.getElementById('doc_cli')?.value || ''
+      }) -> fill input[data-act="rc"][data-c="nome"] -> fill input[data-act="rc"][data-c="fantasia"] -> fill input[data-act="rc"][data-c="ie"] -> fill input[data-act="rc"][data-c="fone"] -> fill input[data-act="rc"][data-c="endereco"] -> fill input[data-act="rc"][data-c="cidade"] -> fill input[data-act="rc"][data-c="uf"] -> wait 300 -> click button[data-act="salvar-cad"] -> wait 1200 -> eval JSON.stringify({
+        totalClientes: (window.S?.clientes || []).length,
+        clienteNome: window.S?.clientes?.[0]?.nome,
+        clienteScore: window.S?.clientes?.[0]?.scoreSerasa
+      }) -> close]. Encerrando processo PID 6740...
+[2026-09-22T18:37:55.149Z] Encerrando navegador, servidor e limpando recursos temporários...
+[2026-09-22T18:37:55.474Z] Ambiente temporário desalocado com segurança.
+[2026-09-22T18:37:55.475Z] ERRO FATAL NA AUDITORIA BROWSER: Error: Timeout de 60000ms excedido no lote do agent-browser iniciado por [open]
+    at Timeout._onTimeout (C:\Users\AutoMolasFort\AppData\Local\Temp\patio-auditoria-39bb1208ea8e438694c623ddccf70ad6\scripts\run_agent_browser_verified.cjs:68:14)
+    at listOnTimeout (node:internal/timers:635:17)
+    at process.processTimers (node:internal/timers:571:7)

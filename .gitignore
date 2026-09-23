@@ -13,3 +13,12 @@ patio.db*
 *.log
 whatsapp_screen.png
 *.zip
+*.code-workspace
+backups/
+PatioCRM_Remote_Vault/
+deploy-piloto/
+dist/
+logs/
+.superpowers/
+scratch/
+uploads/

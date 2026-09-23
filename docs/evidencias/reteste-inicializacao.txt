@@ -1,0 +1,121 @@
+================================================================
+  PÁTIO CRM — CARGA DA BASE DE DEMONSTRAÇÃO (90 DIAS)
+  Tenant: oficina_demo_dados_ficticios (Oficina Demonstração — Dados Fictícios)
+  Período: 2026-06-13 até 2026-09-11 (America/Sao_Paulo)
+================================================================
+
+[Isolamento] Verificação do banco de dados:
+  - Tenant de produção (default): Presente e Protegido
+  - Chave de destino: "tenant:oficina_demo_dados_ficticios:state"
+
+[Geração] Construindo entidades em memória...
+[Persistência] Gravando no SQLite KV...
+[SaaS Platform] Provisionando 6 oficinas sintéticas para o Admin SaaS...
+[Auth] Provisionando usuário administrador demonstrativo (demo_admin)...
+  ✔ Usuário "demo_admin" criado com sucesso para o tenant demonstrativo.
+
+✅ Carga realizada com sucesso e isolamento comprovado!
+  - Clientes: 80 (inclui 8 grandes frotistas)
+  - Veículos: 120 (pesados com placas DEM...)
+  - Fornecedores: 15
+  - Peças: 150 (molas, freios, pneumática, chassi)
+  - Colaboradores: 10 (equipe com taxas/hora)
+  - Orçamentos: 360
+  - Ordens de Serviço: 300 (272 finalizadas, 14 em andamento, 6 em boxes)
+  - Pedidos de Compra: 80
+  - Movimentações Estoque: 668
+  - Contas a Pagar/Receber: 358
+  - Movimentos de Caixa: 277
+  - Apontamentos Mão de Obra: 544
+  - Planos Preventivos: 25
+  - Tenants Plataforma SaaS: 6
+✔ 1. Isolamento de Produção: tenant:default:state preservado e demo segregado (2200.1389ms)
+✔ 2. Metas Volumétricas e Governança: volumes completos nos últimos 90 dias (163.0014ms)
+✔ 3. Conciliação Físico-Financeira de Estoque: 100% das 150 peças conciliadas sem saldo negativo (1231.4335ms)
+✔ 4. Coerência Cronológica e Fuso Horário: zero eventos futuros em relação a 2026-09-11 (1324.3881ms)
+✔ 5. Anti-Sobreposição de Horários da Mão de Obra e Remuneração (1052.0607ms)
+================================================================
+  PÁTIO CRM — VERIFICAÇÃO E CONCILIAÇÃO DA BASE DEMO
+  Tenant: oficina_demo_dados_ficticios
+================================================================
+
+✔ 6. Conciliação Financeira de OS e Fluxo de Caixa Positivo (546.33ms)
+1. Verificando isolamento de produção...
+   ✔ Chave de produção default e chave demo estritamente isoladas.
+2. Conciliando estoque físico peça a peça...
+   ✔ 100% das 150 peças conciliadas perfeitamente (Zero divergência e saldo >= 0).
+3. Verificando coerência de datas...
+   ✔ Zero pagamentos ou conclusões futuras em relação a 2026-09-11.
+4. Verificando anti-sobreposição de mecânicos...
+   ✔ Rigorosamente ZERO sobreposições de horário entre os mecânicos (544 apontamentos).
+5. Conciliando fluxo de caixa e saldos...
+   - Saldo Inicial: R$ 85000.00
+   - Total Entradas (Caixa): R$ 353020.00
+   - Total Saídas (Caixa): R$ 282532.50
+   - Saldo Atual Consolidado: R$ 155487.50
+   ✔ Fluxo de caixa consistente e positivo.
+
+================================================================
+  STATUS FINAL DA VERIFICAÇÃO: APROVADO (OK)
+================================================================
+✔ 7. Verificador Oficial: executarVerify() retorna sucesso sem falhas (295.6955ms)
+================================================================
+  PÁTIO CRM — PURGA EXCLUSIVA DO LOTE DEMONSTRATIVO
+  Tenant: oficina_demo_dados_ficticios (Batch: demo_batch_20260911)
+================================================================
+
+[Purga] Registro removido de kv: 1 linha(s) afetada(s).
+[Purga] Usuário "demo_admin" e associações removidos com segurança.
+✔ Dados de produção preservados integralmente (0 alterações em produção).
+================================================================
+  PÁTIO CRM — CARGA DA BASE DE DEMONSTRAÇÃO (90 DIAS)
+  Tenant: oficina_demo_dados_ficticios (Oficina Demonstração — Dados Fictícios)
+  Período: 2026-06-13 até 2026-09-11 (America/Sao_Paulo)
+================================================================
+
+[Isolamento] Verificação do banco de dados:
+  - Tenant de produção (default): Presente e Protegido
+  - Chave de destino: "tenant:oficina_demo_dados_ficticios:state"
+
+[Geração] Construindo entidades em memória...
+[Persistência] Gravando no SQLite KV...
+[SaaS Platform] Provisionando 6 oficinas sintéticas para o Admin SaaS...
+[Auth] Provisionando usuário administrador demonstrativo (demo_admin)...
+  ✔ Usuário "demo_admin" criado com sucesso para o tenant demonstrativo.
+
+✅ Carga realizada com sucesso e isolamento comprovado!
+  - Clientes: 80 (inclui 8 grandes frotistas)
+  - Veículos: 120 (pesados com placas DEM...)
+  - Fornecedores: 15
+  - Peças: 150 (molas, freios, pneumática, chassi)
+  - Colaboradores: 10 (equipe com taxas/hora)
+  - Orçamentos: 360
+  - Ordens de Serviço: 300 (272 finalizadas, 14 em andamento, 6 em boxes)
+  - Pedidos de Compra: 80
+  - Movimentações Estoque: 668
+  - Contas a Pagar/Receber: 358
+  - Movimentos de Caixa: 277
+  - Apontamentos Mão de Obra: 544
+  - Planos Preventivos: 25
+  - Tenants Plataforma SaaS: 6
+✔ 8. Isolamento da Purga e Restauração (3843.9151ms)
+✔ servidor real: autenticação, concorrência, backup, upload e persistência (17261.5957ms)
+{"timestamp":"2026-09-15T23:46:10.696Z","type":"metric","subsystem":"auth","op":"authenticate","latencyMs":132.83,"success":true,"tenantId":"tenant_alfa","actorId":"operador_alfa","role":"consultor","errorType":null}
+{"timestamp":"2026-09-15T23:46:10.877Z","type":"metric","subsystem":"auth","op":"authenticate","latencyMs":175.74,"success":false,"tenantId":"tenant_beta","actorId":"operador_alfa","role":null,"errorType":"403_unauthorized_tenant"}
+✔ 1. Jornada de Oficina: Do diagnóstico de entrada à entrega e pós-venda D+2 (275.6609ms)
+✔ 2. Multi-Tenant Security: Bloqueio estrito de cross-tenant spoofing com HTTP 403 (525.1947ms)
+✔ 3. Customização de Assistente: 2 Tenants com nomes e gêneros distintos sem contaminação (0.6268ms)
+✔ 4. Assinaturas SaaS: trial 14d, feature flags e downgrade não destrutivo (8.3387ms)
+✔ 5. Dados de Demonstração: injeção com tag _isDemo e remoção cirúrgica sem afetar dados reais (1.9193ms)
+✔ 6. LGPD: exportação completa de dados pessoais e anonimização com preservação fiscal (1.4051ms)
+✔ 7. File Storage: Upload isolado por tenant, resolução retrocompatível e deleção física (18.1066ms)
+✔ 8. Schema Migration: Inicialização de blocos ausentes e versão canônica (1.3338ms)
+✔ 9. Servidor Real E2E: /health, /ready, limites de taxa, uploads e endpoints LGPD (8988.5269ms)
+ℹ tests 18
+ℹ suites 0
+ℹ pass 18
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 17969.1828

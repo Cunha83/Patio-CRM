@@ -1,0 +1,41 @@
+PATIO CRM - PILOTO CONTROLADO - WINDOWS 10/11 x64
+
+1. Extraia TODO o ZIP em uma pasta local (nao execute dentro do ZIP).
+2. Abra Instalar.cmd. Informe o nome da empresa.
+3. Abra o atalho Patio CRM criado na Area de Trabalho, ou Iniciar.cmd
+   na pasta de instalacao informada ao final.
+4. Consulte ACESSOS.txt na pasta instalada. Entregue a cada operador
+   somente a senha do seu perfil. Guarde-as em um gerenciador de senhas
+   e remova ACESSOS.txt depois de armazena-las com seguranca.
+5. Mantenha a janela do Patio aberta durante o uso. Ctrl+C encerra.
+   Depois de reiniciar o Windows, abra novamente o atalho.
+
+Use o MESMO ZIP original nas tres empresas. Cada execucao gera banco
+vazio, identificador e senhas exclusivos. Nao distribua uma pasta ja
+instalada: ela contem dados e senhas da empresa.
+
+A instalacao inclui Node.js e dependencias, sem exigir npm, internet ou
+permissao de administrador. O navegador ainda usa internet para alguns
+recursos existentes, como graficos e consultas externas.
+
+Instalacao por usuario Windows, em LOCALAPPDATA\PatioCRM\<identificador>.
+O acesso e somente neste computador (127.0.0.1). Nao abre firewall,
+nao publica na internet e nao configura rede entre computadores.
+Instale uma vez por empresa/computador de teste. Bases nao sincronizam.
+Se precisar usar varios computadores na mesma oficina, configure um
+servidor de rede com suporte tecnico; nao copie o banco em uso.
+
+O instalador recusa destinos existentes. Nao e um atualizador.
+Se houver falha, a pasta parcial e preservada para diagnostico.
+Para remover, encerre o programa e preserve os dados antes de remover
+a pasta instalada e o atalho. Nao existe desinstalacao automatica.
+
+Escopo: testes funcionais com dados ficticios. WhatsApp, IA com chave
+externa e emissao fiscal real nao sao configurados. Backup independente
+e restauracao ainda precisam ser validados antes de operacao oficial.
+O programa nao e registrado como servico nem inicia junto ao Windows.
+
+Diagnostico: pasta app\logs; banco: app\patio.db; anexos: app\uploads.
+Nao envie .env, ACESSOS.txt, bancos ou anexos em chamados sem necessidade.
+O pacote nao tem assinatura Authenticode. SHA256SUMS.json verifica
+integridade dos arquivos; nao comprova identidade do publicador.

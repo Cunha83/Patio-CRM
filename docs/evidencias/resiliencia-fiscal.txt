@@ -1,0 +1,37 @@
+▶ Migração concorrente, falha de disco e carga transacional limitada
+  ✔ inicializações concorrentes não duplicam colunas (357.7037ms)
+  ✔ run comum externo não participa do rollback de outra operação (91.3184ms)
+  ✔ SQLITE_FULL reverte só a transação correspondente (64.7115ms)
+MEASUREMENT_LOCAL_SQLITE [{"operations":100,"concurrency":1,"durationMs":6782,"p95Ms":166},{"operations":100,"concurrency":4,"durationMs":3389,"p95Ms":268},{"operations":100,"concurrency":10,"durationMs":4537,"p95Ms":1189}]
+  ✔ 100 operações em ondas 1, 4 e 10 sem perda e abaixo de 30s por onda (14720.399ms)
+  ✔ DB_PATH real explícito e caminho equivalente são recusados antes de abrir (10.5521ms)
+✔ Migração concorrente, falha de disco e carga transacional limitada (15290.4382ms)
+▶ Controles fiscais, transporte real com respostas sintéticas e isolamento
+  ✔ não há fallback simulado, produção ou segredo fixo (11.138ms)
+  ✔ rateio conserva centavos em 2000 combinações determinísticas (86.2167ms)
+  ✔ idempotência concorrente isolada por oficina, colisão de conteúdo recusada (133.545ms)
+  ✔ classificação e alíquotas ausentes impedem revisão (52.6932ms)
+  ✔ intenção precede rede, timeout fica incerto e repetição não envia (201.7329ms)
+  ✔ consulta reconcilia protocolo e XML sem reenviar, snapshot permanece (69.5299ms)
+  ✔ evento incerto permanece e impede repetição concorrente (41.823ms)
+  ✔ XML externo, XXE, resposta vazia e HTTP 200 sem autorização não liberam (1.6732ms)
+  ✔ calibração nunca recua e recuperação bloqueia novas transmissões (49.0009ms)
+  ✔ API nega suporte, outra oficina e alteração de segredos (1404.3854ms)
+✔ Controles fiscais, transporte real com respostas sintéticas e isolamento (2463.6209ms)
+▶ SIMULAÇÃO LOCAL — Ciclo de Vida Fiscal, Numeração Atômica, Eventos e Recuperação (NF-e/NFS-e)
+  ✔ 1. fiscalConfigService: salva parâmetros e criptografa segredos em repouso (22.766ms)
+  ✔ 2. fiscalNumberingService: alocação atômica serializada de numeração sob concorrência (934.8324ms)
+  ✔ 3. fiscalLifecycleService: separa peças em NF-e 55 e mão de obra em NFS-e (533.0316ms)
+  ✔ 4. fiscalLifecycleService: transmite NF-e e obtém autorização com chave de 44 dígitos válida (372.6404ms)
+  ✔ 5. fiscalEventService: emite CC-e com validação de tamanho mínimo e sequencial incremental (407.3983ms)
+  ✔ 6. fiscalEventService: cancela NF-e autorizada e valida justificativa legal (337.7742ms)
+  ✔ 7. Backup & Restauração: restaura banco em arquivo separado e preserva histórico e ledger fiscal (235.6524ms)
+✔ SIMULAÇÃO LOCAL — Ciclo de Vida Fiscal, Numeração Atômica, Eventos e Recuperação (NF-e/NFS-e) (3535.128ms)
+ℹ tests 25
+ℹ suites 0
+ℹ pass 25
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 15720.0704

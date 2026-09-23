@@ -1,0 +1,26 @@
+{
+  "ensaio": "Ensaio de Recuperação Operacional E2E (Disaster Recovery Completo)",
+  "timestamp": "2026-09-21T19:49:26.528Z",
+  "ambiente": {
+    "node": "v24.19.0",
+    "plataforma": "win32",
+    "arch": "x64"
+  },
+  "cenario": {
+    "origem": "Exclusivamente pacote de backup externo (host original 100% destruído)",
+    "pacoteRestaurado": "package_bck_1790020163235_fc2d2f_2026-09-21T19-49-23-235Z"
+  },
+  "metricasDiscretas": {
+    "tempoDescompactacaoCopiasMs": 7,
+    "tempoValidacaoIntegridadeHashesMs": 9,
+    "tempoBootServidorMs": 1522,
+    "tempoVerificacaoHttpNegocioMs": 483,
+    "tempoTotalRecuperacaoE2EMs": 2901
+  },
+  "verificacoesNegocio": {
+    "autenticacaoHttp": "APROVADO (POST /api/auth/login -> HTTP 200)",
+    "ordemDeServicoIntegridade": "APROVADO (OS 1001, Veículo BRA2E19 conferidos)",
+    "anexoDownloadHttp": "APROVADO (GET /uploads/foto_eixo_1.jpg conferido byte a byte)"
+  },
+  "parecerTecnico": "APROVADO — Recuperação de desastre total comprovada exclusivamente a partir da réplica externa."
+}

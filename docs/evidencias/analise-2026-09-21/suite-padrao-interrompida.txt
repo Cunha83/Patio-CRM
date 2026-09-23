@@ -1,0 +1,71 @@
+
+> patio-crm-main@1.0.0 test
+> node --require ./scripts/test-preload.cjs --test --test-timeout=120000 tests/*.test.cjs
+
+▶ Bateria de Regressões Adversariais de Segurança & Integridade (Blockers A - M)
+  ✔ A. erpIntegrationService: processarFilaOutbox sem dispatcherFn marca failed e não synced (49.1213ms)
+  ✔ B. IdentityRegistry: lockout persiste e bloqueia conta após reinício do servidor (loadFromDB) (142.0898ms)
+  ✔ C. server.js: /api/auth/recuperar-senha não expõe resetToken no payload JSON (114.981ms)
+  ✔ D. /api/auditoria: Tenant A não vê auditoria de Tenant B nem eventos globais, e total é preciso (32.4863ms)
+  ✔ E. billingService: operações retornam objetos limpos sem anti-pattern de thenable circular (15.7248ms)
+  ✔ F. backupService: fallback de cópia WAL respeita process.env.DB_PATH (33.8533ms)
+{"timestamp":"2026-09-21T12:11:54.999Z","type":"metric","subsystem":"repository","op":"read","latencyMs":2.14,"success":true,"cacheHit":false,"tenantId":"tenant_adv_overflow_1789992714988","error":null}
+{"timestamp":"2026-09-21T12:11:55.025Z","type":"metric","subsystem":"repository","op":"write","latencyMs":30.18,"success":true,"conflict":false,"status":200,"tenantId":"tenant_adv_overflow_1789992714988","error":null}
+{"timestamp":"2026-09-21T12:11:55.030Z","type":"metric","subsystem":"repository","op":"read","latencyMs":2.87,"success":true,"cacheHit":true,"tenantId":"tenant_adv_overflow_1789992714988","error":null}
+{"timestamp":"2026-09-21T12:11:55.196Z","type":"metric","subsystem":"auth","op":"authenticate","latencyMs":82.96,"success":false,"tenantId":"tenant_victim_1789992715032","actorId":"invasor_comum","role":null,"errorType":"403_unauthorized_tenant"}
+  ✔ G. stateRepository: auditoria excedente (>1000) é arquivada em security_audit_log sem perda (43.1447ms)
+  ✔ H. context.js: Ator comum não pode forjar x-support-session para acessar outro tenant (166.0755ms)
+{"timestamp":"2026-09-21T12:11:55.210Z","type":"metric","subsystem":"repository","op":"read","latencyMs":11.34,"success":true,"cacheHit":false,"tenantId":"tenant_hack_sub_1789992715198","error":null}
+{"timestamp":"2026-09-21T12:11:55.215Z","type":"metric","subsystem":"repository","op":"write","latencyMs":16.12,"success":true,"conflict":false,"status":200,"tenantId":"tenant_hack_sub_1789992715198","error":null}
+{"timestamp":"2026-09-21T12:11:55.215Z","type":"metric","subsystem":"repository","op":"read","latencyMs":0.02,"success":true,"cacheHit":true,"tenantId":"tenant_hack_sub_1789992715198","error":null}
+{"timestamp":"2026-09-21T12:11:55.215Z","type":"metric","subsystem":"repository","op":"write","latencyMs":0.33,"success":false,"conflict":true,"status":409,"tenantId":"tenant_hack_sub_1789992715198","error":"version_conflict_409"}
+{"timestamp":"2026-09-21T12:11:55.215Z","type":"metric","subsystem":"repository","op":"read","latencyMs":0.02,"success":true,"cacheHit":true,"tenantId":"tenant_hack_sub_1789992715198","error":null}
+  ✔ I. stateRepository: Inquilino não pode sobrescrever subscription no POST de estado (17.6918ms)
+  ✔ J. erpIntegrationService: concorrência entre workers com lease expiration e bloqueio de worker expirado (1303.5756ms)
+  ✔ K. userRepository: consumo concorrente de token de redefinição garante uso estritamente único (261.1874ms)
+  ✔ L. billingService: webhooks concorrentes idênticos são tratados com idempotência atômica no SQLite (56.961ms)
+  ✔ M. billingService: resolução em subprocesso isolado com timeout estrito de 5s (663.9197ms)
+✔ Bateria de Regressões Adversariais de Segurança & Integridade (Blockers A - M) (3186.955ms)
+{"timestamp":"2026-09-21T12:11:54.595Z","type":"metric","subsystem":"repository","op":"read","latencyMs":0.84,"success":true,"cacheHit":false,"tenantId":"tenant_briefing","error":null}
+{"timestamp":"2026-09-21T12:11:54.601Z","type":"metric","subsystem":"repository","op":"write","latencyMs":7.83,"success":true,"conflict":false,"status":200,"tenantId":"tenant_briefing","error":null}
+[TEST DIAGNOSTIC childLogs]: 
+✖ Assistente Virtual: Configurações de Briefing e Geração Executiva Gerencial (6696.4583ms)
+{"timestamp":"2026-09-21T12:11:54.673Z","type":"metric","subsystem":"auth","op":"authenticate","latencyMs":83.51,"success":false,"tenantId":"oficina_lockout","actorId":null,"role":null,"errorType":"401_missing_or_invalid_credentials"}
+{"timestamp":"2026-09-21T12:11:54.780Z","type":"metric","subsystem":"auth","op":"authenticate","latencyMs":103.73,"success":false,"tenantId":"oficina_lockout","actorId":null,"role":null,"errorType":"401_missing_or_invalid_credentials"}
+{"timestamp":"2026-09-21T12:11:54.856Z","type":"metric","subsystem":"auth","op":"authenticate","latencyMs":75.78,"success":false,"tenantId":"oficina_lockout","actorId":null,"role":null,"errorType":"401_missing_or_invalid_credentials"}
+{"timestamp":"2026-09-21T12:11:54.916Z","type":"metric","subsystem":"auth","op":"authenticate","latencyMs":59.66,"success":false,"tenantId":"oficina_lockout","actorId":null,"role":null,"errorType":"401_missing_or_invalid_credentials"}
+{"timestamp":"2026-09-21T12:11:54.987Z","type":"metric","subsystem":"auth","op":"authenticate","latencyMs":70.04,"success":false,"tenantId":"oficina_lockout","actorId":null,"role":null,"errorType":"account_locked"}
+{"timestamp":"2026-09-21T12:11:54.988Z","type":"metric","subsystem":"auth","op":"authenticate","latencyMs":0.1,"success":false,"tenantId":"oficina_lockout","actorId":null,"role":null,"errorType":"account_locked"}
+▶ Hardening Operacional: Lockout Real, Troca Obrigatória de Senha, Preservação RBAC, Auditoria e ERP Outbox
+  ✔ 1. Lockout após 5 tentativas incorretas bloqueia conta no SQLite e no IdentityRegistry (592.4087ms)
+{"timestamp":"2026-09-21T12:11:55.360Z","type":"metric","subsystem":"auth","op":"authenticate","latencyMs":78.9,"success":true,"tenantId":"oficina_troca_senha","actorId":"admin_temp_1789992714991@example.com","role":"tenant_admin","errorType":null}
+  ✔ 2. mustChangePassword bloqueia operações com HTTP 403 e libera apenas rota de troca (369.5482ms)
+  ✔ 3. Fluxo de recuperação de senha: token expira, é de uso único e atualiza credencial (309.7235ms)
+{"timestamp":"2026-09-21T12:11:55.676Z","type":"metric","subsystem":"repository","op":"read","latencyMs":2.02,"success":true,"cacheHit":false,"tenantId":"tenant_rbac_preserv_1789992715672","error":null}
+{"timestamp":"2026-09-21T12:11:55.681Z","type":"metric","subsystem":"repository","op":"write","latencyMs":7.73,"success":true,"conflict":false,"status":200,"tenantId":"tenant_rbac_preserv_1789992715672","error":null}
+{"timestamp":"2026-09-21T12:11:55.681Z","type":"metric","subsystem":"repository","op":"read","latencyMs":0.04,"success":true,"cacheHit":true,"tenantId":"tenant_rbac_preserv_1789992715672","error":null}
+{"timestamp":"2026-09-21T12:11:55.687Z","type":"metric","subsystem":"repository","op":"write","latencyMs":5.28,"success":true,"conflict":false,"status":200,"tenantId":"tenant_rbac_preserv_1789992715672","error":null}
+{"timestamp":"2026-09-21T12:11:55.687Z","type":"metric","subsystem":"repository","op":"read","latencyMs":0.08,"success":true,"cacheHit":true,"tenantId":"tenant_rbac_preserv_1789992715672","error":null}
+  ✔ 4. Mecânico ou Atendente postando /api/estado NÃO apaga contas, caixa, fornecedores ou compras (15.9448ms)
+  ✔ 5. ERP Outbox enfileira, lista e processa itens com backoff e atualização de status (42.47ms)
+  ✔ 6. Restauração isolada com nova instância SQLite, PRAGMA integrity_check e RTO medido (84.7402ms)
+✔ Hardening Operacional: Lockout Real, Troca Obrigatória de Senha, Preservação RBAC, Auditoria e ERP Outbox (1673.0419ms)
+▶ Controles de Segurança de Backup: Autorização de Infraestrutura e Contenção Canônica contra Traversal, Symlinks e Prefixos
+  ✖ 1. Usuário comum de tenant tentando restaurar backup recebe HTTP 403 (24.1938ms)
+  ✖ 2. Usuário autorizado de infraestrutura com arquivo VÁLIDO dentro da raiz recebe HTTP 200 (5.0188ms)
+  ✖ 3. Caminho relativo escapando da raiz recebe HTTP 400 (3.3584ms)
+  ✖ 4. Caminho absoluto externo recebe HTTP 400 (6.0668ms)
+  ✖ 5. Diretório com prefixo semelhante recebe HTTP 400 (2.9421ms)
+  ﹣ 6. Symlink de Arquivo apontando para fora da raiz (4.8132ms) # Ambiente impediu criação de symlink de arquivo (EPERM). Não contabilizado como controle comprovado.
+  ✖ 7. Junction de Diretório apontando para fora da raiz (arquivo acessado através da junction) (10.9282ms)
+✖ Controles de Segurança de Backup: Autorização de Infraestrutura e Contenção Canônica contra Traversal, Symlinks e Prefixos (19669.4277ms)
+✖ API de Consulta de Cliente: Indisponibilidade Segura, Sem Geração Fictícia e Adaptador de Teste (30161.8396ms)
+[API /api/estado POST] disco cheio
+✔ autenticação não aceita cabeçalhos forjados, chave na URL ou configuração vazia (7.7928ms)
+✔ administrador exige DDD e número completos (0.7339ms)
+✔ política de senha respeita ambiente de teste por padrão e mantém produção estrita (22.8019ms)
+✔ fila propaga falha e continua executando em ordem (5.5799ms)
+✔ escritores concorrentes: apenas uma versão é aceita; falha não retorna sucesso (2.9645ms)
+✔ validação rejeita coleções e versões inválidas (0.4925ms)
+✔ concilia edições independentes, inclusões e exclusões em todas as coleções (1.0654ms)
+✔ conflitos no mesmo campo ou exclusão contra edição preservam o rascunho (0.5424ms)

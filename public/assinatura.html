@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Minha Assinatura — Pátio CRM</title>
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    body { background-color: #0f172a; color: #f8fafc; font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 40px 20px; }
+    .container { max-width: 800px; margin: 0 auto; }
+    .card { background: #1e293b; border: 1px solid #334155; border-radius: 14px; padding: 24px; margin-bottom: 24px; }
+    h2 { margin-top: 0; color: #38bdf8; font-size: 1.5rem; }
+    .status-badge { display: inline-block; padding: 4px 12px; border-radius: 9999px; font-weight: 700; font-size: 0.85rem; text-transform: uppercase; }
+    .status-active { background: #065f46; color: #34d399; }
+    .status-trialing { background: #0369a1; color: #38bdf8; }
+    .status-past_due { background: #92400e; color: #fbbf24; }
+    .status-suspended { background: #991b1b; color: #f87171; }
+    .status-cancelled { background: #374151; color: #9ca3af; }
+    .btn { background: #0284c7; color: white; border: none; padding: 10px 18px; border-radius: 8px; font-weight: 600; cursor: pointer; text-decoration: none; display: inline-block; }
+    .btn-danger { background: #dc2626; }
+    .btn-secondary { background: #475569; }
+    .table { width: 100%; border-collapse: collapse; margin-top: 14px; }
+    .table th, .table td { padding: 10px; text-align: left; border-bottom: 1px solid #334155; font-size: 0.9rem; }
+    .table th { color: #94a3b8; }
+    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); align-items: center; justify-content: center; }
+    .modal-content { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 24px; max-width: 450px; width: 100%; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
+      <h1 style="margin:0; color:#38bdf8;">⚙️ Gestão da Assinatura SaaS</h1>
+      <a href="/index.html" class="btn btn-secondary">← Voltar ao Pátio</a>
+    </div>
+
+    <!-- Status Atual da Assinatura -->
+    <div class="card">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <div>
+          <span style="color:#94a3b8; font-size:0.85rem;">Plano Atual:</span>
+          <h3 id="nomePlano" style="margin:4px 0 10px 0; font-size:1.4rem;">Carregando...</h3>
+        </div>
+        <div id="badgeStatus" class="status-badge status-trialing">Trial</div>
+      </div>
+
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin: 16px 0; font-size:0.95rem;">
+        <div>
+          <span style="color:#94a3b8;">Valor Mensal:</span><br>
+          <strong id="valorPlano">R$ 299,00/mês</strong>
+        </div>
+        <div>
+          <span style="color:#94a3b8;">Próxima Renovação:</span><br>
+          <strong id="dataRenovacao">—</strong>
+        </div>
+      </div>
+
+      <div style="display:flex; gap:12px; margin-top:20px;">
+        <a href="/checkout" class="btn">Renovar / Alterar Plano</a>
+        <button class="btn btn-danger" onclick="abrirCancelamento()">Cancelar Assinatura</button>
+      </div>
+    </div>
+
+    <!-- Histórico de Faturas -->
+    <div class="card">
+      <h2>Histórico de Pagamentos</h2>
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Data</th>
+            <th>Descrição</th>
+            <th>Valor</th>
+            <th>Status</th>
+            <th>Comprovante</th>
+          </tr>
+        </thead>
+        <tbody id="listaFaturas">
+          <tr>
+            <td colspan="5" style="text-align:center; color:#94a3b8;">Nenhum pagamento registrado ainda.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Modal de Cancelamento -->
+  <div id="modalCancel" class="modal">
+    <div class="modal-content">
+      <h3 style="margin-top:0; color:#f87171;">Cancelar Assinatura</h3>
+      <p style="font-size:0.9rem; color:#cbd5e1;">Sentiremos sua falta! Por favor, conte-nos o motivo do cancelamento para que possamos melhorar:</p>
+
+      <div style="margin-bottom:16px;">
+        <select id="motivoCancel" style="width:100%; background:#0f172a; border:1px solid #334155; border-radius:6px; padding:10px; color:white;">
+          <option value="preco">Preço / Orçamento</option>
+          <option value="nao_usa">Pouco uso na rotina</option>
+          <option value="dificil">Dificuldade de adaptação</option>
+          <option value="mudou_de_sistema">Mudou para outro sistema</option>
+          <option value="fechou_a_empresa">Encerramento de atividades</option>
+          <option value="suporte">Atendimento / Suporte</option>
+          <option value="outro">Outro motivo</option>
+        </select>
+      </div>
+
+      <p style="font-size:0.8rem; color:#94a3b8;">
+        🛡️ Seus dados históricos, ordens de serviço e cadastros <strong>não serão apagados</strong> e poderão ser consultados a qualquer momento.
+      </p>
+
+      <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+        <button class="btn btn-secondary" onclick="fecharCancelamento()">Voltar</button>
+        <button class="btn btn-danger" onclick="confirmarCancelamento()">Confirmar Cancelamento</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function abrirCancelamento() {
+      document.getElementById('modalCancel').style.display = 'flex';
+    }
+    function fecharCancelamento() {
+      document.getElementById('modalCancel').style.display = 'none';
+    }
+
+    async function carregarAssinatura() {
+      const tid = localStorage.getItem('patio_tenant_id') || 'default';
+      try {
+        const res = await fetch('/api/billing/subscription', {
+          headers: { 'x-tenant-id': tid }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          document.getElementById('nomePlano').innerText = data.subscription.plan.toUpperCase();
+          document.getElementById('valorPlano').innerText = `R$ ${Number(data.subscription.price || 0).toFixed(2).replace('.', ',')}/mês`;
+          document.getElementById('badgeStatus').innerText = data.subscription.status;
+          document.getElementById('badgeStatus').className = `status-badge status-${data.subscription.status}`;
+          if (data.subscription.currentPeriodEnd) {
+            document.getElementById('dataRenovacao').innerText = new Date(data.subscription.currentPeriodEnd).toLocaleDateString('pt-BR');
+          }
+        }
+      } catch (_) {}
+    }
+
+    async function confirmarCancelamento() {
+      const tid = localStorage.getItem('patio_tenant_id') || 'default';
+      const motivo = document.getElementById('motivoCancel').value;
+
+      try {
+        const res = await fetch('/api/billing/cancel', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-tenant-id': tid
+          },
+          body: JSON.stringify({ reason: motivo, immediate: false })
+        });
+        const data = await res.json();
+        if (data.ok) {
+          alert('Cancelamento programado para o término do período vigente. Nenhum dado foi apagado.');
+          fecharCancelamento();
+          carregarAssinatura();
+        } else {
+          alert(data.error || 'Erro ao cancelar.');
+        }
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    carregarAssinatura();
+  </script>
+</body>
+</html>

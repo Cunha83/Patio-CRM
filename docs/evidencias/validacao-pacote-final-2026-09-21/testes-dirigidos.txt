@@ -1,0 +1,30 @@
+▶ P1: Validação de Instalação Limpa a Partir do Manifesto de Release
+  ✔ 1. Todos os arquivos mapeados conferem SHA-256 no repositório (292.2761ms)
+  ✔ 2. Cópia, Integridade Criptográfica e Sintaxe de Código a partir do Manifesto (1351.1497ms)
+  ✔ 3. Execução de Boot Funcional em Diretório Limpo com Verificação de /health e /ready (4994.0672ms)
+✔ P1: Validação de Instalação Limpa a Partir do Manifesto de Release (6771.891ms)
+◇ injected env (14) from .env // tip: ⌘ suppress logs { quiet: true }
+▶ P0: Backup Operacional Autocontido com Cópia Externa Verificada
+  ✔ 1. Falha com código != 0 e alerta quando BACKUP_EXTERNAL_DIR aponta para destino inexistente (930.9377ms)
+  ✔ 2. Sucesso completo com cópia externa de banco, anexos e manifesto SHA-256 verificado (575.4462ms)
+  ✔ 3. Detecção de corrupção ou divergência de hash rejeita a réplica externa (18.6964ms)
+✔ P0: Backup Operacional Autocontido com Cópia Externa Verificada (1733.8588ms)
+▶ P2: Configuração e Validação do Agendador de Tarefas do Windows (Task Scheduler)
+  ✔ 1. Definição XML contém MultipleInstancesPolicy=IgnoreNew e intervalo horário (2.8098ms)
+  ✔ 2. Script gerador produz XML consistente com parâmetros personalizados (0.4607ms)
+  ✔ 3. Documentação SUPERVISAO_WINDOWS.md não atribui anti-sobreposição a /np e documenta IgnoreNew (3.5489ms)
+✔ P2: Configuração e Validação do Agendador de Tarefas do Windows (Task Scheduler) (12.8613ms)
+▶ P1: Supervisor Unificado com Trava Atômica, Recuperação e Port Check
+  ✔ 1. Trava atômica impede duas instâncias simultâneas do supervisor (1627.9807ms)
+  ✔ 2. Detecção de porta ocupada impede nova inicialização (394.4576ms)
+  ✔ 3. Recuperação de trava abandonada (PID inativo) (2536.391ms)
+  ✔ 4. Recuperação do processo filho com retenção contínua da trava do supervisor e bloqueio de concorrência (4159.5896ms)
+✔ P1: Supervisor Unificado com Trava Atômica, Recuperação e Port Check (8745.0572ms)
+ℹ tests 17
+ℹ suites 0
+ℹ pass 17
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 11600.5201

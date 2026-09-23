@@ -1,0 +1,33 @@
+{
+  "generatedAt": "2026-09-23T11:15:36.398Z",
+  "package": "PatioCRM-Piloto-1.0.0-win-x64.zip",
+  "sizeBytes": 83030315,
+  "sha256": "1e4f943f31f21b91fda6d387a6a989b7627b4add5fbb485599e412498ac4dce7",
+  "packagedFiles": 9691,
+  "runtimeFiles": 101,
+  "node": "v24.19.0",
+  "architecture": "win32-x64",
+  "distributionTests": {
+    "passed": 7,
+    "failed": 0,
+    "skipped": 0
+  },
+  "regressionTests": {
+    "passed": 14,
+    "failed": 0,
+    "skipped": 0
+  },
+  "separateInstallationsOnThisHost": 3,
+  "profilesAuthenticated": 9,
+  "actualRestartAndPersistence": true,
+  "existingPilotReadinessHTTP": 200,
+  "cmdBootstrap": "passed",
+  "activeLocalSecretMatches": 0,
+  "limits": [
+    "Physical customer machines not tested",
+    "Independent backup and restore still pending",
+    "Local access only",
+    "No Windows service or boot startup",
+    "No Authenticode signing"
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "missingExternal": {
+    "exitCode": 0,
+    "warned": true
+  },
+  "presentExternal": {
+    "exitCode": 0,
+    "files": [
+      "patio_bck_1790019439724_0ab9d5_2026-09-21T19-37-19-724Z.db"
+    ],
+    "hasAttachment": false
+  },
+  "localBackupEntries": [
+    "patio_bck_1790019439383_8294e4_2026-09-21T19-37-19-383Z.db",
+    "patio_bck_1790019439724_0ab9d5_2026-09-21T19-37-19-724Z.db",
+    "uploads__all__2026-09-21T19-37-19-383Z",
+    "uploads__all__2026-09-21T19-37-19-724Z"
+  ]
+}

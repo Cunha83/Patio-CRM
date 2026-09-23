@@ -988,33 +988,25 @@ async function executarImportacaoConfirmada() {
   }
 
   try {
+    await flushSave();
+    if (pendingLocalSave || saving) throw new Error('Resolva as alterações pendentes antes de importar.');
     const res = await fetch('/api/backup/importar', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ dados, modo })
+      body: JSON.stringify({ dados, modo, versao: S.versao || 0 })
     });
 
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const resposta = await res.json();
 
-    // Sincroniza estado no frontend
-    const novoEstado = await armazem.ler();
-    if (novoEstado) {
-      S = novoEstado;
-    } else {
-      // Fallback mesclagem direta local
-      if (modo === 'substituir') {
-        S = { ...S, ...dados };
-      } else {
-        if (dados.clientes) S.clientes = [...(S.clientes || []), ...dados.clientes];
-        if (dados.veiculos) S.veiculos = [...(S.veiculos || []), ...dados.veiculos];
-        if (dados.pecas) S.pecas = [...(S.pecas || []), ...dados.pecas];
-        if (dados.servicos) S.servicos = [...(S.servicos || []), ...dados.servicos];
-        if (dados.contas) S.contas = [...(S.contas || []), ...dados.contas];
-      }
-      await armazem.gravar(S);
-    }
-
+    // Após a importação, lê o estado confirmado; não reaplica o backup localmente.
+    const refresh = await fetch('/api/estado');
+    if (!refresh.ok) throw new Error('Importação concluída, mas a atualização da tela falhou. Recarregue a página.');
+    const novoEstado = await refresh.json();
+    if (!novoEstado.os) throw new Error('Estado retornado inválido.');
+    S = { ...novoEstado, ui: S.ui };
+    armazem.base = PatioSync.clone(novoEstado);
+    try { localStorage.setItem(CHAVE, JSON.stringify(S)); } catch (_) {}
     fecharFolha();
     render();
 
@@ -1054,6 +1046,10 @@ function imprimirFechamentoCaixa() {
   const totSaidas = soma(saidas, m => m.valor);
   const saldoFinal = saldoCaixa();
 
+  const logoRaw = S?.cfg?.identidadeVisual?.logo || S?.cfg?.identidadeVisual?.imagemInstitucional;
+  const logoUrl = (typeof logoRaw === 'string') ? logoRaw : (logoRaw?.url || null);
+  const logoHtml = logoUrl ? `<img src="${logoUrl}" style="max-height:50px;max-width:160px;object-fit:contain;margin-bottom:8px" alt="Logo"><br>` : '';
+
   const janela = window.open('', '_blank');
   if (!janela) return;
 
@@ -1077,6 +1073,7 @@ function imprimirFechamentoCaixa() {
   </head>
   <body>
     <div class="topo">
+      ${logoHtml}
       <h2 style="margin:0">${esc(S.cfg.empresa)}</h2>
       <div style="font-size:14px;font-weight:bold;margin-top:4px">FECHAMENTO DIÁRIO DE CAIXA</div>
       <div>Data de Referência: ${dataBRfull(dH)} às ${horaBR()}</div>

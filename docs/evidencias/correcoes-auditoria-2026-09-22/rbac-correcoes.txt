@@ -1,0 +1,18 @@
+{"timestamp":"2026-09-22T19:04:47.812Z","type":"metric","subsystem":"repository","op":"read","latencyMs":0.67,"success":true,"cacheHit":false,"tenantId":"oficina_piloto_01","error":null}
+{"timestamp":"2026-09-22T19:04:47.819Z","type":"metric","subsystem":"repository","op":"write","latencyMs":9.57,"success":true,"conflict":false,"status":200,"tenantId":"oficina_piloto_01","error":null}
+▶ P0: Auditoria Rigorosa de Credenciais e Permissões RBAC dos Operadores
+  ✔ 1. Senhas de exemplo antigas são estritamente rejeitadas (440.2209ms)
+  ✔ 2. Todas as novas credenciais definitivas autenticam com sucesso (200 OK) (195.3034ms)
+  ✔ 3. Gestor (tenant_admin) possui permissões administrativas e financeiras integrais (58.6254ms)
+  ✔ 4. Atendente possui permissão de leitura/escrita de OS, mas bloqueio a gestão de backups (123.1428ms)
+  ✔ 5. Mecânico possui blindagem financeira ativa no payload (56.8641ms)
+✔ P0: Auditoria Rigorosa de Credenciais e Permissões RBAC dos Operadores (877.5706ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1436.9807
+

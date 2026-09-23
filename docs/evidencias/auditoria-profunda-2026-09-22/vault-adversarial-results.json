@@ -1,0 +1,29 @@
+[
+  {
+    "case": "missing_required_database",
+    "status": 200,
+    "verified": true,
+    "files": 0
+  },
+  {
+    "case": "dot_package_name",
+    "status": 400,
+    "sentinelPreserved": false,
+    "vaultStillExists": false
+  },
+  {
+    "case": "independence_guard",
+    "remoteUrl": "http://[::1]:3005/upload",
+    "rejected": false
+  },
+  {
+    "case": "independence_guard",
+    "remoteUrl": "http://localhost:3005/upload",
+    "rejected": true
+  },
+  {
+    "case": "independence_guard",
+    "remoteUrl": "not-a-url",
+    "rejected": false
+  }
+]

@@ -1,0 +1,25 @@
+▶ Controles de Segurança de Backup: Autorização de Infraestrutura e Contenção Canônica contra Traversal, Symlinks e Prefixos
+  ✔ 1. Usuário comum de tenant tentando restaurar backup recebe HTTP 403 (92.7283ms)
+  ✔ 2. Usuário autorizado de infraestrutura com arquivo VÁLIDO dentro da raiz recebe HTTP 200 (72.3111ms)
+  ✔ 3. Caminho relativo escapando da raiz recebe HTTP 400 (58.3453ms)
+  ✔ 4. Caminho absoluto externo recebe HTTP 400 (61.0009ms)
+  ✔ 5. Diretório com prefixo semelhante recebe HTTP 400 (61.9689ms)
+  ﹣ 6. Symlink de Arquivo apontando para fora da raiz (0.2784ms) # Ambiente impediu criação de symlink de arquivo (EPERM). Não contabilizado como controle comprovado.
+  ✔ 7. Junction de Diretório apontando para fora da raiz (arquivo acessado através da junction) (64.9516ms)
+✔ Controles de Segurança de Backup: Autorização de Infraestrutura e Contenção Canônica contra Traversal, Symlinks e Prefixos (2404.2389ms)
+▶ API de Consulta de Cliente: Indisponibilidade Segura, Sem Geração Fictícia e Adaptador de Teste
+  ✔ 1. Rejeita documento com formato ou tamanho incorreto com HTTP 400 (103.3075ms)
+  ✔ 2. Sem provedor externo configurado: reporta indisponibilidade segura sem fórmulas ou seeds fictícias (62.159ms)
+  ✔ 3. Adaptador de teste explícito via header retorna dados marcados como simulados (56.8834ms)
+  ✔ 4. Falha ou timeout de provedor não gera fallback fictício (128.7668ms)
+  ✔ 5. Cliente existente localmente é retornado sem consulta externa e sem score fictício (159.3035ms)
+  ✔ 6. Diferencia TRANSPORTE_NAO_IMPLEMENTADO quando variáveis de ambiente existem mas adaptador não foi construído (3.1315ms)
+✔ API de Consulta de Cliente: Indisponibilidade Segura, Sem Geração Fictícia e Adaptador de Teste (2974.1707ms)
+ℹ tests 15
+ℹ suites 0
+ℹ pass 14
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 1
+ℹ todo 0
+ℹ duration_ms 5975.4805

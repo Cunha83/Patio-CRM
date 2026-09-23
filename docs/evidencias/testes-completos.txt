@@ -1,0 +1,584 @@
+▶ Bateria de Regressões Adversariais de Segurança & Integridade (Blockers A - M)
+  ✔ A. erpIntegrationService: processarFilaOutbox sem dispatcherFn marca failed e não synced (236.4919ms)
+  ✔ B. IdentityRegistry: lockout persiste e bloqueia conta após reinício do servidor (loadFromDB) (417.2435ms)
+  ✔ C. server.js: /api/auth/recuperar-senha não expõe resetToken no payload JSON (281.0961ms)
+  ✔ D. /api/auditoria: Tenant A não vê auditoria de Tenant B nem eventos globais, e total é preciso (183.8575ms)
+  ✔ E. billingService: operações retornam objetos limpos sem anti-pattern de thenable circular (112.3465ms)
+  ✔ F. backupService: fallback de cópia WAL respeita process.env.DB_PATH (85.3338ms)
+{"timestamp":"2026-09-16T00:04:00.918Z","type":"metric","subsystem":"repository","op":"read","latencyMs":146.23,"success":true,"cacheHit":false,"tenantId":"tenant_adv_overflow_1789517040732","error":null}
+{"timestamp":"2026-09-16T00:04:01.299Z","type":"metric","subsystem":"repository","op":"write","latencyMs":551.87,"success":true,"conflict":false,"status":200,"tenantId":"tenant_adv_overflow_1789517040732","error":null}
+{"timestamp":"2026-09-16T00:04:01.303Z","type":"metric","subsystem":"repository","op":"read","latencyMs":1.56,"success":true,"cacheHit":true,"tenantId":"tenant_adv_overflow_1789517040732","error":null}
+{"timestamp":"2026-09-16T00:04:01.795Z","type":"metric","subsystem":"auth","op":"authenticate","latencyMs":208.21,"success":false,"tenantId":"tenant_victim_1789517041416","actorId":"invasor_comum","role":null,"errorType":"403_unauthorized_tenant"}
+  ✔ G. stateRepository: auditoria excedente (>1000) é arquivada em security_audit_log sem perda (682.6494ms)
+  ✔ H. context.js: Ator comum não pode forjar x-support-session para acessar outro tenant (381.7275ms)
+{"timestamp":"2026-09-16T00:04:01.903Z","type":"metric","subsystem":"repository","op":"read","latencyMs":105.34,"success":true,"cacheHit":false,"tenantId":"tenant_hack_sub_1789517041798","error":null}
+{"timestamp":"2026-09-16T00:04:01.939Z","type":"metric","subsystem":"repository","op":"write","latencyMs":140.8,"success":true,"conflict":false,"status":200,"tenantId":"tenant_hack_sub_1789517041798","error":null}
+{"timestamp":"2026-09-16T00:04:01.941Z","type":"metric","subsystem":"repository","op":"read","latencyMs":0.04,"success":true,"cacheHit":true,"tenantId":"tenant_hack_sub_1789517041798","error":null}
+{"timestamp":"2026-09-16T00:04:01.945Z","type":"metric","subsystem":"repository","op":"write","latencyMs":4.94,"success":false,"conflict":true,"status":409,"tenantId":"tenant_hack_sub_1789517041798","error":"version_conflict_409"}
+{"timestamp":"2026-09-16T00:04:01.950Z","type":"metric","subsystem":"repository","op":"read","latencyMs":1.62,"success":true,"cacheHit":true,"tenantId":"tenant_hack_sub_1789517041798","error":null}
+  ✔ I. stateRepository: Inquilino não pode sobrescrever subscription no POST de estado (167.916ms)
+  ✔ J. erpIntegrationService: concorrência entre workers com lease expiration e bloqueio de worker expirado (1500.9253ms)
+  ✔ K. userRepository: consumo concorrente de token de redefinição garante uso estritamente único (816.5102ms)
+  ✔ L. billingService: webhooks concorrentes idênticos são tratados com idempotência atômica no SQLite (121.4992ms)
+  ✔ M. billingService: resolução em subprocesso isolado com timeout estrito de 5s (1732.1489ms)
+✔ Bateria de Regressões Adversariais de Segurança & Integridade (Blockers A - M) (7751.695ms)
+{"timestamp":"2026-09-16T00:04:00.123Z","type":"metric","subsystem":"auth","op":"authenticate","latencyMs":171.42,"success":false,"tenantId":"oficina_lockout","actorId":null,"role":null,"errorType":"401_missing_or_invalid_credentials"}
+{"timestamp":"2026-09-16T00:04:00.248Z","type":"metric","subsystem":"auth","op":"authenticate","latencyMs":123.93,"success":false,"tenantId":"oficina_lockout","actorId":null,"role":null,"errorType":"401_missing_or_invalid_credentials"}
+{"timestamp":"2026-09-16T00:04:00.390Z","type":"metric","subsystem":"auth","op":"authenticate","latencyMs":140.89,"success":false,"tenantId":"oficina_lockout","actorId":null,"role":null,"errorType":"401_missing_or_invalid_credentials"}
+{"timestamp":"2026-09-16T00:04:00.532Z","type":"metric","subsystem":"auth","op":"authenticate","latencyMs":141.97,"success":false,"tenantId":"oficina_lockout","actorId":null,"role":null,"errorType":"401_missing_or_invalid_credentials"}
+{"timestamp":"2026-09-16T00:04:00.699Z","type":"metric","subsystem":"auth","op":"authenticate","latencyMs":166.86,"success":false,"tenantId":"oficina_lockout","actorId":null,"role":null,"errorType":"account_locked"}
+{"timestamp":"2026-09-16T00:04:00.700Z","type":"metric","subsystem":"auth","op":"authenticate","latencyMs":0.07,"success":false,"tenantId":"oficina_lockout","actorId":null,"role":null,"errorType":"account_locked"}
+▶ Hardening Operacional: Lockout Real, Troca Obrigatória de Senha, Preservação RBAC, Auditoria e ERP Outbox
+  ✔ 1. Lockout após 5 tentativas incorretas bloqueia conta no SQLite e no IdentityRegistry (1244.0002ms)
+{"timestamp":"2026-09-16T00:04:01.687Z","type":"metric","subsystem":"auth","op":"authenticate","latencyMs":203.68,"success":true,"tenantId":"oficina_troca_senha","actorId":"admin_temp_1789517040712@example.com","role":"tenant_admin","errorType":null}
+  ✔ 2. mustChangePassword bloqueia operações com HTTP 403 e libera apenas rota de troca (1010.0861ms)
+  ✔ 3. Fluxo de recuperação de senha: token expira, é de uso único e atualiza credencial (1223.5293ms)
+{"timestamp":"2026-09-16T00:04:03.003Z","type":"metric","subsystem":"repository","op":"read","latencyMs":41.91,"success":true,"cacheHit":false,"tenantId":"tenant_rbac_preserv_1789517042947","error":null}
+{"timestamp":"2026-09-16T00:04:03.021Z","type":"metric","subsystem":"repository","op":"write","latencyMs":72.2,"success":true,"conflict":false,"status":200,"tenantId":"tenant_rbac_preserv_1789517042947","error":null}
+{"timestamp":"2026-09-16T00:04:03.022Z","type":"metric","subsystem":"repository","op":"read","latencyMs":0.04,"success":true,"cacheHit":true,"tenantId":"tenant_rbac_preserv_1789517042947","error":null}
+{"timestamp":"2026-09-16T00:04:03.039Z","type":"metric","subsystem":"repository","op":"write","latencyMs":18.05,"success":true,"conflict":false,"status":200,"tenantId":"tenant_rbac_preserv_1789517042947","error":null}
+{"timestamp":"2026-09-16T00:04:03.051Z","type":"metric","subsystem":"repository","op":"read","latencyMs":0.11,"success":true,"cacheHit":true,"tenantId":"tenant_rbac_preserv_1789517042947","error":null}
+  ✔ 4. Mecânico ou Atendente postando /api/estado NÃO apaga contas, caixa, fornecedores ou compras (104.8104ms)
+  ✔ 5. ERP Outbox enfileira, lista e processa itens com backoff e atualização de status (393.8589ms)
+  ✔ 6. Restauração isolada com nova instância SQLite, PRAGMA integrity_check e RTO medido (282.761ms)
+✔ Hardening Operacional: Lockout Real, Troca Obrigatória de Senha, Preservação RBAC, Auditoria e ERP Outbox (5264.8923ms)
+[API /api/estado POST] disco cheio
+✔ autenticação não aceita cabeçalhos forjados, chave na URL ou configuração vazia (5.6203ms)
+✔ administrador exige DDD e número completos (0.6318ms)
+✔ fila propaga falha e continua executando em ordem (4.6629ms)
+✔ escritores concorrentes: apenas uma versão é aceita; falha não retorna sucesso (7.8254ms)
+✔ validação rejeita coleções e versões inválidas (0.8828ms)
+✔ concilia edições independentes, inclusões e exclusões em todas as coleções (1.7724ms)
+✔ conflitos no mesmo campo ou exclusão contra edição preservam o rascunho (0.6934ms)
+✔ 1. Frotista com múltiplos veículos: vinculação e contagem correta (6.1759ms)
+✔ 2. Isolamento de frota por tenant: Tenant B não enxerga veículos ou planos do Tenant A (1.2819ms)
+✔ 3. Timeline do cliente: consolidação cronológica decrescente sem replicação de dados (3.1104ms)
+✔ 4. Plano de manutenção por dias: cálculo determinístico de nextDueDate e em_dia (9.8195ms)
+✔ 5. Plano de manutenção por km: cálculo determinístico de nextDueKm e em_dia (0.4548ms)
+✔ 6. Manutenção próxima: veículo entra na faixa de alerta por km e dias (0.3981ms)
+✔ 7. Manutenção vencida: ultrapassou km ou data limite (0.3771ms)
+✔ 8. KM ausente: retorna determinístico aguardando_km sem inventar números (0.4665ms)
+✔ 9. Atualização de KM por conversa: grava histórico e recalcula status (3.1984ms)
+✔ 10. KM inconsistente exige confirmação: bloqueia redução brusca sem override (95.0455ms)
+✔ 11. Pós-venda agendado: réguas automáticas pós-entrega de OS (5.2841ms)
+✔ 12. Pós-venda respondido positivamente: marca pos_venda_ok sem abertura de OS (1.838ms)
+✔ 13. Reclamação no pós-venda: cria followUpIssue e Pré-OS com rastreabilidade (23.2068ms)
+✔ 14. Possível garantia no pós-venda: sinaliza hipótese sem aprovação automática (3.9884ms)
+✔ 15. Oportunidade CRM: gera oportunidade para manutenção preventiva vencida (4.0494ms)
+✔ 16. Oportunidade deduplicada: não gera oportunidades repetidas para o mesmo item (1.241ms)
+✔ 17. Agendamento: criação com sucesso e validação de campos (1.3148ms)
+✔ 18. Cancelamento de agendamento: registra motivo e atualiza status (0.75ms)
+✔ 19. Conversão de agendamento em Pré-OS: preserva appointmentId e metadados de origem (1.0278ms)
+✔ 20. Opt-out do cliente: cancela oportunidades em aberto e bloqueia contatos (1.3892ms)
+✔ 21. Política anti-spam: cooldown de 24h e bloqueio por preferências desativadas (0.5156ms)
+✔ 22. Consulta da Verônica sobre frota: voz interpreta frotista e responde veículos (13.355ms)
+✔ 23. Consulta da Verônica sobre preventiva: responde status de vencimentos (1.4632ms)
+✔ 24. Ação de agendamento por voz: interpreta placa e agenda veículo (1.1964ms)
+✔ 25. Dashboard CRM: cálculo consistente de métricas consolidadas (0.6636ms)
+✔ 26. Logotipo por tenant: validação de formato e tamanho máximo (0.8219ms)
+✔ 27. Personalização de OS/orçamento: inclusão de logo do tenant (0.2933ms)
+✔ 28. Nome do agente configurável por tenant: displayName customizado e persistido (0.1976ms)
+✔ 29. Voz masculina/feminina configurável: alteração de voiceGender (0.1559ms)
+✔ 30. Fallback seguro para Verônica/feminina na ausência de configuração (0.4792ms)
+✔ 31. Isolamento da identidade visual: Tenant A não vaza logo para Tenant B (0.6904ms)
+✔ 32. RBAC: verificação de escopos e permissões de CRM e configurações (1.7642ms)
+✔ 33. Auditoria detalhada para operações críticas de CRM e agendamento (1.1879ms)
+✔ 34. Scheduler sem concorrência: mutexes impedem execuções concorrentes simultâneas (61.2833ms)
+✔ 35. Regressão integral e integridade E2E da API de CRM, Agendamentos e Configurações (7360.1458ms)
+▶ Migração concorrente, falha de disco e carga transacional limitada
+  ✔ inicializações concorrentes não duplicam colunas (503.4042ms)
+  ✔ run comum externo não participa do rollback de outra operação (279.5877ms)
+  ✔ SQLITE_FULL reverte só a transação correspondente (210.6373ms)
+MEASUREMENT_LOCAL_SQLITE [{"operations":100,"concurrency":1,"durationMs":12302,"p95Ms":233},{"operations":100,"concurrency":4,"durationMs":13983,"p95Ms":1293},{"operations":100,"concurrency":10,"durationMs":11474,"p95Ms":2482}]
+  ✔ 100 operações em ondas 1, 4 e 10 sem perda e abaixo de 30s por onda (37765.6691ms)
+  ✔ DB_PATH real explícito e caminho equivalente são recusados antes de abrir (2.8566ms)
+✔ Migração concorrente, falha de disco e carga transacional limitada (38805.2878ms)
+================================================================
+  PÁTIO CRM — CARGA DA BASE DE DEMONSTRAÇÃO (90 DIAS)
+  Tenant: oficina_demo_dados_ficticios (Oficina Demonstração — Dados Fictícios)
+  Período: 2026-06-13 até 2026-09-11 (America/Sao_Paulo)
+================================================================
+
+[Isolamento] Verificação do banco de dados:
+  - Tenant de produção (default): Presente e Protegido
+  - Chave de destino: "tenant:oficina_demo_dados_ficticios:state"
+
+[Geração] Construindo entidades em memória...
+[Persistência] Gravando no SQLite KV...
+[SaaS Platform] Provisionando 6 oficinas sintéticas para o Admin SaaS...
+[Auth] Provisionando usuário administrador demonstrativo (demo_admin)...
+  ✔ Usuário "demo_admin" criado com sucesso para o tenant demonstrativo.
+
+✅ Carga realizada com sucesso e isolamento comprovado!
+  - Clientes: 80 (inclui 8 grandes frotistas)
+  - Veículos: 120 (pesados com placas DEM...)
+  - Fornecedores: 15
+  - Peças: 150 (molas, freios, pneumática, chassi)
+  - Colaboradores: 10 (equipe com taxas/hora)
+  - Orçamentos: 360
+  - Ordens de Serviço: 300 (272 finalizadas, 14 em andamento, 6 em boxes)
+  - Pedidos de Compra: 80
+  - Movimentações Estoque: 668
+  - Contas a Pagar/Receber: 358
+  - Movimentos de Caixa: 277
+  - Apontamentos Mão de Obra: 544
+  - Planos Preventivos: 25
+  - Tenants Plataforma SaaS: 6
+✔ 1. Isolamento de Produção: tenant:default:state preservado e demo segregado (2234.958ms)
+✔ 2. Metas Volumétricas e Governança: volumes completos nos últimos 90 dias (290.2365ms)
+✔ 3. Conciliação Físico-Financeira de Estoque: 100% das 150 peças conciliadas sem saldo negativo (1037.2225ms)
+✔ 4. Coerência Cronológica e Fuso Horário: zero eventos futuros em relação a 2026-09-11 (201.2853ms)
+✔ 5. Anti-Sobreposição de Horários da Mão de Obra e Remuneração (920.0727ms)
+================================================================
+  PÁTIO CRM — VERIFICAÇÃO E CONCILIAÇÃO DA BASE DEMO
+  Tenant: oficina_demo_dados_ficticios
+================================================================
+
+✔ 6. Conciliação Financeira de OS e Fluxo de Caixa Positivo (521.9869ms)
+1. Verificando isolamento de produção...
+   ✔ Chave de produção default e chave demo estritamente isoladas.
+2. Conciliando estoque físico peça a peça...
+   ✔ 100% das 150 peças conciliadas perfeitamente (Zero divergência e saldo >= 0).
+3. Verificando coerência de datas...
+   ✔ Zero pagamentos ou conclusões futuras em relação a 2026-09-11.
+4. Verificando anti-sobreposição de mecânicos...
+   ✔ Rigorosamente ZERO sobreposições de horário entre os mecânicos (544 apontamentos).
+5. Conciliando fluxo de caixa e saldos...
+   - Saldo Inicial: R$ 85000.00
+   - Total Entradas (Caixa): R$ 353020.00
+   - Total Saídas (Caixa): R$ 282532.50
+   - Saldo Atual Consolidado: R$ 155487.50
+   ✔ Fluxo de caixa consistente e positivo.
+
+================================================================
+  STATUS FINAL DA VERIFICAÇÃO: APROVADO (OK)
+================================================================
+✔ 7. Verificador Oficial: executarVerify() retorna sucesso sem falhas (564.8807ms)
+================================================================
+  PÁTIO CRM — PURGA EXCLUSIVA DO LOTE DEMONSTRATIVO
+  Tenant: oficina_demo_dados_ficticios (Batch: demo_batch_20260911)
+================================================================
+
+[Purga] Registro removido de kv: 1 linha(s) afetada(s).
+[Purga] Usuário "demo_admin" e associações removidos com segurança.
+✔ Dados de produção preservados integralmente (0 alterações em produção).
+================================================================
+  PÁTIO CRM — CARGA DA BASE DE DEMONSTRAÇÃO (90 DIAS)
+  Tenant: oficina_demo_dados_ficticios (Oficina Demonstração — Dados Fictícios)
+  Período: 2026-06-13 até 2026-09-11 (America/Sao_Paulo)
+================================================================
+
+[Isolamento] Verificação do banco de dados:
+  - Tenant de produção (default): Presente e Protegido
+  - Chave de destino: "tenant:oficina_demo_dados_ficticios:state"
+
+[Geração] Construindo entidades em memória...
+[Persistência] Gravando no SQLite KV...
+[SaaS Platform] Provisionando 6 oficinas sintéticas para o Admin SaaS...
+[Auth] Provisionando usuário administrador demonstrativo (demo_admin)...
+  ✔ Usuário "demo_admin" criado com sucesso para o tenant demonstrativo.
+
+✅ Carga realizada com sucesso e isolamento comprovado!
+  - Clientes: 80 (inclui 8 grandes frotistas)
+  - Veículos: 120 (pesados com placas DEM...)
+  - Fornecedores: 15
+  - Peças: 150 (molas, freios, pneumática, chassi)
+  - Colaboradores: 10 (equipe com taxas/hora)
+  - Orçamentos: 360
+  - Ordens de Serviço: 300 (272 finalizadas, 14 em andamento, 6 em boxes)
+  - Pedidos de Compra: 80
+  - Movimentações Estoque: 668
+  - Contas a Pagar/Receber: 358
+  - Movimentos de Caixa: 277
+  - Apontamentos Mão de Obra: 544
+  - Planos Preventivos: 25
+  - Tenants Plataforma SaaS: 6
+✔ 8. Isolamento da Purga e Restauração (1415.28ms)
+▶ Cobrança SaaS Durável (SQLite + Asaas v3)
+  ✔ 1. Persistência durável de Cliente de Faturamento no SQLite (51.1936ms)
+  ✔ 2. Persistência durável de Assinatura no SQLite (129.0536ms)
+  ✔ 3. Idempotência estrita no processamento de eventos de webhook (353.3028ms)
+  ✔ 4. AsaasProviderAdapter: Sandbox sinalizado e bloqueio em produção (9.4183ms)
+  ✔ 5. Faturas persistidas no banco SQLite (169.8972ms)
+✔ Cobrança SaaS Durável (SQLite + Asaas v3) (1170.1129ms)
+▶ Camada Canônica de Integração com ERP Fiscal & Contábil Externo
+  ✔ 1. Exportação canônica de Clientes com normalização e CPF/CNPJ (4.5291ms)
+  ✔ 2. Exportação canônica de Peças com custo médio e margem para o ERP (7.0911ms)
+  ✔ 3. Exportação canônica de Ordens de Serviço (separando peças, serviços e totais) (1.3753ms)
+  ✔ 4. Exportação canônica de Movimentos Financeiros Gerenciais (Contas a Pagar/Receber) (1.7129ms)
+  ✔ 5. Paginação com cursor (7.3241ms)
+  ✔ 6. Fila Outbox do ERP: enfileiramento, atualização de sincronização e status (241.0633ms)
+✔ Camada Canônica de Integração com ERP Fiscal & Contábil Externo (1199.7029ms)
+✔ 1. Motor Financeiro: Cálculos de Saldo, A Receber, A Pagar e Projeção (25.65ms)
+✔ 2. Filtros de Período: Hoje, 7d, 15d, 30d, Mês e Mês Anterior (5.3028ms)
+✔ 3. Resiliência: Estado Vazio, Valores Zerados ou Negativos sem Quebras (8.26ms)
+✔ 4. Geração das Séries dos 5 Gráficos com Dados Reais (12.2467ms)
+✔ 5. Geração de Infográfico JPG 1080x1350 via Puppeteer com SVGs Embutidos (15.648ms)
+▶ Motor de Cálculo e Rateio Tributário Fiscal (NF-e, NFS-e e IVA Dual 2026)
+  ✔ 1. round2 elimina dízimas de ponto flutuante em valores centesimais (2.7425ms)
+  ✔ 2. ratearValorSobreItens preserva rigorosamente a soma total dos descontos (3.8107ms)
+  ✔ 3. calcularTributosItemMercadoria apura ICMS, ST, PIS e COFINS com precisão (4.584ms)
+  ✔ 4. calcularTributosItemServico apura ISS e retenção municipal (13.9782ms)
+  ✔ 5. Reforma Tributária: campos de CBS e IBS apurados conforme EC 132/2023 (1.0285ms)
+  ✔ 6. calcularDocumentoFiscal consolida todos os itens e totais do documento (1.8066ms)
+✔ Motor de Cálculo e Rateio Tributário Fiscal (NF-e, NFS-e e IVA Dual 2026) (39.3073ms)
+▶ Controles fiscais, transporte real com respostas sintéticas e isolamento
+  ✔ não há fallback simulado, produção ou segredo fixo (15.2802ms)
+  ✔ rateio conserva centavos em 2000 combinações determinísticas (98.5236ms)
+  ✔ idempotência concorrente isolada por oficina, colisão de conteúdo recusada (310.4347ms)
+  ✔ classificação e alíquotas ausentes impedem revisão (256.5221ms)
+  ✔ intenção precede rede, timeout fica incerto e repetição não envia (786.3721ms)
+  ✔ consulta reconcilia protocolo e XML sem reenviar, snapshot permanece (395.0924ms)
+  ✔ evento incerto permanece e impede repetição concorrente (301.6233ms)
+  ✔ XML externo, XXE, resposta vazia e HTTP 200 sem autorização não liberam (1.2814ms)
+  ✔ contrato de CC-e recupera protocolo do XML e aceita chave prefixada documentada (18.4719ms)
+  ✔ falha de certificado/provedor nunca é convertida em autorização (12.2131ms)
+  ✔ calibração nunca recua e recuperação bloqueia novas transmissões (217.7335ms)
+  ✔ API nega suporte, outra oficina e alteração de segredos (1405.3925ms)
+✔ Controles fiscais, transporte real com respostas sintéticas e isolamento (5360.9574ms)
+▶ SIMULAÇÃO LOCAL — Ciclo de Vida Fiscal, Numeração Atômica, Eventos e Recuperação (NF-e/NFS-e)
+  ✔ 1. fiscalConfigService: salva parâmetros e criptografa segredos em repouso (71.6253ms)
+  ✔ 2. fiscalNumberingService: alocação atômica serializada de numeração sob concorrência (1384.2186ms)
+  ✔ 3. fiscalLifecycleService: separa peças em NF-e 55 e mão de obra em NFS-e (410.613ms)
+  ✔ 4. fiscalLifecycleService: transmite NF-e e obtém autorização com chave de 44 dígitos válida (619.6299ms)
+  ✔ 5. fiscalEventService: emite CC-e com validação de tamanho mínimo e sequencial incremental (1736.2717ms)
+  ✔ 6. fiscalEventService: cancela NF-e autorizada e valida justificativa legal (488.914ms)
+  ✔ 7. Backup & Restauração: restaura banco em arquivo separado e preserva histórico e ledger fiscal (339.7461ms)
+✔ SIMULAÇÃO LOCAL — Ciclo de Vida Fiscal, Numeração Atômica, Eventos e Recuperação (NF-e/NFS-e) (6475.3217ms)
+✔ falha de rede mantém rascunho recuperável e bloqueia sincronização (41.595ms)
+✔ 409 concilia edições independentes e confirma a nova versão (7.0257ms)
+✔ conflito no mesmo campo não reenvia nem descarta a edição (30.762ms)
+✔ digitação durante envio é salva depois, sem requisições sobrepostas (6.2141ms)
+✔ servidor real: autenticação, concorrência, backup, upload e persistência (14772.3586ms)
+{"timestamp":"2026-09-16T00:04:17.836Z","type":"metric","subsystem":"auth","op":"authenticate","latencyMs":190.64,"success":true,"tenantId":"oficina_rbac","actorId":"mecanico_leitor","role":"mechanic","errorType":null}
+✔ 1. Criação de Inspeção: cria com status em_inspecao, vinculada a OS e veículo (14.6706ms)
+✔ 2. Isolamento de Inspeção por Tenant: Tenant A jamais enxerga ou altera inspeção do Tenant B (13.5756ms)
+✔ 3. Diagnóstico Humano Confirmado: registro explícito do mecânico e recusa estrita de IA autônoma (5.4825ms)
+✔ 4. Adição de Fotos e Serviços Recomendados na Inspeção (4.9254ms)
+✔ 5. Conclusão e Cancelamento da Inspeção Técnica com Atualização de Status da OS (1.3106ms)
+✔ 6. Criação de Orçamento: monta itens a partir de serviços e peças com códigos determinísticos (2.2112ms)
+✔ 7. Cálculo Financeiro Determinístico: subtotais de serviços, peças, descontos e total líquido precisos (1.6114ms)
+✔ 8. Versionamento do Orçamento: alteração gera versão v2, arquiva anterior no histórico e revoga tokens antigos (11.2225ms)
+✔ 9. Envio do Orçamento: gera token criptográfico HMAC SHA-256 e link seguro de aprovação (4.182ms)
+✔ 10. Validação de Token Válido: integridade de assinatura e extração segura do payload (14.8846ms)
+✔ 11. Rejeição Estrita de Token Expirado após o decurso do TTL (1.6477ms)
+✔ 12. Revogação Automática de Token de Versão Anterior ao publicar v2 (1.6505ms)
+✔ 13. Proteção de Escopo: rejeição de token de outro orçamento ou outro tenant (0.7057ms)
+✔ 14. Aprovação Total do Cliente: aprova todos os itens, calcula total e sincroniza OS como executando (2.8136ms)
+✔ 15. Aprovação Parcial do Cliente: aprova itens 1 e 3 e recusa item 2; total autorizado reflete apenas itens aprovados (2.0817ms)
+✔ 16. Recusa Total pelo Cliente: registra justificativa e bloqueia execução de todos os itens (0.9808ms)
+✔ 17. Idempotência Rigorosa: requisições repetidas ou cliques duplos retornam confirmação sem duplicar serviços na OS (1.0177ms)
+✔ 18. Bloqueio de Versão Desatualizada (409 Conflict): cliente tentando aprovar v1 após publicação da v2 é bloqueado (1.1803ms)
+✔ 19. Adicional de Escopo: criação de orçamento adicional durante desmontagem com numeração específica (1.0499ms)
+✔ 20. Adicional Exige Nova Aprovação: itens adicionais permanecem bloqueados até autorização explícita (1.1153ms)
+✔ 21. Visão do Mecânico: itens aprovados marcados como AUTORIZADO e itens recusados em alerta de bloqueio (1.2893ms)
+✔ 22. Possível Garantia Sem Decisão Automática: orçamento mantém valores financeiros para decisão humana manual (0.6087ms)
+✔ 23. Inteligência Operacional: alerta determinístico para orçamentos pendentes > 4h e > 8h (34.7037ms)
+✔ 24. Dashboard Operacional: consolidação em tempo real de contagem e valores de orçamentos pendentes e adicionais (9.274ms)
+✔ 25. Comandos de Voz da Verônica: consulta de orçamentos pendentes com dados verídicos e laudo estruturado de fala (16.3101ms)
+✔ 26. Voz de Alto Risco: alteração financeira no orçamento exige confirmação explícita por token (1.8054ms)
+✔ 27. WhatsApp: comandos conversacionais de aprovação total e recusa via mensagem com resposta contextual (4.1827ms)
+✔ 28. Controle de Acesso RBAC: permissões inspection:* e quotation:* estritamente aplicadas (551.336ms)
+✔ 29. Trilha de Auditoria Completa: registra eventos de todo o ciclo de vida de forma imutável (7.3812ms)
+✔ 30. Servidor Real E2E: ciclo completo HTTP (inspeção -> orçamento -> envio -> aprovação digital pública sem login -> OS executando) (6639.4745ms)
+✔ 1. Cadastro de peça com referências cruzadas e campos obrigatórios (16.1328ms)
+✔ 2. Validação de colisão de código interno no mesmo tenant (2.3175ms)
+✔ 3. Isolamento multi-tenant estrito no cadastro e busca de peças (1.1839ms)
+✔ 4. Cálculo determinístico de saldos: Físico, Reservado e Disponível (1.0882ms)
+✔ 5. Livro-razão imutável de movimentações de estoque com auditoria (0.6403ms)
+✔ 6. Cálculo correto do Custo Médio Ponderado no recebimento (0.606ms)
+✔ 7. Reserva atômica de peças para Ordem de Serviço (1.7112ms)
+✔ 8. Bloqueio quando estoque disponível for insuficiente para reserva total (6.3087ms)
+✔ 9. Liberação de reserva na exclusão de item ou cancelamento de OS (1.4934ms)
+✔ 10. Consumo mecânico autorizado na OS com baixa no estoque físico (2.243ms)
+✔ 11. Devolução de peças da OS para o almoxarifado (1.5827ms)
+✔ 12. Ajuste manual de inventário com auditoria (1.5412ms)
+✔ 13. Cadastro e consulta de fornecedores com condições comerciais (1.5037ms)
+✔ 14. Histórico de compras e cálculo de pontualidade do fornecedor (2.0062ms)
+✔ 15. Geração automática de Necessidade de Compra para peça faltante em OS (8.1941ms)
+✔ 16. Criação de Cotação com múltiplos fornecedores (4.0012ms)
+✔ 17. Registro de respostas dos fornecedores com preços e prazos (1.2408ms)
+✔ 18. Comparativo determinístico de cotações com melhor preço e melhor prazo (2.6942ms)
+✔ 19. Detecção de impacto no prazo de entrega prometido na OS (5.1611ms)
+✔ 20. Criação de Pedido de Compra abaixo do limite de alçada (aprovação automática) (2.0717ms)
+✔ 21. Criação de Pedido de Compra acima do limite de alçada (aguardando aprovação) (0.6262ms)
+✔ 22. Aprovação de Pedido de Compra por gestor com permissão purchase:approve (0.9747ms)
+✔ 23. Cancelamento de Pedido de Compra com registro de auditoria (0.741ms)
+✔ 24. Recebimento total de Pedido de Compra atualiza estoque físico e custo médio (1.5738ms)
+✔ 25. Reserva automática prioritária para a OS de origem ao receber mercadoria (1.1395ms)
+✔ 26. Recebimento parcial de Pedido de Compra com saldo remanescente (0.7849ms)
+✔ 27. Integração com Contas a Pagar: status pendente (NUNCA paga automaticamente) (0.8366ms)
+✔ 28. OperationalIntelligenceEngine: Alertas de Suprimentos (Bloqueando Box e Pedido Atrasado) (7.4628ms)
+✔ 29. VoiceActionEngine: Consulta de estoque e solicitação de ajuste com token de confirmação (20.029ms)
+✔ 30. Servidor Real E2E: REST API de Peças com isolamento multi-tenant (6508.2261ms)
+✔ 1. Criação de Colaborador: cadastra com jornada e custo/hora (11.9099ms)
+✔ 2. Início de Apontamento: cria laborEntry ativo para serviço autorizado (14.6089ms)
+✔ 3. Pausa de Apontamento: encerra intervalo atual e grava motivo (4.5672ms)
+✔ 4. Retomada de Apontamento: cria novo intervalo sem sobrescrever histórico anterior (4.4138ms)
+✔ 5. Encerramento de Apontamento: calcula duração total e atualiza serviço da OS (8.2525ms)
+✔ 6. Duração Correta: 2 horas de apontamento resultam em exatamente 120 minutos (2.7013ms)
+✔ 7. Múltiplos Mecânicos na mesma OS: 2 mecânicos com 1h cada totalizam 2 horas-homem (8.6899ms)
+✔ 8. Anti-Sobreposição: mesmo mecânico bloqueado de ter dois serviços ativos simultaneamente (2.4829ms)
+✔ 9. Serviço Não Autorizado Bloqueado: rejeita apontamento produtivo em item recusado (0.9202ms)
+✔ 10. Apontamento Manual Auditado: correção de horário exige motivo e grava histórico (2.3898ms)
+✔ 11. Custo Hora: R$ 38,00/h em 3h30 (210 min) resulta em R$ 133,00 (27.2972ms)
+✔ 12. Custo Real de Mão de Obra: consolidado individual preciso na OS (1.3993ms)
+✔ 13. Custo Real de Peças: utiliza custo médio/real e não preço de venda (0.8401ms)
+✔ 14. Custo Real da OS: soma peças consumidas + mão de obra + custos adicionais (1.6269ms)
+✔ 15. Margem Bruta da OS: receita autorizada menos custo real sem chamar de lucro líquido (1.0568ms)
+✔ 16. Tempo Estimado vs Real: calcula desvio em minutos e percentual (3.5517ms)
+✔ 17. Retrabalho: tipo específico vinculado a causa e apuração de custo (0.9151ms)
+✔ 18. Produtividade do Mecânico: calcula horas produtivas, espera e utilização (2.0208ms)
+✔ 19. Produtividade da Oficina: consolidação de equipe e horas por período (2.016ms)
+✔ 20. Capacidade Diária: disponível, utilizada e restante com base na equipe ativa (1.4497ms)
+✔ 21. Detecção Inteligente: box ocupado sem atividade de mecânico (7.0312ms)
+✔ 22. Detecção Inteligente: apontamento esquecido aberto além da jornada (P2) (6.6762ms)
+✔ 23. Consultas da Verônica por Voz: quem está livre agora e em que o João está trabalhando (21.7028ms)
+✔ 24. Ação de Voz Iniciar: "Verônica, vou começar o embuchamento da 8921" (2.6253ms)
+✔ 25. Ação de Voz Pausar: "Verônica, pausa esse serviço, tô aguardando peça" (1.6039ms)
+✔ 26. RBAC: perfil sem permissão gerencial tem custoHora omitido no cadastro (0.748ms)
+✔ 27. Isolamento Multi-Tenant: Tenant B jamais acessa equipe ou apontamentos do Tenant A (1.6331ms)
+✔ 28. Concorrência: proteção atômica contra sobreposição no mesmo mecânico (1.2234ms)
+✔ 29. Idempotência: chamadas repetidas de iniciar/pausar não duplicam apontamentos (0.7803ms)
+✔ 30. Servidor Real E2E: ciclo HTTP completo (equipe -> iniciar -> pausar -> retomar -> encerrar -> custos da OS) (7174.3078ms)
+{"timestamp":"2026-09-16T00:04:26.459Z","type":"metric","subsystem":"auth","op":"authenticate","latencyMs":0.42,"success":false,"tenantId":"unresolved","actorId":null,"role":null,"errorType":"401_missing_or_invalid_credentials"}
+{"timestamp":"2026-09-16T00:04:26.592Z","type":"metric","subsystem":"auth","op":"authenticate","latencyMs":132.33,"success":false,"tenantId":"inv@lid!!","actorId":"operador1","role":null,"errorType":"403_invalid_tenant_id"}
+{"timestamp":"2026-09-16T00:04:26.717Z","type":"metric","subsystem":"auth","op":"authenticate","latencyMs":124.17,"success":false,"tenantId":"oficina_beta","actorId":"operador1","role":null,"errorType":"403_unauthorized_tenant"}
+{"timestamp":"2026-09-16T00:04:26.867Z","type":"metric","subsystem":"auth","op":"authenticate","latencyMs":149.73,"success":true,"tenantId":"oficina_alfa","actorId":"operador1","role":"operador","errorType":null}
+✔ 1. MetricsCollector: registro, cálculo de estatísticas e buffer circular (14.1142ms)
+✔ 2. Middleware de Contexto: coleta latência de autenticação e categoriza erros (510.2029ms)
+{"timestamp":"2026-09-16T00:04:27.169Z","type":"metric","subsystem":"repository","op":"write","latencyMs":0.26,"success":false,"conflict":false,"status":400,"tenantId":"oficina_metrica_1789517067168","error":"Coleção os obrigatória."}
+{"timestamp":"2026-09-16T00:04:27.186Z","type":"metric","subsystem":"repository","op":"read","latencyMs":14.41,"success":true,"cacheHit":false,"tenantId":"oficina_metrica_1789517067168","error":null}
+{"timestamp":"2026-09-16T00:04:27.195Z","type":"metric","subsystem":"repository","op":"write","latencyMs":24.51,"success":true,"conflict":false,"status":200,"tenantId":"oficina_metrica_1789517067168","error":null}
+{"timestamp":"2026-09-16T00:04:27.196Z","type":"metric","subsystem":"repository","op":"read","latencyMs":0.04,"success":true,"cacheHit":true,"tenantId":"oficina_metrica_1789517067168","error":null}
+{"timestamp":"2026-09-16T00:04:27.196Z","type":"metric","subsystem":"repository","op":"write","latencyMs":0.43,"success":false,"conflict":true,"status":409,"tenantId":"oficina_metrica_1789517067168","error":"version_conflict_409"}
+{"timestamp":"2026-09-16T00:04:27.196Z","type":"metric","subsystem":"repository","op":"read","latencyMs":0.03,"success":true,"cacheHit":true,"tenantId":"oficina_metrica_1789517067168","error":null}
+{"timestamp":"2026-09-16T00:04:27.198Z","type":"metric","subsystem":"repository","op":"read","latencyMs":1.57,"success":true,"cacheHit":false,"tenantId":"oficina_metrica_1789517067168","error":null}
+✔ 3. Repositório: mede tempo de leitura (cache hit vs db) e de escrita (sucesso, validação e conflito) (326.2386ms)
+✔ 4. Logs Estruturados: emite JSON padronizado para ingestão de telemetria (1.6674ms)
+✔ 5. Servidor Real E2E: endpoint /api/metricas com controle de acesso administrativo e filtro de tenant (7766.1501ms)
+{"timestamp":"2026-09-16T00:04:29.788Z","type":"metric","subsystem":"auth","op":"authenticate","latencyMs":0.16,"success":true,"tenantId":"tenant_a","actorId":"key_tenant_a","role":"service_admin","errorType":null}
+{"timestamp":"2026-09-16T00:04:29.803Z","type":"metric","subsystem":"auth","op":"authenticate","latencyMs":0.27,"success":false,"tenantId":"tenant_b","actorId":"key_tenant_a","role":null,"errorType":"403_unauthorized_tenant"}
+{"timestamp":"2026-09-16T00:04:29.982Z","type":"metric","subsystem":"auth","op":"authenticate","latencyMs":178.69,"success":false,"tenantId":"tenant_a","actorId":"user_b","role":null,"errorType":"403_unauthorized_tenant"}
+{"timestamp":"2026-09-16T00:04:30.228Z","type":"metric","subsystem":"auth","op":"authenticate","latencyMs":242.47,"success":false,"tenantId":"unresolved","actorId":"user_b","role":null,"errorType":"403_missing_tenant"}
+✔ 1. Segurança de Autenticação: rejeita credenciais padrão, senhas fracas e exige provisionamento seguro (41.6966ms)
+✔ 2. Repositório: Valida TenantId sem remover caracteres e impede colisão a.b vs ab (0.8222ms)
+✔ 3. Middleware de Contexto: Identidade A é impedida de acessar Tenant B via x-tenant-id forjado (632.5135ms)
+✔ 4. Tokens Criptográficos: vinculam tenant, ator, recurso e impedem replay ou bypass via body (4.6018ms)
+{"timestamp":"2026-09-16T00:04:31.955Z","type":"metric","subsystem":"repository","op":"read","latencyMs":15.19,"success":true,"cacheHit":false,"tenantId":"oficina_cfg_1789517071936","error":null}
+{"timestamp":"2026-09-16T00:04:32.001Z","type":"metric","subsystem":"repository","op":"write","latencyMs":60.57,"success":true,"conflict":false,"status":200,"tenantId":"oficina_cfg_1789517071936","error":null}
+{"timestamp":"2026-09-16T00:04:32.002Z","type":"metric","subsystem":"repository","op":"read","latencyMs":0.03,"success":true,"cacheHit":true,"tenantId":"oficina_cfg_1789517071936","error":null}
+{"timestamp":"2026-09-16T00:04:32.019Z","type":"metric","subsystem":"repository","op":"write","latencyMs":17.56,"success":true,"conflict":false,"status":200,"tenantId":"oficina_cfg_1789517071936","error":null}
+{"timestamp":"2026-09-16T00:04:32.020Z","type":"metric","subsystem":"repository","op":"read","latencyMs":0.03,"success":true,"cacheHit":true,"tenantId":"oficina_cfg_1789517071936","error":null}
+✔ 5. Repositório: Operador comum não pode sobrescrever cfg nem apagar auditoria (1750.0207ms)
+✔ 6. Migração: Dry-run analisa chaves legadas state e state:state em banco sintético sem alterar produção (204.4908ms)
+✔ 7. Motor Financeiro & Pátio: Zero amanhecidos com veículos entrados hoje reporta boxes ocupados com precisão (14.2799ms)
+✔ 8. Outbox Scheduler: Unicidade por tenant/data/tipo e persistência atômica com adaptador simulado (210.8278ms)
+✔ 9. Cache de Imagem JPG: Chave composta por tenant/versão e evicção com limite de memória (2.2647ms)
+✔ 1. Estrutura Canônica: Painel Operacional completo retorna todas as seções obrigatórias (10.3734ms)
+✔ 2. Cards Executivos: contagens de veículos no pátio, boxes e entregas refletem o estado (24.996ms)
+✔ 3. Empty State: estado sem ordens de serviço retorna contagens zeradas sem erro (2.073ms)
+✔ 4. Ordenação de Alertas: prioridade P1 estritamente precede P2, P3 e P4 (0.9576ms)
+✔ 5. Reconhecimento de Alerta: altera status para reconhecido com auditoria (1.9671ms)
+✔ 6. Não-Resolução: alerta reconhecido permanece no painel como reconhecido (1.1485ms)
+✔ 7. Risco de Entrega: veículo com horário prometido em menos de 60 min é em_risco (1.2583ms)
+✔ 8. Entrega Atrasada: veículo com horário prometido ultrapassado é atrasada (0.7547ms)
+✔ 9. Baia Bloqueada: detecta box bloqueado aguardando peça (2.4171ms)
+✔ 10. Maior Gargalo: identifica estágio crítico com sugestão acionável (35.6688ms)
+✔ 11. Veículos para Busca: lista normalizada com placa, modelo, cliente e alertas (1.9148ms)
+✔ 12. Zero Inventado: métricas sem dados de ciclo retornam estritamente null (0.5477ms)
+✔ 13. Snapshot Histórico: grava snapshot com timestamp e indicadores operacionais (1.4579ms)
+✔ 14. Retenção de Snapshots: array é limitado a 1000 itens (1.0907ms)
+✔ 15. Histórico por Período: filtra snapshots em 24h, 7d e 30d (0.832ms)
+✔ 16. E2E: GET /api/operacao/painel retorna 200 com payload estruturado (7084.5265ms)
+✔ 17. E2E: Isolamento Multi-Tenant estrito no painel operacional (81.9821ms)
+✔ 18. E2E: RBAC rejeita requisição não autenticada e com chave inválida (21.265ms)
+✔ 19. E2E: Transição de status da OS reflete imediatamente no painel (55.1933ms)
+✔ 20. E2E: Comando de voz recebe tenantId e mutex concorrente de avaliação (116.1108ms)
+✔ 1. Veículo parado acima do limite: detecta horas e severidades atencao, alto e critico (15.0331ms)
+✔ 2. OS sem atualização: detecta falta de evolução operacional após período configurado (13.3628ms)
+✔ 3. Entrega próxima do prazo: alerta com antecedência (< 60 min) (2.8798ms)
+✔ 4. Entrega atrasada: gera alerta crítico/alto quando o horário previsto é ultrapassado com OS aberta (1.2187ms)
+✔ 5. Possível garantia pendente: alerta presença de garantia sem emitir aprovação autônoma (0.9387ms)
+✔ 6. Pré-OS aguardando confirmação: detecta sessões técnicas e Pré-OS pendentes de decisão (> 2h) (1.3178ms)
+✔ 7. Gargalo de peças: concentração de veículos aguardando peças acima do threshold (2.1946ms)
+✔ 8. Gargalo de diagnóstico: concentração de veículos aguardando aprovação (2.1104ms)
+✔ 9. Deduplicação do mesmo evento: reavaliações periódicas não geram alertas repetidos (1.5765ms)
+✔ 10. Reconhecimento de evento: comando "ciente" muda status para reconhecido com auditoria (3.1287ms)
+✔ 11. Reconhecimento não resolve evento: evento reconhecido continua sendo monitorado pelo motor (8.01ms)
+✔ 12. Resolução automática após mudança: transição da OS para finalizada resolve o evento com resolvedAt (1.2923ms)
+✔ 13. Novo evento após nova ocorrência: reincidência posterior abre novo evento com integridade (1.7092ms)
+✔ 14. Cálculo determinístico de prioridade: classificação correta entre P1, P2, P3 e P4 (7.3025ms)
+✔ 15. Resumo operacional unificado: snapshot preciso de contagens e indicadores operacionais (6.7435ms)
+✔ 16. Métricas operacionais verídicas: tempos médios reais ou null quando não calculáveis (1.2955ms)
+✔ 17. Política de notificação desacoplada: valida severidade, horário e cooldown (13.3989ms)
+✔ 18. Integração Conversacional e Voz: reconhece intenções operacionais e delega sem acoplamento (33.4457ms)
+✔ 19. Scheduler sem execução concorrente: bloqueio por tenant impede duas avaliações simultâneas (0.5654ms)
+✔ 20. Servidor Real E2E: REST API, permissões, isolamento multi-tenant e scheduler mutex (8067.6183ms)
+▶ Autenticação Persistente & RBAC no Pátio CRM
+  ✔ 1. Validação estrita da política de senhas (5.4573ms)
+  ✔ 2. Hash criptográfico com Scrypt e Salt individual (447.3538ms)
+  ✔ 3. Criação de usuário durável no SQLite e persistência (631.7995ms)
+  ✔ 4. Bloqueio automático de conta após 5 tentativas consecutivas incorretas (1517.3124ms)
+  ✔ 5. Registro e auditoria de consentimento LGPD dos Termos e Privacidade (882.2532ms)
+  ✔ 6. Filtragem de estado por papel (RBAC filterStateByRole) (4.9396ms)
+{"timestamp":"2026-09-16T00:04:40.474Z","type":"metric","subsystem":"repository","op":"read","latencyMs":17.71,"success":true,"cacheHit":false,"tenantId":"tenant_audit_1789517080440","error":null}
+{"timestamp":"2026-09-16T00:04:40.480Z","type":"metric","subsystem":"repository","op":"write","latencyMs":38.46,"success":true,"conflict":false,"status":200,"tenantId":"tenant_audit_1789517080440","error":null}
+{"timestamp":"2026-09-16T00:04:40.481Z","type":"metric","subsystem":"repository","op":"read","latencyMs":0.04,"success":true,"cacheHit":true,"tenantId":"tenant_audit_1789517080440","error":null}
+{"timestamp":"2026-09-16T00:04:40.487Z","type":"metric","subsystem":"repository","op":"write","latencyMs":5.98,"success":true,"conflict":false,"status":200,"tenantId":"tenant_audit_1789517080440","error":null}
+{"timestamp":"2026-09-16T00:04:40.489Z","type":"metric","subsystem":"repository","op":"read","latencyMs":0.19,"success":true,"cacheHit":true,"tenantId":"tenant_audit_1789517080440","error":null}
+  ✔ 7. Imutabilidade do log de auditoria (Append-only mesmo para Admin) (50.8139ms)
+✔ Autenticação Persistente & RBAC no Pátio CRM (4387.6175ms)
+✔ 1. Memória Operacional: consulta delimitada por tenant, ordenação decrescente e extração precisa (9.0299ms)
+✔ 2. Detecção de Recorrência: normalização, classificação por categoria e cálculo de delta de KM e dias (6.9103ms)
+✔ 3. Avaliação de Garantia: prazo em dias, quilometragem e regras customizadas por tenant (17.4061ms)
+✔ 4. Contexto Técnico: cálculo do nível de atenção e geração de mensagem conversacional (5.3127ms)
+✔ 5. Ciclo de Vida da Pré-OS: triagem, auditoria, conversão para OS e cancelamento (6.9254ms)
+✔ 6. Isolamento Multi-Tenant: Tenant A jamais acessa histórico ou Pré-OS do Tenant B (2.4653ms)
+✔ 7. Voice Engine: Pré-OS automática sem histórico vs Alerta com token de confirmação em reincidência (41.3125ms)
+✔ 8. Entrada de Veículo (WhatsApp / API): gera Pré-OS com rastreabilidade e alertas técnicos (2.1966ms)
+✔ 9. Servidor Real E2E: endpoints REST /api/pre-os com autenticação e isolamento multi-tenant (8544.1425ms)
+✔ 1. Cálculo exato da fórmula de preço alvo: Preço = Custo / (1 - Margem Alvo/100) (9.6481ms)
+✔ 2. Distinção matemática entre margem bruta e markup (Markup = Margem / (1 - Margem)) (1.4616ms)
+✔ 3. Preço mínimo calculado estritamente sobre a margem mínima configurada (0.57ms)
+✔ 4. Desconto máximo seguro calculado como Preço Atual - Preço Mínimo (nunca negativo) (0.5399ms)
+✔ 5. Desconto que fura a margem mínima gera aviso ou bloqueio conforme modo configurado (1.0729ms)
+✔ 6. Cálculo de tempo histórico usando a mediana quando amostra >= 5 (3.262ms)
+✔ 7. Identificação e flag de outliers (duração > 3x mediana) sem exclusão silenciosa (24.714ms)
+✔ 8. Fallback para estimativa de catálogo quando amostra histórica < 5 e flag baseHistoricaInsuficiente = true (4.6222ms)
+✔ 9. Retorno de tempoEstimado = null quando não há histórico nem catálogo (sem inventar dados) (1.1087ms)
+✔ 10. Custo de mão de obra baseado no custo/hora real dos mecânicos da oficina (média da equipe ativa) (1.2432ms)
+✔ 11. Custo de peças priorizando custo médio ponderado do estoque (0.5494ms)
+✔ 12. Fallback para último custo de compra quando custo médio não estiver disponível (0.3196ms)
+✔ 13. Alerta emitido quando custo recente da peça subiu mais de 20% em relação ao histórico (8.516ms)
+✔ 14. Segregação de serviços em garantia da base histórica de preço de venda (não polui médias) (0.5876ms)
+✔ 15. Segregação de cortesias e retrabalhos do histórico de preços comerciais (1.2183ms)
+✔ 16. Recomendação de preço com nível de confiança: alta (>=10), média (5-9), baixa (<5 ou catálogo) (1.2199ms)
+✔ 17. Explicação determinística gerada com abertura transparente: horas de MO, custo MO, peças, margens (0.9937ms)
+✔ 18. Proteção de margem: modo desativado permite alteração sem restrições (0.3068ms)
+✔ 19. Proteção de margem: modo alertar permite alteração com aviso registrado (0.8227ms)
+✔ 20. Proteção de margem: modo exigir_confirmacao bloqueia até confirmação explícita (0.4677ms)
+✔ 21. Proteção de margem: modo exigir_aprovacao bloqueia sem permissão pricing:override (0.2638ms)
+✔ 22. Registro de override com justificativa, usuário autorizador e timestamp na trilha de auditoria (0.8803ms)
+✔ 23. Resumo de rentabilidade consolidada da oficina (receita, custo real, margem bruta, margem média) (6.1897ms)
+✔ 24. Identificação e listagem de serviços executados com margem abaixo do piso configurado (2.3559ms)
+✔ 25. Ranking de serviços por índice de retrabalho e impacto na rentabilidade (3.8636ms)
+✔ 26. Isolamento multi-tenant: dados de custo e histórico do Tenant A não influenciam Tenant B (0.4751ms)
+✔ 27. Ocultação de custos e margens para perfis sem permissão pricing:read ou profitability:read (0.5837ms)
+✔ 28. Verônica (voz): consulta de sugestão de preço ("quanto deveríamos cobrar pela troca de embreagem?") (24.1068ms)
+✔ 29. Verônica (voz): consulta de desconto seguro ("quanto posso dar de desconto sem furar a margem?") (4.5898ms)
+✔ 30. E2E: Orçamento criado -> margem calculada -> desconto seguro consultado -> override autorizado -> auditoria (8651.1328ms)
+✔ 1. Abertura progressiva de OS sem placa: cria pendência cadastral e preserva status operacional (50.0586ms)
+✔ 2. Anexar foto: concilia com veículo já existente na base sem gerar duplicidade (8.0105ms)
+✔ 3. Detecção de conflito: placa da foto difere de placa já confirmada e exige token (5.9945ms)
+✔ 4. Autenticação desacoplada: x-api-key (máquina) vs Basic Auth (usuário/senha) (10.7483ms)
+✔ 5. Servidor Real E2E: OS sem placa, upload foto, conciliação e multi-tenancy isolado (10107.0891ms)
+✔ 1. Trial provisionado automaticamente com 14 dias e recursos Pro (4286.3746ms)
+✔ 2. Trial expira após 14 dias sem apagar nenhum dado (1.1191ms)
+✔ 3. Conversão de trial registra evento e métricas de aquisição (0.8565ms)
+✔ 4. Plano Essencial cobre a rotina completa da oficina por R$ 179 (0.3342ms)
+✔ 5. Plano Pro inclui inteligência, frotas e proteção de margem por R$ 299 (0.4107ms)
+✔ 6. Feature Entitlement considera plano e status (bloqueia quando suspenso) (0.3848ms)
+✔ 7. Implantação Assistida (Setup Fee) de R$ 390 e suporte a isenção auditada (1.8083ms)
+✔ 8. Checkout transparente sem taxas escondidas (256.5254ms)
+✔ 9. Webhook válido processa pagamento e atualiza status para active (81.7378ms)
+✔ 10. Webhook com assinatura inválida é rejeitado estritamente (1.2122ms)
+✔ 11. Webhook duplicado é processado uma única vez pelo Ledger (27.6305ms)
+✔ 12. Pagamento confirmado estende vigência por 30 dias (337.8534ms)
+✔ 13. Falha de pagamento transiciona para past_due sem corte instantâneo (429.6549ms)
+✔ 14. Carência de 5 dias permite regularização antes da suspensão (19.5334ms)
+✔ 15. Suspensão após carência esgotada bloqueia novas operações (84.3394ms)
+✔ 16. Reativação restaura status active imediatamente (69.6354ms)
+✔ 17. Cancelamento padrão cancelAtPeriodEnd preserva acesso até a data (64.3655ms)
+✔ 18. Cancelamento imediato registra status e motivo auditado (49.619ms)
+✔ 19. Upgrade Essencial -> Pro é aplicado imediatamente (42.839ms)
+✔ 20. Downgrade Pro -> Essencial é agendado para o fim do ciclo (67.328ms)
+✔ 21. Downgrade não apaga nenhum dado operacional do tenant (1.8549ms)
+✔ 22. Founder Price Lock trava o valor da mensalidade contra reajustes futuros (0.4333ms)
+✔ 23. Validação de cupons percentuais e fixos sem valor negativo (0.2801ms)
+✔ 24. MRR calcula apenas assinaturas ativas recorrentes (exclui setup e trial) (0.5591ms)
+✔ 25. ARR é exatamente MRR * 12 (0.3347ms)
+✔ 26. Churn de Logo e Revenue Churn calculados separadamente (0.3247ms)
+✔ 27. New MRR rastreia receita de novas conversões pagas (0.4414ms)
+✔ 28. Expansion MRR rastreia receita gerada por upgrades (0.2992ms)
+✔ 29. Contraction MRR rastreia receita reduzida por downgrades (0.2401ms)
+✔ 30. Funil registra etapas de signup a paid (1.0474ms)
+✔ 31. Atribuição de UTMs salva na criação sem impactar segurança (3.0202ms)
+✔ 32. Critério de Ativação cumprido ao cadastrar a primeira OS (0.8804ms)
+✔ 33. Cálculo de TTFV com delta preciso em horas (0.5282ms)
+✔ 34. Telemetria bloqueia estritamente PII e dados sensíveis da oficina (0.6479ms)
+✔ 35. Platform Admin tem RBAC dedicado e não é tenant admin silencioso (293.204ms)
+✔ 36. Support Impersonation gera sessão explícita com banner e auditoria (0.8013ms)
+✔ 37. Job de reconciliação detecta e corrige divergências com o gateway (71.5566ms)
+✔ 38. Tenant A não tem acesso aos dados de faturamento do Tenant B (74.8344ms)
+✔ 39. Credenciais privadas e segredos de webhook não são expostos em respostas públicas (0.7821ms)
+✔ 40. E2E Comercial: Visitante -> Cadastro -> Trial -> Checkout Pro -> Pagamento -> Active -> Cancelamento (9341.1484ms)
+✔ orientação verificada, encaminhamento urgente e ausência de execução (26.0848ms)
+✔ IA optativa, saída restrita à base e falha segura do provedor (7.4782ms)
+✔ reduz dados pessoais e rejeita mensagens inválidas (4.408ms)
+✔ provedor sem resposta não bloqueia o protocolo indefinidamente (121.7414ms)
+✔ histórico persistente, isolamento e criação idempotente (2427.9136ms)
+✔ mensagem única, concorrência de atendentes e resposta humana (2666.0364ms)
+✔ cópia consistente do SQLite permite recuperar histórico em banco isolado (1199.7675ms)
+✔ API bloqueia origem externa, API key, oficina alheia e fila sem papel de plataforma (2942.4344ms)
+✔ 1. Triagem simples sem histórico: extrai domínio técnico, prioriza km e não gera autodiagnóstico (11.2784ms)
+✔ 2. Triagem com recorrência: detecta serviço correlato prévio e calcula delta de dias e km (21.6196ms)
+✔ 3. Triagem com possível garantia: aponta hipótese sem aprovar garantia autonomamente (10.9253ms)
+{"timestamp":"2026-09-16T00:04:53.025Z","type":"metric","subsystem":"repository","op":"read","latencyMs":5.84,"success":true,"cacheHit":false,"tenantId":"oficina_persist_1","error":null}
+{"timestamp":"2026-09-16T00:04:53.057Z","type":"metric","subsystem":"repository","op":"write","latencyMs":62.93,"success":true,"conflict":false,"status":200,"tenantId":"oficina_persist_1","error":null}
+{"timestamp":"2026-09-16T00:04:53.091Z","type":"metric","subsystem":"repository","op":"read","latencyMs":32.35,"success":true,"cacheHit":false,"tenantId":"oficina_persist_1","error":null}
+✔ 4. Persistência da sessão após reload/reinício (SQLite) (693.7338ms)
+✔ 5. Resposta curta relacionada à pergunta anterior: responde número ou posição sem perder contexto (26.8831ms)
+✔ 6. Correção de quilometragem no diálogo: "Não, errei. A quilometragem é 423.500" (3.1418ms)
+✔ 7. Recálculo de garantia após correção: km corrigido reavalia cobertura automaticamente (10.1522ms)
+✔ 8. Retomada de conversa interrompida: mantém sessão em espera e retoma com "vamos continuar" (0.9716ms)
+✔ 9. Dois veículos sendo tratados pelo mesmo operador: coexistem sem sobrescrita (1.7475ms)
+✔ 10. Dois operadores no mesmo tenant: sessões independentes simultâneas (2.1653ms)
+✔ 11. Mesmo usuário em tenants diferentes: isolamento estrito sem vazamento entre estados (1.218ms)
+✔ 12. Sessão expirada (TTL): expiração limpa status e impede continuação (0.5417ms)
+✔ 13. Cancelamento da sessão: encerra a sessão e cancela a Pré-OS no histórico técnico (3.1882ms)
+✔ 14. Conversão após confirmação humana válida: gera OS definitiva com dados consolidados (4.1804ms)
+✔ 15. Tentativa de conversão com token forjado ou divergente: rejeição estrita (0.8764ms)
+✔ 16. WhatsApp respeitando aguardando_confirmacao: não cria OS autônoma em caso de reincidência (0.6679ms)
+✔ 17. Voz respeitando aguardando_confirmacao: pausa com token de confirmação criptográfico (34.5361ms)
+✔ 18. Web/API respeitando aguardando_confirmacao em /api/os/entrada e isolamento em /api/intake (9083.4363ms)
+✔ 19. Isolamento Multi-Tenant estrito: Tenant B incapaz de acessar, responder ou confirmar sessão do Tenant A (2.6955ms)
+✔ 20. Regressão e não-autonomia: perguntas técnicas não fecham diagnóstico sem inspeção física (4.7573ms)
+✔ 1. Isolamento Estrito por Tenant (Sem vazamento de estado ou dados) (70.5828ms)
+✔ 2. Regra Rigorosa de "Veículos que Amanheceram" (Zero amanhecidos quando nenhum pernoitou) (9.0228ms)
+✔ 3. Padronização Canônica de Fuso Horário America/Sao_Paulo (Sem viradas incorretas de dia) (0.643ms)
+✔ 4. Motor Financeiro como Única Fonte da Verdade (Dashboard, Textos e Métricas idênticos) (60.6485ms)
+▶ Isolamento Transacional & Concorrência Robusta no SQLite (db.js)
+  ✔ 1. Transação A falha e sofre rollback; gravação independente B permanece intacta (722.3939ms)
+  ✔ 2. Operação B independente não lê alterações não confirmadas de A (Snapshot Isolation) (10.8812ms)
+  ✔ 3. Duas transações concorrentes serializam e mantêm consistência (465.5146ms)
+  ✔ 4. Transação aninhada com falha intermediária reverte apenas o bloco interno via Savepoint (281.2801ms)
+  ✔ 5. Reinício e fechamento de conexões preserva rigorosamente operações confirmadas (198.1232ms)
+  ✔ 6. Processo externo em paralelo grava com concorrência real no arquivo SQLite (1656.6402ms)
+✔ Isolamento Transacional & Concorrência Robusta no SQLite (db.js) (4729.5882ms)
+✔ voiceActionEngine: abertura de OS, contexto contínuo, correção de km, alto risco e auditoria (59.2855ms)
+▶ Backup Consistente (SQLite WAL) & Procedimento de Restauração Isolada
+  ✔ 1. Execução de backup atômico com VACUUM INTO e hash SHA-256 (229.196ms)
+  ✔ 2. Integridade criptográfica: detecção de adulteração no arquivo de backup (47.1471ms)
+  ✔ 3. Teste formal de Restauração Isolada com RTO < 5s e verificação de integridade (59.3977ms)
+  ✔ 4. Política de Retenção de Backups: expurgo automático de cópias antigas (407.3159ms)
+✔ Backup Consistente (SQLite WAL) & Procedimento de Restauração Isolada (1371.855ms)
+{"timestamp":"2026-09-16T00:05:01.469Z","type":"metric","subsystem":"auth","op":"authenticate","latencyMs":111.43,"success":true,"tenantId":"tenant_alfa","actorId":"operador_alfa","role":"consultor","errorType":null}
+{"timestamp":"2026-09-16T00:05:01.617Z","type":"metric","subsystem":"auth","op":"authenticate","latencyMs":145.27,"success":false,"tenantId":"tenant_beta","actorId":"operador_alfa","role":null,"errorType":"403_unauthorized_tenant"}
+✔ 1. Jornada de Oficina: Do diagnóstico de entrada à entrega e pós-venda D+2 (106.1058ms)
+✔ 2. Multi-Tenant Security: Bloqueio estrito de cross-tenant spoofing com HTTP 403 (406.7061ms)
+✔ 3. Customização de Assistente: 2 Tenants com nomes e gêneros distintos sem contaminação (0.6011ms)
+✔ 4. Assinaturas SaaS: trial 14d, feature flags e downgrade não destrutivo (1.3563ms)
+✔ 5. Dados de Demonstração: injeção com tag _isDemo e remoção cirúrgica sem afetar dados reais (1.6438ms)
+✔ 6. LGPD: exportação completa de dados pessoais e anonimização com preservação fiscal (4.5278ms)
+✔ 7. File Storage: Upload isolado por tenant, resolução retrocompatível e deleção física (30.4945ms)
+✔ 8. Schema Migration: Inicialização de blocos ausentes e versão canônica (1.2546ms)
+✔ 9. Servidor Real E2E: /health, /ready, limites de taxa, uploads e endpoints LGPD (6500.1314ms)
+ℹ tests 418
+ℹ suites 0
+ℹ pass 418
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 70678.0898

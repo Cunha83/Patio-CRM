@@ -1,0 +1,54 @@
+◇ injected env (14) from .env // tip: ⌘ suppress logs { quiet: true }
+{"timestamp":"2026-09-23T11:13:03.421Z","type":"metric","subsystem":"repository","op":"read","latencyMs":3.12,"success":true,"cacheHit":false,"tenantId":"fixes_test","error":null}
+{"timestamp":"2026-09-23T11:13:03.427Z","type":"metric","subsystem":"repository","op":"write","latencyMs":11.35,"success":true,"conflict":false,"status":200,"tenantId":"fixes_test","error":null}
+{"timestamp":"2026-09-23T11:13:03.428Z","type":"metric","subsystem":"repository","op":"read","latencyMs":0.17,"success":true,"cacheHit":true,"tenantId":"fixes_test","error":null}
+{"timestamp":"2026-09-23T11:13:03.431Z","type":"metric","subsystem":"repository","op":"read","latencyMs":0.11,"success":true,"cacheHit":true,"tenantId":"fixes_test","error":null}
+{"timestamp":"2026-09-23T11:13:03.433Z","type":"metric","subsystem":"repository","op":"read","latencyMs":0.08,"success":true,"cacheHit":true,"tenantId":"fixes_test","error":null}
+{"timestamp":"2026-09-23T11:13:03.435Z","type":"metric","subsystem":"repository","op":"read","latencyMs":0.08,"success":true,"cacheHit":true,"tenantId":"fixes_test","error":null}
+{"timestamp":"2026-09-23T11:13:03.436Z","type":"metric","subsystem":"repository","op":"read","latencyMs":0.05,"success":true,"cacheHit":true,"tenantId":"fixes_test","error":null}
+{"timestamp":"2026-09-23T11:13:03.436Z","type":"metric","subsystem":"repository","op":"read","latencyMs":0.04,"success":true,"cacheHit":true,"tenantId":"fixes_test","error":null}
+{"timestamp":"2026-09-23T11:13:03.436Z","type":"metric","subsystem":"repository","op":"read","latencyMs":0.05,"success":true,"cacheHit":true,"tenantId":"fixes_test","error":null}
+{"timestamp":"2026-09-23T11:13:03.437Z","type":"metric","subsystem":"repository","op":"read","latencyMs":0.05,"success":true,"cacheHit":true,"tenantId":"fixes_test","error":null}
+{"timestamp":"2026-09-23T11:13:03.443Z","type":"metric","subsystem":"repository","op":"write","latencyMs":6.72,"success":true,"conflict":false,"status":200,"tenantId":"fixes_test","error":null}
+{"timestamp":"2026-09-23T11:13:03.444Z","type":"metric","subsystem":"repository","op":"read","latencyMs":0.05,"success":true,"cacheHit":true,"tenantId":"fixes_test","error":null}
+{"timestamp":"2026-09-23T11:13:03.444Z","type":"metric","subsystem":"repository","op":"read","latencyMs":0.04,"success":true,"cacheHit":true,"tenantId":"fixes_test","error":null}
+{"timestamp":"2026-09-23T11:13:03.450Z","type":"metric","subsystem":"repository","op":"write","latencyMs":5.69,"success":true,"conflict":false,"status":200,"tenantId":"fixes_test","error":null}
+{"timestamp":"2026-09-23T11:13:03.450Z","type":"metric","subsystem":"repository","op":"read","latencyMs":0.05,"success":true,"cacheHit":true,"tenantId":"fixes_test","error":null}
+{"timestamp":"2026-09-23T11:13:03.450Z","type":"metric","subsystem":"repository","op":"read","latencyMs":0.04,"success":true,"cacheHit":true,"tenantId":"fixes_test","error":null}
+{"timestamp":"2026-09-23T11:13:03.450Z","type":"metric","subsystem":"repository","op":"read","latencyMs":0.06,"success":true,"cacheHit":true,"tenantId":"fixes_test","error":null}
+{"timestamp":"2026-09-23T11:13:03.451Z","type":"metric","subsystem":"repository","op":"read","latencyMs":0.05,"success":true,"cacheHit":true,"tenantId":"fixes_test","error":null}
+{"timestamp":"2026-09-23T11:13:03.456Z","type":"metric","subsystem":"repository","op":"write","latencyMs":5.3,"success":true,"conflict":false,"status":200,"tenantId":"fixes_test","error":null}
+{"timestamp":"2026-09-23T11:13:03.456Z","type":"metric","subsystem":"repository","op":"read","latencyMs":0.05,"success":true,"cacheHit":true,"tenantId":"fixes_test","error":null}
+{"timestamp":"2026-09-23T11:13:03.456Z","type":"metric","subsystem":"repository","op":"read","latencyMs":0.06,"success":true,"cacheHit":true,"tenantId":"fixes_test","error":null}
+{"timestamp":"2026-09-23T11:13:03.457Z","type":"metric","subsystem":"repository","op":"read","latencyMs":0.05,"success":true,"cacheHit":true,"tenantId":"fixes_test","error":null}
+{"timestamp":"2026-09-23T11:13:03.457Z","type":"metric","subsystem":"repository","op":"read","latencyMs":0.04,"success":true,"cacheHit":true,"tenantId":"fixes_test","error":null}
+{"timestamp":"2026-09-23T11:13:03.466Z","type":"metric","subsystem":"repository","op":"write","latencyMs":9.78,"success":true,"conflict":false,"status":200,"tenantId":"fixes_test","error":null}
+{"timestamp":"2026-09-23T11:13:03.472Z","type":"metric","subsystem":"auth","op":"authenticate","latencyMs":0.01,"success":false,"tenantId":"unresolved","actorId":"test","role":null,"errorType":"403_cross_site_request"}
+{"timestamp":"2026-09-23T11:13:03.472Z","type":"metric","subsystem":"auth","op":"authenticate","latencyMs":0.01,"success":false,"tenantId":"unresolved","actorId":"test","role":null,"errorType":"403_cross_site_request"}
+[Remote Vault] Servidor escutando em http://127.0.0.1:54842
+▶ Regressões das cinco falhas da auditoria
+  ✔ Estado: mecânico não altera clientes nem exclui OS; atendente edita e admin exclui (54.9477ms)
+  ✔ Plataforma: suporte limitado e origem verificada para suporte e administrador (3.0591ms)
+  ✔ Destino remoto: loopback IPv4/IPv6 e URLs inválidas bloqueados (2.8525ms)
+✔ [Remote Vault] Pacote "package_test_1" recebido e verificado com sucesso (1 arquivos).
+  ✔ Cofre: rejeita caminhos perigosos e pacotes incompletos sem destruir backups; aceita pacote íntegro (406.7707ms)
+✔ Regressões das cinco falhas da auditoria (828.3741ms)
+▶ P1: Validação de Instalação Limpa a Partir do Manifesto de Release
+  ✔ 1. Todos os arquivos mapeados conferem SHA-256 no repositório (4377.4748ms)
+  ✔ 2. Cópia, Integridade Criptográfica e Sintaxe de Código a partir do Manifesto (718.6869ms)
+  ✔ 3. Execução de Boot Funcional em Diretório Limpo com Verificação de /health e /ready (15532.8951ms)
+✔ P1: Validação de Instalação Limpa a Partir do Manifesto de Release (20785.3719ms)
+▶ P1: Supervisor Unificado com Trava Atômica, Recuperação e Port Check
+  ✔ 1. Trava atômica impede duas instâncias simultâneas do supervisor (1711.0777ms)
+  ✔ 2. Detecção de porta ocupada impede nova inicialização (274.0816ms)
+  ✔ 3. Recuperação de trava abandonada (PID inativo) (2518.3561ms)
+  ✔ 4. Recuperação do processo filho com retenção contínua da trava do supervisor e bloqueio de concorrência (4987.6701ms)
+✔ P1: Supervisor Unificado com Trava Atômica, Recuperação e Port Check (9506.32ms)
+ℹ tests 14
+ℹ suites 0
+ℹ pass 14
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 21124.9492

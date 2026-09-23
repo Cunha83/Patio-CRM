@@ -1,0 +1,47 @@
+{
+  "dataExecucao": "2026-09-22T11:11:25.350Z",
+  "host": "AMF01",
+  "nodeVersion": "v24.19.0",
+  "plataforma": "win32 (x64)",
+  "etapas": [
+    {
+      "etapa": "1_lockfile_dependencias_simulado",
+      "nome": "Validação Sintática do Lockfile (Simulação de Pré-Voo)",
+      "status": "APROVADO_SIMULADO",
+      "detalhes": "Lockfile válido sintaticamente (versão 3), 11 dependências mapeadas. NOTA: Esta etapa afere apenas o arquivo; a instalação real de dependências requer npm ci em pasta independente."
+    },
+    {
+      "etapa": "2_agendador_xml_simulado",
+      "nome": "Geração e Parsing Sintático do XML (Simulação de Pré-Voo)",
+      "status": "APROVADO_SIMULADO",
+      "detalhes": "XML validado sintaticamente em UTF-8 com MultipleInstancesPolicy=IgnoreNew. NOTA: Não comprova registro nem execução no Agendador do Windows."
+    },
+    {
+      "etapa": "3_destino_externo_simulado",
+      "nome": "Conferência de Destino Externo (Staging Simulado)",
+      "status": "PENDENTE_HOST_FISICO",
+      "detalhes": "Mídia externa física não conectada. Mecanismo testado em staging temporário: C:\\Users\\AUTOMO~1\\AppData\\Local\\Temp\\patio-host-rehearsal-S5qUmC\\external_storage_mock."
+    },
+    {
+      "etapa": "4_execucao_backup_simulado",
+      "nome": "Execução de Backup Operacional (Simulação com Dados Mock)",
+      "status": "APROVADO_SIMULADO",
+      "tempoMs": 791,
+      "detalhes": "Simulação de backup gerada em 791ms. Pacote package_bck_1790075487509_da969a_2026-09-22T11-11-27-509Z com integridade SHA-256 conferida. NOTA: Executado com dados mock; não é execução da tarefa do agendador."
+    },
+    {
+      "etapa": "5_restauracao_operacional_simulada",
+      "nome": "Restauração Isolada e Teste Operacional (Simulação de Pré-Voo)",
+      "status": "APROVADO_SIMULADO",
+      "rtoMs": 2363,
+      "detalhes": "Simulação de recuperação aprovada em 2363ms. Login individual dos 3 operadores, leitura (OS 9001), escrita (OS 9002) e anexo validados."
+    },
+    {
+      "etapa": "6_preservacao_producao",
+      "nome": "Preservação da Base Real patio.db",
+      "status": "APROVADO",
+      "detalhes": "A base de dados real patio.db permaneceu 100% INTOCADA durante todo o ensaio."
+    }
+  ],
+  "parecerFinal": "ENSAIO_SIMULADO_CONCLUIDO_INSTALACAO_E_AGENDAMENTO_REAIS_PENDENTES"
+}

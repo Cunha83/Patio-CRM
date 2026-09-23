@@ -1,0 +1,18 @@
+[
+  {
+    "route": "/api/frotas",
+    "attempts": 20,
+    "http200": 20,
+    "reportedSuccess": 20,
+    "persisted": 20,
+    "failures": []
+  },
+  {
+    "route": "/api/fornecedores",
+    "attempts": 20,
+    "http200": 20,
+    "reportedSuccess": 20,
+    "persisted": 1,
+    "failures": []
+  }
+]

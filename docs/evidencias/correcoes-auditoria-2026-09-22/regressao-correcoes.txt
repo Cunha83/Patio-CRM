@@ -1,0 +1,56 @@
+{"timestamp":"2026-09-22T19:06:45.773Z","type":"metric","subsystem":"repository","op":"read","latencyMs":2.75,"success":true,"cacheHit":false,"tenantId":"fixes_test","error":null}
+{"timestamp":"2026-09-22T19:06:45.779Z","type":"metric","subsystem":"repository","op":"write","latencyMs":10.18,"success":true,"conflict":false,"status":200,"tenantId":"fixes_test","error":null}
+{"timestamp":"2026-09-22T19:06:45.779Z","type":"metric","subsystem":"repository","op":"read","latencyMs":0.07,"success":true,"cacheHit":true,"tenantId":"fixes_test","error":null}
+{"timestamp":"2026-09-22T19:06:45.780Z","type":"metric","subsystem":"repository","op":"read","latencyMs":0.06,"success":true,"cacheHit":true,"tenantId":"fixes_test","error":null}
+{"timestamp":"2026-09-22T19:06:45.781Z","type":"metric","subsystem":"repository","op":"read","latencyMs":0.08,"success":true,"cacheHit":true,"tenantId":"fixes_test","error":null}
+{"timestamp":"2026-09-22T19:06:45.784Z","type":"metric","subsystem":"repository","op":"read","latencyMs":0.06,"success":true,"cacheHit":true,"tenantId":"fixes_test","error":null}
+{"timestamp":"2026-09-22T19:06:45.786Z","type":"metric","subsystem":"repository","op":"read","latencyMs":0.26,"success":true,"cacheHit":true,"tenantId":"fixes_test","error":null}
+{"timestamp":"2026-09-22T19:06:45.787Z","type":"metric","subsystem":"repository","op":"read","latencyMs":0.06,"success":true,"cacheHit":true,"tenantId":"fixes_test","error":null}
+{"timestamp":"2026-09-22T19:06:45.788Z","type":"metric","subsystem":"repository","op":"read","latencyMs":0.25,"success":true,"cacheHit":true,"tenantId":"fixes_test","error":null}
+{"timestamp":"2026-09-22T19:06:45.789Z","type":"metric","subsystem":"repository","op":"read","latencyMs":0.06,"success":true,"cacheHit":true,"tenantId":"fixes_test","error":null}
+{"timestamp":"2026-09-22T19:06:45.796Z","type":"metric","subsystem":"repository","op":"write","latencyMs":6.76,"success":true,"conflict":false,"status":200,"tenantId":"fixes_test","error":null}
+{"timestamp":"2026-09-22T19:06:45.796Z","type":"metric","subsystem":"repository","op":"read","latencyMs":0.05,"success":true,"cacheHit":true,"tenantId":"fixes_test","error":null}
+{"timestamp":"2026-09-22T19:06:45.796Z","type":"metric","subsystem":"repository","op":"read","latencyMs":0.06,"success":true,"cacheHit":true,"tenantId":"fixes_test","error":null}
+{"timestamp":"2026-09-22T19:06:45.817Z","type":"metric","subsystem":"repository","op":"write","latencyMs":20.99,"success":true,"conflict":false,"status":200,"tenantId":"fixes_test","error":null}
+{"timestamp":"2026-09-22T19:06:45.818Z","type":"metric","subsystem":"repository","op":"read","latencyMs":0.07,"success":true,"cacheHit":true,"tenantId":"fixes_test","error":null}
+{"timestamp":"2026-09-22T19:06:45.818Z","type":"metric","subsystem":"repository","op":"read","latencyMs":0.06,"success":true,"cacheHit":true,"tenantId":"fixes_test","error":null}
+{"timestamp":"2026-09-22T19:06:45.818Z","type":"metric","subsystem":"repository","op":"read","latencyMs":0.06,"success":true,"cacheHit":true,"tenantId":"fixes_test","error":null}
+{"timestamp":"2026-09-22T19:06:45.819Z","type":"metric","subsystem":"repository","op":"read","latencyMs":0.05,"success":true,"cacheHit":true,"tenantId":"fixes_test","error":null}
+{"timestamp":"2026-09-22T19:06:45.825Z","type":"metric","subsystem":"repository","op":"write","latencyMs":6.35,"success":true,"conflict":false,"status":200,"tenantId":"fixes_test","error":null}
+{"timestamp":"2026-09-22T19:06:45.826Z","type":"metric","subsystem":"repository","op":"read","latencyMs":0.06,"success":true,"cacheHit":true,"tenantId":"fixes_test","error":null}
+{"timestamp":"2026-09-22T19:06:45.826Z","type":"metric","subsystem":"repository","op":"read","latencyMs":0.05,"success":true,"cacheHit":true,"tenantId":"fixes_test","error":null}
+{"timestamp":"2026-09-22T19:06:45.826Z","type":"metric","subsystem":"repository","op":"read","latencyMs":0.05,"success":true,"cacheHit":true,"tenantId":"fixes_test","error":null}
+{"timestamp":"2026-09-22T19:06:45.826Z","type":"metric","subsystem":"repository","op":"read","latencyMs":0.04,"success":true,"cacheHit":true,"tenantId":"fixes_test","error":null}
+{"timestamp":"2026-09-22T19:06:45.834Z","type":"metric","subsystem":"repository","op":"write","latencyMs":7.57,"success":true,"conflict":false,"status":200,"tenantId":"fixes_test","error":null}
+{"timestamp":"2026-09-22T19:06:45.839Z","type":"metric","subsystem":"auth","op":"authenticate","latencyMs":0.01,"success":false,"tenantId":"unresolved","actorId":"test","role":null,"errorType":"403_cross_site_request"}
+{"timestamp":"2026-09-22T19:06:45.839Z","type":"metric","subsystem":"auth","op":"authenticate","latencyMs":0.01,"success":false,"tenantId":"unresolved","actorId":"test","role":null,"errorType":"403_cross_site_request"}
+[Remote Vault] Servidor escutando em http://127.0.0.1:51225
+▶ Regressões das cinco falhas da auditoria
+  ✔ Estado: mecânico não altera clientes nem exclui OS; atendente edita e admin exclui (76.5719ms)
+  ✔ Plataforma: suporte limitado e origem verificada para suporte e administrador (3.2985ms)
+  ✔ Destino remoto: loopback IPv4/IPv6 e URLs inválidas bloqueados (4.0241ms)
+✔ [Remote Vault] Pacote "package_test_1" recebido e verificado com sucesso (1 arquivos).
+  ✔ Cofre: rejeita caminhos perigosos e pacotes incompletos sem destruir backups; aceita pacote íntegro (428.2781ms)
+✔ Regressões das cinco falhas da auditoria (840.1784ms)
+▶ RBAC: Blindagem Server-Side de Dados Financeiros e Preservação em Escrita Operacional
+  ✔ 1. filterStateByRole: remove estritamente valores financeiros de OS, catálogo de serviços, quotations e apontamentos para mecânico (5.8979ms)
+  ✔ 2. filterStateByRole: preserva dados financeiros completos para gestor e financeiro (0.3274ms)
+{"timestamp":"2026-09-22T19:06:45.793Z","type":"metric","subsystem":"repository","op":"read","latencyMs":9.37,"success":true,"cacheHit":false,"tenantId":"tenant_adversarial_test","error":null}
+{"timestamp":"2026-09-22T19:06:45.814Z","type":"metric","subsystem":"repository","op":"write","latencyMs":32.96,"success":true,"conflict":false,"status":200,"tenantId":"tenant_adversarial_test","error":null}
+{"timestamp":"2026-09-22T19:06:45.815Z","type":"metric","subsystem":"repository","op":"read","latencyMs":0.05,"success":true,"cacheHit":true,"tenantId":"tenant_adversarial_test","error":null}
+{"timestamp":"2026-09-22T19:06:45.815Z","type":"metric","subsystem":"repository","op":"read","latencyMs":0.05,"success":true,"cacheHit":true,"tenantId":"tenant_adversarial_test","error":null}
+{"timestamp":"2026-09-22T19:06:45.821Z","type":"metric","subsystem":"repository","op":"write","latencyMs":6.3,"success":true,"conflict":false,"status":200,"tenantId":"tenant_adversarial_test","error":null}
+{"timestamp":"2026-09-22T19:06:45.822Z","type":"metric","subsystem":"repository","op":"read","latencyMs":0.08,"success":true,"cacheHit":true,"tenantId":"tenant_adversarial_test","error":null}
+  ✔ 3. persistState: rejeita valores adversariais injetados em novos itens por operador sem permissão financeira (43.4151ms)
+{"timestamp":"2026-09-22T19:06:46.211Z","type":"metric","subsystem":"repository","op":"read","latencyMs":0.6,"success":true,"cacheHit":false,"tenantId":"oficina_http_proj","error":null}
+{"timestamp":"2026-09-22T19:06:46.221Z","type":"metric","subsystem":"repository","op":"write","latencyMs":10.5,"success":true,"conflict":false,"status":200,"tenantId":"oficina_http_proj","error":null}
+  ✔ 4. Requisições HTTP em servidor isolado: mecânico tem acesso bloqueado em rotas financeiras e POST /api/estado projeta resposta (2850.8218ms)
+✔ RBAC: Blindagem Server-Side de Dados Financeiros e Preservação em Escrita Operacional (3232.1115ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3598.8623

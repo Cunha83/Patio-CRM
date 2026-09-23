@@ -1,0 +1,19 @@
+'use strict';
+const fs=require('fs'),path=require('path'),os=require('os'),net=require('net');
+const {createRemoteVaultServer}=require('./scripts/servico_backup_remoto.cjs');
+const {assertIndependentDestination}=require('./scripts/executar_backup_operacional.cjs');
+(async()=>{
+const root=fs.mkdtempSync(path.join(os.tmpdir(),'patio-vault-audit-'));
+const probe=net.createServer();await new Promise(r=>probe.listen(0,'127.0.0.1',r));const port=probe.address().port;await new Promise(r=>probe.close(r));
+const vaultDir=path.join(root,'vault');const vault=createRemoteVaultServer({vaultDir,token:'AuditOnly_Random_NoProduction_813!',port});await vault.start();
+const results=[];const upload=async payload=>{const r=await fetch(`http://127.0.0.1:${port}/api/remote-vault/upload`,{method:'POST',headers:{Authorization:'Bearer AuditOnly_Random_NoProduction_813!','Content-Type':'application/json'},body:JSON.stringify(payload),signal:AbortSignal.timeout(5000)});return {status:r.status,body:await r.json()}};
+try{
+const incomplete=await upload({backupId:'audit_missing',packageFolderName:'package_audit_missing',manifest:{files:{'patio.db':{sha256:'a'.repeat(64)}}},files:{}});
+results.push({case:'missing_required_database',status:incomplete.status,verified:incomplete.body.verified,files:incomplete.body.totalFiles});
+const sentinel=path.join(vaultDir,'previous-backup-sentinel.txt');fs.writeFileSync(sentinel,'preserve');
+const dot=await upload({backupId:'audit_dot',packageFolderName:'.',manifest:{files:{}},files:{}});
+results.push({case:'dot_package_name',status:dot.status,sentinelPreserved:fs.existsSync(sentinel),vaultStillExists:fs.existsSync(vaultDir)});
+for(const remoteUrl of ['http://[::1]:3005/upload','http://localhost:3005/upload','not-a-url']){let rejected=false;try{assertIndependentDestination(root,null,remoteUrl)}catch{rejected=true}results.push({case:'independence_guard',remoteUrl,rejected});}
+}finally{await vault.stop();}
+fs.writeFileSync('vault-adversarial-results.json',JSON.stringify(results,null,2));console.log(JSON.stringify(results,null,2));
+})().catch(e=>{console.error(e);process.exitCode=1});

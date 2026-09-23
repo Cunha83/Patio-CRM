@@ -1,0 +1,20 @@
+{
+  "attempts": 20,
+  "http200": 20,
+  "success": 20,
+  "uniqueReturnedIds": 20,
+  "persistedOs": 20,
+  "matchedIds": 20,
+  "simulatedFailure": {
+    "status": 500,
+    "body": {
+      "error": "AUDIT_SIMULATED_DISK_FAILURE"
+    },
+    "persistedOs": 20
+  },
+  "recovery": {
+    "status": 200,
+    "success": true,
+    "persistedOs": 21
+  }
+}

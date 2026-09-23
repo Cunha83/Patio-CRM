@@ -1,0 +1,31 @@
+Ambiente descartavel: C:\Users\AUTOMO~1\AppData\Local\Temp\patio-distribution-jeVWzE
+Conferindo integridade do pacote...
+Instalando em: C:\Users\AUTOMO~1\AppData\Local\Temp\patio-distribution-jeVWzE\Empresa 1 acentuacao
+Instalacao concluida. Abra Iniciar.cmd ou o atalho da Area de Trabalho.
+Credenciais exclusivas em: C:\Users\AUTOMO~1\AppData\Local\Temp\patio-distribution-jeVWzE\Empresa 1 acentuacao\ACESSOS.txt
+Conferindo integridade do pacote...
+Instalando em: C:\Users\AUTOMO~1\AppData\Local\Temp\patio-distribution-jeVWzE\Empresa 2 acentuacao
+Instalacao concluida. Abra Iniciar.cmd ou o atalho da Area de Trabalho.
+Credenciais exclusivas em: C:\Users\AUTOMO~1\AppData\Local\Temp\patio-distribution-jeVWzE\Empresa 2 acentuacao\ACESSOS.txt
+✔ Distribuicao: allowlist exclui dados, configuracoes e scripts de operacao local (3.2529ms)
+Conferindo integridade do pacote...
+Instalando em: C:\Users\AUTOMO~1\AppData\Local\Temp\patio-distribution-jeVWzE\Empresa 3 acentuacao
+Instalacao concluida. Abra Iniciar.cmd ou o atalho da Area de Trabalho.
+Credenciais exclusivas em: C:\Users\AUTOMO~1\AppData\Local\Temp\patio-distribution-jeVWzE\Empresa 3 acentuacao\ACESSOS.txt
+Conferindo integridade do pacote...
+▶ Instalacao Windows real: tres empresas, reinicio, isolamento e protecoes
+  ✔ pacote sem dados reais e sem arquivos extras (6216.6258ms)
+  ✔ tres instalacoes novas com nomes acentuados e caminho com espacos (97972.9402ms)
+  ✔ reinstalacao recusa destino existente sem alterar banco (6594.1374ms)
+Conferindo integridade do pacote...
+  ✔ tres perfis por empresa; gravacao e leitura apos reinicio; rejeicao de tenant e senha de outra empresa (56116.4937ms)
+  ✔ porta ocupada e nome invalido recusados antes de criar dados (24874.558ms)
+✔ Instalacao Windows real: tres empresas, reinicio, isolamento e protecoes (191781.72ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 192599.4835

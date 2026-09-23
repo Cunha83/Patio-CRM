@@ -1,0 +1,17 @@
+{"timestamp":"2026-09-21T12:13:34.990Z","type":"metric","subsystem":"repository","op":"read","latencyMs":0.84,"success":true,"cacheHit":false,"tenantId":"tenant_briefing","error":null}
+{"timestamp":"2026-09-21T12:13:34.994Z","type":"metric","subsystem":"repository","op":"write","latencyMs":6.94,"success":true,"conflict":false,"status":200,"tenantId":"tenant_briefing","error":null}
+▶ Assistente Virtual: Configurações de Briefing e Geração Executiva Gerencial
+  ✔ 1. GET /api/configuracoes/assistente: Retorna configurações com parâmetros de briefing (87.5059ms)
+  ✔ 2. PUT /api/configuracoes/assistente: Atualiza e persiste parâmetros de briefing (177.1883ms)
+  ✔ 3. Segurança: Mecânico tenta gerar briefing executivo -> 403 Acesso Negado (138.8071ms)
+  ✔ 4. Geração: Usuário Financeiro gera briefing executivo -> 200 OK com payload estruturado (165.4682ms)
+  ✔ 5. Geração: Admin gera briefing executivo via GET -> 200 OK e coerente (63.5586ms)
+✔ Assistente Virtual: Configurações de Briefing e Geração Executiva Gerencial (3215.0692ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3425.6476

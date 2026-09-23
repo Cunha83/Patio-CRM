@@ -1,0 +1,43 @@
+{
+  "timestamp": "2026-09-22T18:18:15.201Z",
+  "backupId": "bck_1790101047696_ac9063",
+  "packageFolderName": "package_bck_1790101047696_ac9063_2026-09-22T18-17-27-696Z",
+  "filesVerified": [
+    {
+      "relPath": "patio.db",
+      "sha256": "2f90414c213a90f4875c216e29176708d783ab343b56b4febdf69fd1ef32b7b7",
+      "size": 217088,
+      "status": "verified"
+    },
+    {
+      "relPath": "uploads/laudo_vistoria_inicial.pdf",
+      "sha256": "9428172c9ce020f94679fed21ef201e678874949bb4b02dd5382ae0ff16c3b15",
+      "size": 150,
+      "status": "verified"
+    }
+  ],
+  "sqliteIntegrity": "ok",
+  "rtoSeconds": 3.02,
+  "operatorsTested": [
+    {
+      "username": "gestor@oficina.com.br",
+      "role": "tenant_admin",
+      "status": "200_OK"
+    },
+    {
+      "username": "atendente@oficina.com.br",
+      "role": "atendente",
+      "status": "200_OK"
+    },
+    {
+      "username": "mecanico@oficina.com.br",
+      "role": "mecanico",
+      "status": "200_OK"
+    }
+  ],
+  "oldCredentialsRejected401": true,
+  "dataRecovery": {
+    "osCount": 1,
+    "clientesCount": 1
+  }
+}
