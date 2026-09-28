@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101815">
+  <title>Jev × Pátio CRM — Onde vale a pena</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <a class="skip" href="#main">Ir ao conteúdo</a>
+  <header class="topbar">
+    <a class="brand" href="#overview"><span class="brand-mark" aria-hidden="true">P<span>↗</span></span><span>PÁTIO<span class="brand-sub">INTELLIGENCE LAB</span></span></a>
+    <nav aria-label="Seções do estudo"><a href="#architecture">Arquitetura</a><a href="#opportunities">Oportunidades</a><a href="#matrix">Matriz</a><a href="#economics">ROI</a><a href="#method">Fontes</a></nav>
+    <span class="local-status"><i></i> Estudo local</span>
+  </header>
+  <main id="main">
+    <section class="hero" id="overview">
+      <div class="hero-copy"><div class="eyebrow"><span class="pill">DECISÃO DE ARQUITETURA</span><span>28 SET 2026 · PÁTIO CRM</span></div>
+        <h1>Onde o Jev<br>vale <em>de verdade.</em></h1>
+        <p class="hero-description">Decisões menores. Ganhos verificáveis.<br> Um mapa de oportunidades para o CRM, sem IA por conveniência.</p>
+        <a class="primary" href="#opportunities">Explorar recomendações <span aria-hidden="true">↗</span></a>
+      </div>
+      <aside class="verdict"><div class="eyebrow">O VEREDITO</div><h2>Comece pelo suporte.<br>Preserve as regras.</h2><p id="verdict-text">Carregando análise…</p><div class="verdict-foot"><span class="signal">●</span><span>AGORA = experimento isolado<br><strong>Produção depende de validação.</strong></span></div></aside>
+    </section>
+    <div id="load-error" role="alert" hidden></div>
+    <section class="stats" aria-label="Resumo das recomendações" id="stats"></section>
+    <section class="section" id="architecture">
+      <div class="section-head"><div><span class="kicker">01 / O SISTEMA QUE JÁ EXISTE</span><h2>Encaixe pequeno. Fronteiras claras.</h2></div><span class="muted">Código inspecionado · possibilidades destacadas</span></div>
+      <div class="architecture-layout">
+        <div class="arch-core">
+          <div class="flow-label">CAMINHO PRINCIPAL · EXISTENTE</div>
+          <div class="pipeline">
+            <div class="node"><span class="node-index">01</span><strong>Interface</strong><small>SPA em JavaScript<br>Pátio · Voz · Suporte</small></div><span class="arrow" aria-hidden="true">→</span>
+            <div class="node"><span class="node-index">02</span><strong>API + identidade</strong><small>Express · RBAC<br>Sessão · tenant</small></div><span class="arrow" aria-hidden="true">→</span>
+            <div class="node"><span class="node-index">03</span><strong>Serviços</strong><small>OS · Caixa · Estoque<br>Triagem · Suporte</small></div><span class="arrow" aria-hidden="true">→</span>
+            <div class="node"><span class="node-index">04</span><strong>Persistência</strong><small>Repositório por tenant<br>SQLite WAL + versões</small></div>
+          </div>
+          <div class="integration-row"><strong>↔ Integrações existentes no código</strong><span>Gemini</span><span>Tesseract OCR</span><span>WhatsApp</span><span>ERP / fiscal</span><span>Billing</span></div>
+          <p class="arch-note">Suporte usa conexão e tabelas próprias no banco configurado. Presença no código não significa integração ativa: o piloto documentado restringe canais e provedores.</p>
+          <div class="boundary"><span aria-hidden="true">⊘</span><div><strong>Fora da decisão do modelo</strong><p>Login, permissões, tenant, commit, valores, estoque, confirmação de pagamento e integridade de backup.</p></div></div>
+        </div>
+        <aside class="jev-lane"><div class="eyebrow">PROPOSTA · AINDA NÃO INTEGRADA</div><h3>Jev como classificador</h3><p>Texto mínimo → decisão tipada → validação local → handler ou pessoa.</p><div id="entry-points"></div><small>Adapter opcional no servidor. Sem novo microserviço. Nunca esperar IA dentro de uma transação.</small></aside>
+      </div>
+      <div class="pilot-note"><strong>Contexto que muda o ROI</strong><p id="pilot"></p></div>
+    </section>
+    <section class="section" id="opportunities">
+      <div class="section-head"><div><span class="kicker">02 / OPORTUNIDADES E LIMITES</span><h2>Escolher também é dizer não.</h2></div><span class="muted">Score = utilidade potencial incremental, não acurácia</span></div>
+      <div class="toolbar"><div class="filters" role="group" aria-label="Filtrar recomendação"><button data-filter="TODOS" aria-pressed="true">Todos <span>13</span></button><button data-filter="AGORA" aria-pressed="false">Agora <span>1</span></button><button data-filter="DEPOIS" aria-pressed="false">Depois <span>4</span></button><button data-filter="NÃO USAR" aria-pressed="false">Não usar <span>8</span></button></div><label class="search"><span class="sr-only">Buscar caso</span><input id="search" type="search" placeholder="Buscar fluxo ou arquivo…"></label></div>
+      <p id="result-count" class="muted" aria-live="polite"></p>
+      <div id="cards" class="cards"></div>
+      <div id="empty" class="empty" hidden>Nenhum caso encontrado. Experimente outro termo ou selecione Todos.</div>
+    </section>
+    <section class="section" id="matrix">
+      <div class="section-head"><div><span class="kicker">03 / CUSTO DA COMPLEXIDADE</span><h2>O melhor ponto de partida é pequeno.</h2></div><span class="muted">Selecione um caso para abrir os detalhes</span></div>
+      <div class="matrix-layout"><div class="matrix-shell"><div class="axis-top">IMPACTO POTENCIAL ↑ <span>0–10 · estimativa qualitativa</span></div><div class="plot" id="plot" role="group" aria-label="Matriz impacto versus complexidade"><span class="quadrant q1">Priorizar avaliação</span><span class="quadrant q2">Exigir ganho comprovado</span><span class="quadrant q3">Regras costumam bastar</span><span class="quadrant q4">Custo difícil de justificar</span><div class="midline horizontal"></div><div class="midline vertical"></div><span class="tick high">10</span><span class="tick low">0</span><div id="points"></div></div><div class="axis-bottom"><span>0 · simples</span><strong>COMPLEXIDADE →</strong><span>10 · alta</span></div></div><div class="matrix-legend" id="matrix-legend"></div></div>
+      <p class="muted">Matriz completa; filtros acima afetam somente os cards. Em casos rejeitados, complexidade representa a tentativa desaconselhada de integrar Jev. ● Agora / depois · ■ Não usar.</p>
+    </section>
+    <section class="section" id="economics">
+      <div class="section-head"><div><span class="kicker">04 / A CONTA COMPLETA</span><h2>Token barato não garante retorno.</h2></div><span class="pill neutral">SIMULAÇÃO · NÃO É MEDIÇÃO</span></div>
+      <p class="section-description">Comece com ganho humano zero. Só atribua economia adicional ao Jev após comparar com o que as regras e o Gemini já resolvem.</p>
+      <div class="roi-layout"><form id="roi-form" class="roi-inputs">
+        <label>Chamadas Jev / mês<input id="calls" type="number" value="1000" min="0" max="100000000" step="1"></label>
+        <label>Tokens de entrada / chamada<input id="tokens" type="number" value="2000" min="1" max="64000" step="1"></label>
+        <label>Câmbio hipotético · R$/US$<input id="fx" type="number" value="5" min="0.01" max="100" step="0.01"></label>
+        <label>Custo da hora · R$<input id="hour" type="number" value="100" min="1" max="10000" step="1"></label>
+        <label>Implementação e avaliação · horas<input id="build" type="number" value="24" min="0" max="10000" step="1"></label>
+        <label>Manutenção adicional · horas/mês<input id="maintenance" type="number" value="2" min="0" max="1000" step="0.5"></label>
+        <label>Minutos humanos líquidos poupados/mês<input id="minutes" type="number" value="0" min="0" max="10000000" step="1"></label>
+        <label>Gasto de IA atual evitado · R$/mês<input id="avoided" type="number" value="0" min="0" max="10000000" step="1"></label>
+        <label>OCR, fallback e perdas adicionais · R$/mês<input id="extras" type="number" value="0" min="0" max="10000000" step="1"></label>
+      </form><aside class="roi-result"><div class="eyebrow">RESULTADO DO CENÁRIO</div><div class="roi-main"><span>Saldo mensal incremental</span><strong id="net">—</strong><small id="net-label"></small></div><dl><div><dt>Inferência Jev estimada</dt><dd id="api-cost">—</dd></div><div><dt>Investimento inicial</dt><dd id="initial">—</dd></div><div><dt>Prazo de retorno</dt><dd id="payback">—</dd></div><div><dt>Minutos/mês para pagar em 6 meses</dt><dd id="break-even">—</dd></div></dl><p id="roi-status" aria-live="polite"></p><small>Preço de entrada: US$ 0,042 / milhão de tokens. Câmbio e hora são hipóteses editáveis. Saída sem cobrança. Impostos e outros encargos devem ser incluídos no custo adicional.</small></aside></div>
+      <details class="formula"><summary>Como a conta funciona</summary><p>Inferência = chamadas × tokens ÷ 1.000.000 × US$ 0,042 × câmbio. Saldo mensal = minutos líquidos poupados ÷ 60 × custo/hora + gasto atual evitado − inferência − manutenção − extras. Payback = investimento inicial ÷ saldo mensal positivo.</p><p>Minutos para retorno em 6 meses = máximo entre zero e (investimento ÷ 6 + custos mensais − gasto evitado) × 60 ÷ custo/hora. Inclua revisões e retrabalho nos minutos líquidos; não conte economias de fallback duas vezes. Todas as chamadas (inclusive tentativas e avaliações extras) entram no volume.</p><a href="https://docs.typesafe.ai/models" target="_blank" rel="noreferrer">Fonte do preço publicado ↗</a></details>
+    </section>
+    <section class="section" id="method"><div class="section-head"><div><span class="kicker">05 / EVIDÊNCIA ANTES DE ENTUSIASMO</span><h2>O que sabemos. O que falta medir.</h2></div><a class="secondary" href="/report.md" download>Baixar relatório completo ↓</a></div><div class="next-grid" id="next"></div><div class="method-grid"><div><h3>Como ler os scores</h3><p id="methodology"></p><h3>Limites do levantamento</h3><p id="scope"></p></div><div><h3>Fontes oficiais consultadas</h3><div id="sources"></div></div></div><div class="model-note"><strong>Tipado ≠ correto.</strong><p>Jev 1.13 recebe texto e escolhe valores definidos. Não substitui OCR, áudio ou geração livre. Português e jargão precisam de avaliação própria. Probabilidade/confiança orientam abstenção; não são garantia de segurança. <a href="https://docs.typesafe.ai/models" target="_blank" rel="noreferrer">Modalidades e idiomas</a> · <a href="https://docs.typesafe.ai/model-jaggedness/jev-1.13" target="_blank" rel="noreferrer">Limitações declaradas</a></p></div></section>
+    <footer><span>PÁTIO CRM <span class="muted">/ Estudo Jev</span></span><span>13 decisões · fontes verificáveis · nenhuma chamada de IA neste dashboard</span></footer>
+  </main>
+  <dialog id="case-dialog" aria-labelledby="dialog-title"><div class="dialog-top"><span id="dialog-category" class="kicker"></span><button id="close-dialog" class="close" aria-label="Fechar detalhes">✕</button></div><div id="dialog-content"></div></dialog>
+  <div id="toast" role="status" aria-live="polite"></div>
+  <noscript>Ative JavaScript para os controles ou <a href="/report.md">leia o relatório completo</a>.</noscript>
+</body>
+</html>
