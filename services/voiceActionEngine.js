@@ -20,6 +20,7 @@ const afterSalesService = require('./afterSalesService');
 const relationshipService = require('./relationshipService');
 const appointmentService = require('./appointmentService');
 const financialEngine = require('./financialEngine');
+const financialAnalystService = require('./financialAnalystService');
 
 const BASE_CONHECIMENTO_SISTEMA = {
   cliente: 'Para cadastrar um cliente ou transportadora, acesse o menu Cadastros & Frotas, clique em Clientes e no botão Novo Cliente. Digite o CNPJ ou CPF e clique em Consultar para buscar via Sintegra/Serasa ou preencha manualmente os campos de Razão Social, IE, telefone e endereço, e clique em Salvar Cliente.',
@@ -235,7 +236,73 @@ function interpretarPorRegras(texto, context = {}, state = {}) {
     return resultado;
   }
 
-  // 2.6 Consultas Financeiras (Vencimentos a Pagar, A Receber, Saldo de Caixa, Faturamento)
+  // 2.6 Comandos de Analista Financeiro da Verônica (Caixa, Forecast e Auditoria)
+  if (/(?:abrir|iniciar)\s*(?:o\s+)?caixa/i.test(t)) {
+    resultado.intencao = 'abrir_caixa';
+    resultado.risco = 'baixo';
+    const matchVal = t.match(/(?:com|saldo\s+de|valor\s+de)\s*(?:r\$\s*)?(\d+(?:[.,]\d{1,2})?)/i) ||
+                     t.match(/(?:r\$\s*)(\d+(?:[.,]\d{1,2})?)/i) ||
+                     t.match(/(\d+(?:[.,]\d{1,2})?)\s*(?:reais)/i);
+    let valorInicial = 0;
+    if (matchVal) {
+      valorInicial = parseFloat(matchVal[1].replace(',', '.'));
+    }
+    resultado.saldoInicial = isNaN(valorInicial) ? 0 : valorInicial;
+    resultado.resposta_falada = `Abrindo caixa diário com saldo inicial de ${valorInicial} reais.`;
+    return resultado;
+  }
+
+  if (/(?:fechar|encerrar)\s*(?:o\s+)?caixa/i.test(t)) {
+    resultado.intencao = 'fechar_caixa';
+    resultado.risco = 'baixo';
+    resultado.resposta_falada = 'Encerrando o turno de caixa e consolidando valores.';
+    return resultado;
+  }
+
+  if (/(?:lançar|lancar|registrar)\s*(?:uma\s+)?(?:despesa|saída|saida|sangria|retirada|entrada|receita|suprimento)/i.test(t) ||
+      /(?:fazer\s+uma\s+)?sangria\s+de/i.test(t) ||
+      /(?:fazer\s+um\s+)?suprimento\s+de/i.test(t)) {
+    resultado.intencao = 'registrar_movimentacao_caixa';
+    resultado.risco = 'baixo';
+    let tipoMov = 'despesa';
+    if (t.includes('entrada') || t.includes('receita') || t.includes('suprimento')) {
+      tipoMov = t.includes('suprimento') ? 'suprimento' : 'receita';
+    } else if (t.includes('sangria')) {
+      tipoMov = 'sangria';
+    }
+    resultado.tipo = tipoMov;
+
+    const matchVal = t.match(/(?:de\s+)?(?:r\$\s*)?(\d+(?:[.,]\d{1,2})?)\s*(?:reais)?/i);
+    let valor = 0;
+    if (matchVal) {
+      valor = parseFloat(matchVal[1].replace(',', '.'));
+    }
+    resultado.valor = isNaN(valor) ? 0 : valor;
+
+    const matchDesc = t.match(/(?:com|referente\s+a|motivo|para|descrição|descricao)\s+(.+)$/i);
+    resultado.descricao = matchDesc ? matchDesc[1].trim() : `${tipoMov} avulsa via voz`;
+
+    resultado.resposta_falada = `Registrando ${tipoMov} de ${valor} reais no caixa.`;
+    return resultado;
+  }
+
+  if (t.includes('previsão de fluxo') || t.includes('previsao de fluxo') || t.includes('previsão do fluxo') ||
+      t.includes('previsao do fluxo') || t.includes('forecast') || t.includes('previsão de caixa') || t.includes('previsao de caixa')) {
+    resultado.intencao = 'consultar_previsao_caixa';
+    resultado.risco = 'baixo';
+    resultado.resposta_falada = 'Consultando previsão e projeção de fluxo de caixa da oficina.';
+    return resultado;
+  }
+
+  if (t.includes('auditoria financeira') || t.includes('controles internos') || t.includes('parecer financeiro') ||
+      t.includes('vazamento de receita') || t.includes('anomalias financeiras')) {
+    resultado.intencao = 'consultar_auditoria_financeira';
+    resultado.risco = 'baixo';
+    resultado.resposta_falada = 'Executando auditoria e avaliação dos controles internos financeiros.';
+    return resultado;
+  }
+
+  // 2.7 Consultas Financeiras Gerais (Vencimentos a Pagar, A Receber, Saldo de Caixa, Faturamento)
   const isConsultaFin = t.includes('vencimento') || t.includes('a pagar') || t.includes('contas a pagar') ||
                         t.includes('a receber') || t.includes('contas a receber') || t.includes('receber de clientes') ||
                         t.includes('saldo atual') || t.includes('saldo do caixa') || t.includes('saldo de caixa') ||
@@ -1122,13 +1189,24 @@ async function executarAcao({ interpretado, input, context = {}, state = {} }) {
     }
   }
 
-  if (intencao === 'consultar_financeiro') {
+  if (['consultar_financeiro', 'consultar_previsao_caixa', 'consultar_auditoria_financeira'].includes(intencao)) {
     if (!canReadFinancial(context)) {
       return {
         ok: false,
-        acao: 'consultar_financeiro',
+        acao: intencao,
         negado: true,
         resposta: 'Acesso negado: seu perfil não possui permissão para consultar dados financeiros da oficina.'
+      };
+    }
+  }
+
+  if (['abrir_caixa', 'fechar_caixa', 'registrar_movimentacao_caixa'].includes(intencao)) {
+    if (!canWriteFinancial(context)) {
+      return {
+        ok: false,
+        acao: intencao,
+        negado: true,
+        resposta: 'Acesso negado: seu perfil não possui permissão para movimentar ou alterar o caixa da oficina.'
       };
     }
   }
@@ -2999,6 +3077,132 @@ async function executarAcao({ interpretado, input, context = {}, state = {} }) {
       subtipo,
       kpis,
       resposta: resp
+    };
+  }
+
+  if (intencao === 'abrir_caixa') {
+    if (!canWriteFinancial(context)) {
+      return {
+        ok: false,
+        acao: 'abrir_caixa',
+        negado: true,
+        resposta: 'Acesso negado: seu perfil não possui permissão para abrir o caixa.'
+      };
+    }
+    const tenantId = context.tenantId || 'default';
+    const resAbertura = financialAnalystService.abrirCaixa(state, {
+      tenantId,
+      saldoInicial: interpretado.saldoInicial || 0,
+      operador: context.actorId || 'operador',
+      operadorNome: context.fullName || context.actorId || 'Operador'
+    });
+
+    return {
+      ok: resAbertura.ok,
+      acao: 'abrir_caixa',
+      caixa: resAbertura.caixa,
+      resposta: resAbertura.mensagem || resAbertura.error
+    };
+  }
+
+  if (intencao === 'fechar_caixa') {
+    if (!canWriteFinancial(context)) {
+      return {
+        ok: false,
+        acao: 'fechar_caixa',
+        negado: true,
+        resposta: 'Acesso negado: seu perfil não possui permissão para fechar o caixa.'
+      };
+    }
+    const tenantId = context.tenantId || 'default';
+    const resFechamento = financialAnalystService.fecharCaixa(state, {
+      tenantId,
+      operador: context.actorId || 'operador',
+      operadorNome: context.fullName || context.actorId || 'Operador'
+    });
+
+    return {
+      ok: resFechamento.ok,
+      acao: 'fechar_caixa',
+      caixa: resFechamento.caixaFechado,
+      fechamento: resFechamento.resumoFechamento,
+      resposta: resFechamento.mensagem || resFechamento.error
+    };
+  }
+
+  if (intencao === 'registrar_movimentacao_caixa') {
+    if (!canWriteFinancial(context)) {
+      return {
+        ok: false,
+        acao: 'registrar_movimentacao_caixa',
+        negado: true,
+        resposta: 'Acesso negado: seu perfil não possui permissão para lançar movimentações no caixa.'
+      };
+    }
+    const tenantId = context.tenantId || 'default';
+    const resMov = financialAnalystService.registrarMovimentacao(state, {
+      tenantId,
+      tipo: interpretado.tipo || 'despesa',
+      valor: interpretado.valor || 0,
+      descricao: interpretado.descricao || 'Movimentação por voz',
+      operador: context.actorId || 'operador',
+      formaPagamento: 'dinheiro'
+    });
+
+    return {
+      ok: resMov.ok,
+      acao: 'registrar_movimentacao_caixa',
+      movimentacao: resMov.movimentacao,
+      saldoAtual: resMov.saldoCaixaAtual,
+      resposta: resMov.mensagem || resMov.error
+    };
+  }
+
+  if (intencao === 'consultar_previsao_caixa') {
+    if (!canReadFinancial(context)) {
+      return {
+        ok: false,
+        acao: 'consultar_previsao_caixa',
+        negado: true,
+        resposta: 'Acesso negado: seu perfil não possui permissão para consultar previsão financeira.'
+      };
+    }
+    const prev = financialAnalystService.gerarPrevisaoFluxoCaixa(state, { dias: 30 });
+    const saldoAt = financialEngine.formatarMoeda(prev.saldoAtual);
+    const s7 = financialEngine.formatarMoeda(prev.marcos.em7Dias.saldo);
+    const s30 = financialEngine.formatarMoeda(prev.marcos.em30Dias.saldo);
+    const patioProv = financialEngine.formatarMoeda(prev.receitaPotencialPatio.cenarioProvavel);
+
+    let textoResp = `Previsão de Fluxo de Caixa: Saldo atual de ${saldoAt}, projetado para 7 dias em ${s7} e para 30 dias em ${s30}. Receita potencial estimada das OS no pátio: ${patioProv}.`;
+    if (prev.diagnosticoFuro.furoDetectado) {
+      textoResp += ` Atenção: Risco de furo de caixa detectado em ${financialEngine.formatarDataBRFull(prev.diagnosticoFuro.dataPrimeiroFuro)}.`;
+    } else {
+      textoResp += ' O fluxo projetado permanece saudável e acima do caixa mínimo de segurança.';
+    }
+
+    return {
+      ok: true,
+      acao: 'consultar_previsao_caixa',
+      previsao: prev,
+      resposta: textoResp
+    };
+  }
+
+  if (intencao === 'consultar_auditoria_financeira') {
+    if (!canReadFinancial(context)) {
+      return {
+        ok: false,
+        acao: 'consultar_auditoria_financeira',
+        negado: true,
+        resposta: 'Acesso negado: seu perfil não possui permissão para consultar auditoria financeira.'
+      };
+    }
+    const controles = financialAnalystService.avaliarControlesInternos(state);
+    return {
+      ok: true,
+      acao: 'consultar_auditoria_financeira',
+      controles,
+      resposta: controles.parecerExecutivo
     };
   }
 

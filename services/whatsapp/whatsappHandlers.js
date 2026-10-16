@@ -19,6 +19,7 @@ const preOSEngine = require('../preOSEngine');
 const quotationService = require('../quotationService');
 const technicalIntakeEngine = require('../technicalIntakeEngine');
 const financialEngine = require('../financialEngine');
+const financialAnalystService = require('../financialAnalystService');
 const { consultarDadosVeiculoOnline } = require('../vehicleLookupService');
 const {
   gerarRelatorioExecutivo,
@@ -454,7 +455,7 @@ async function tratarMensagemWhatsApp(msg, wppClient) {
   const placaContexto = (infoRecente && (Date.now() - infoRecente.timestamp < 15 * 60 * 1000)) ? infoRecente.placa : null;
 
   const isComandoExplicito = textoLower.startsWith('!') ||
-    ['relatorio', 'relatório', 'caixa', 'saldo', 'patio', 'pátio', 'boxes', 'ajuda', 'menu', 'comandos'].includes(textoLower);
+    ['relatorio', 'relatório', 'caixa', 'saldo', 'patio', 'pátio', 'boxes', 'ajuda', 'menu', 'comandos', 'previsao', 'previsão', 'forecast', 'auditoria', 'controles'].includes(textoLower);
   const isConsultaStatus = textoLower.includes('status') || textoLower.includes('como está') || textoLower.includes('consultar') || textoLower.includes('andamento');
   const isAberturaOS = textoLower.includes('abrir os') || textoLower.startsWith('abrir ') || textoLower === 'abrir';
   const isLancamentoItem = textoLower.includes('inclua') || textoLower.includes('incluir') || textoLower.includes('adicione') || textoLower.includes('adicionar') || textoLower.includes('lance') || textoLower.includes('lancar') || textoLower.includes('lançar');
@@ -472,6 +473,46 @@ async function tratarMensagemWhatsApp(msg, wppClient) {
       }
       const resCaixa = gerarResumoCaixa(tenantState);
       await msg.reply(resCaixa);
+      return;
+    }
+
+    if (textoLower === '!previsao' || textoLower === 'previsao' || textoLower === 'previsão' || textoLower === '!forecast') {
+      if (isContextOperacao) {
+        await msg.reply('🔒 *Acesso Restrito:* A projeção de fluxo de caixa é disponibilizada exclusivamente no Grupo da Administração.');
+        return;
+      }
+      const prev = financialAnalystService.gerarPrevisaoFluxoCaixa(tenantState, { horizonteDias: 30 });
+      let msgPrev = `📈 *PREVISÃO DE FLUXO DE CAIXA (VERÔNICA ANALISTA)* 🤖\n\n`;
+      msgPrev += `💰 *Saldo Disponível Hoje:* ${formatarMoeda(prev.saldoAtual)}\n\n`;
+      msgPrev += `🗓️ *Projeções por Período:*\n`;
+      msgPrev += `• *7 Dias:* ${formatarMoeda(prev.marcos?.em7Dias?.saldo)} (Seguro: ${prev.marcos?.em7Dias?.seguro ? 'Sim' : 'Abaixo da Margem'})\n`;
+      msgPrev += `• *15 Dias:* ${formatarMoeda(prev.marcos?.em15Dias?.saldo)} (Seguro: ${prev.marcos?.em15Dias?.seguro ? 'Sim' : 'Abaixo da Margem'})\n`;
+      msgPrev += `• *30 Dias:* ${formatarMoeda(prev.marcos?.em30Dias?.saldo)} (Seguro: ${prev.marcos?.em30Dias?.seguro ? 'Sim' : 'Abaixo da Margem'})\n\n`;
+      msgPrev += `📊 *Totais Projetados (30 Dias):*\n`;
+      msgPrev += `• Contas a Receber: ${formatarMoeda(prev.totaisPeriodo?.aReceber)}\n`;
+      msgPrev += `• Contas a Pagar: ${formatarMoeda(prev.totaisPeriodo?.aPagar)}\n`;
+      msgPrev += `• Saldo Previsto por Títulos: ${formatarMoeda(prev.totaisPeriodo?.saldoPrevistoFinanceiro)}\n\n`;
+      msgPrev += `🚛 *Potencial de Pátio (OS em andamento & orçamentos):*\n`;
+      msgPrev += `• Cenário Provável: ${formatarMoeda(prev.receitaPotencialPatio?.cenarioProvavel)} (Saldo Proj: ${formatarMoeda(prev.receitaPotencialPatio?.saldoProvavel30dComPatio)})\n`;
+      msgPrev += `• Cenário Conservador: ${formatarMoeda(prev.receitaPotencialPatio?.cenarioConservador)} (Saldo Proj: ${formatarMoeda(prev.receitaPotencialPatio?.saldoConservador30dComPatio)})\n`;
+
+      if (prev.diagnosticoFuro?.furoDetectado) {
+        msgPrev += `\n⚠️ *Alerta de Furo de Caixa:* Risco a partir de ${formatarDataBR(prev.diagnosticoFuro.dataPrimeiroFuro)} (menor saldo: ${formatarMoeda(prev.diagnosticoFuro.menorSaldoProjetado)}). Caixa mínimo: ${formatarMoeda(prev.caixaMinimoSeguranca)}.`;
+      } else {
+        msgPrev += `\n✅ *Saúde do Caixa:* Nenhum furo de caixa projetado nos próximos 30 dias (caixa mínimo de ${formatarMoeda(prev.caixaMinimoSeguranca)} mantido).`;
+      }
+
+      await msg.reply(msgPrev);
+      return;
+    }
+
+    if (textoLower === '!auditoria' || textoLower === 'auditoria' || textoLower === '!controles' || textoLower === 'controles') {
+      if (isContextOperacao) {
+        await msg.reply('🔒 *Acesso Restrito:* A auditoria de controles internos é disponibilizada exclusivamente no Grupo da Administração.');
+        return;
+      }
+      const parecer = financialAnalystService.formatarParecerExecutivoVerônica(tenantState);
+      await msg.reply(parecer);
       return;
     }
 
@@ -538,6 +579,8 @@ Olá! Você tem acesso aos comandos executivos do sistema:
 
 📊 *!relatorio* — Relatório executivo completo (3 mensagens + Gráfico JPG)
 💰 *!caixa* — Posição financeira consolidada e títulos do dia
+📈 *!previsao* — Previsão de fluxo de caixa (7, 15, 30 dias) e potencial de pátio
+🔍 *!auditoria* — Auditoria de controles internos e parecer executivo da Verônica
 🚛 *!patio* — Ocupação dos boxes e pátio em tempo real
 📦 *Fotos de Pedidos, Notas Fiscais e Comprovantes* — Lançamento, provisionamento e conciliação automáticos
 🔍 *Status [placa]* — Consultar OS de um veículo (ex: *Status ABC1234*)

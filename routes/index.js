@@ -19,6 +19,7 @@ function mountRoutes(app) {
   app.use(require('./billing.routes'));
   app.use(require('./auth.routes'));
   app.use(require('./platform.routes'));
+  app.use(require('./financial.routes'));
   app.use(require('./static.routes'));
 }
 
