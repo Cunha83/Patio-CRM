@@ -174,7 +174,8 @@ Retorne APENAS um JSON estrito:
 router.post('/api/comando-voz', async (req, res) => {
   let tokenReservado = null;
   try {
-    const { texto, audioBase64, mimeType, context, token: directToken } = req.body || {};
+    const texto = req.body?.texto || req.body?.text;
+    const { audioBase64, mimeType, context, token: directToken } = req.body || {};
     if (!texto && !audioBase64) {
       return res.status(400).json({ error: 'Nenhum texto ou áudio fornecido para interpretação.' });
     }
@@ -232,7 +233,8 @@ router.post('/api/comando-voz', async (req, res) => {
       'consultar_sugestao_preco', 'consultar_margem_orcamento', 'consultar_servicos_pouca_margem',
       'consultar_servico_mais_retrabalho', 'consultar_custo_medio_servico', 'consultar_adequacao_preco_servico',
       'consultar_preventiva_frota', 'consultar_frota_cliente', 'consultar_contatos_crm',
-      'consultar_manutencao_veiculo', 'consultar_pos_venda'
+      'consultar_manutencao_veiculo', 'consultar_pos_venda',
+      'consultar_previsao_caixa', 'consultar_auditoria_financeira'
     ];
 
     const intencaoOuAcao = interpretado?.intencao || interpretado?.acao;

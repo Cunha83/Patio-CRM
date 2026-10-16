@@ -3,10 +3,10 @@
 **Projeto:** Pátio CRM  
 **Versão:** `1.0.0`  
 **Fase:** Piloto Controlado em Ambiente Operacional (1 Oficina)  
-**Data de Congelamento:** 2026-10-16T18:43:32.993Z  
-**Commit Git:** `d7c866c46f6611ae0fa57dd9137b880dee454ef1` (`branch: feat/veronica-proactive-alerts`)  
+**Data de Congelamento:** 2026-10-16T20:32:00.404Z  
+**Commit Git:** `94fe99753ff0598acc86ad63584d90c424c12397` (`branch: feat/veronica-financial-analyst`)  
 **Ambiente:** Node.js `v24.19.0` em `win32-x64`  
-**Total de Arquivos Auditados:** 165  
+**Total de Arquivos Auditados:** 167  
 
 ---
 
@@ -31,14 +31,14 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 | `db.js` | `9ed9a2aa49a78b54357683668bec399d8f92c16e34d98fd853277e20c7d9c652` |
 | `lib/tokens/securityToken.js` | `84ba877e14395e86d09df98c4edc7f27d7ebc20c4f9ac2b6b46950bac17d0f93` |
 | `lib/repository/stateRepository.js` | `1a46fdba59531ffa71ed1efda756f11b288c2912e954052d3473b5801e381c0d` |
-| `services/voiceActionEngine.js` | `22cfc13a820c62bc0f58272f98004b3608bb5532e2bad256ab6afeff9c139226` |
+| `services/voiceActionEngine.js` | `3761c6769c589ca836237991c1f71b2bf270415f425a2437ed0d862e5d30bc74` |
 | `services/backupService.js` | `8ce2f7725dfc49e830148980b20fcd23b7efa7257ad945777c8e94766bb40031` |
 | `package.json` | `feb4caa17935ec9263879b5ffb1233e369a7d3eb19819c8a38895b918aeaf017` |
 | `package-lock.json` | `19ee349d862bdddc4a4aa8502a4ab86932627eef5420fedceb9c3eecfe41a96d` |
 
 ---
 
-## 3. Inventário Completo de Arquivos da Release (165 Arquivos)
+## 3. Inventário Completo de Arquivos da Release (167 Arquivos)
 
 | Caminho Relativo | Checksum SHA-256 |
 |---|---|
@@ -49,7 +49,7 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 | `js/cadastros.js` | `9a78c698d2e9104b1c3c979210f10a35bab551aec694bef8ef27438958ea5ee0` |
 | `js/dashboard_operacional.js` | `dfd3377bb807ee5167ff543bf2ef6b6f0bad2d53a7c046bc61f10a30e212c3e1` |
 | `js/estoque.js` | `d489aef08658fc13d4c3856291ac19faafc1ed6ad1663dad08e9411be70b50cf` |
-| `js/financeiro.js` | `c82ac60614cc684f026395d08bdc0f67c2b2c11d846bd5745da2f53cf1cf5e3b` |
+| `js/financeiro.js` | `dfad0b5899c28190cf60af867a199e6ea5bd484433d062868d875de873f6f0d6` |
 | `js/fiscal.js` | `5338f76519ddd4ec6066f6f0d81bd803966f548f5e84c3311da55d3068171766` |
 | `js/icons.js` | `911381271a8bbb0d6cca997f63d9f91e9951ac39e5c2725d4cfc3004a2346618` |
 | `js/modules/agent_config.js` | `79c2884d7926fa13bab1431e0508e08749324a91792114cb877ef4dbefaf8514` |
@@ -97,8 +97,9 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 | `routes/billing.routes.js` | `8e2c8671171e8d0cf0d2db0af9ddb9085c6080c94ee3916ed8416d2da33ef6b8` |
 | `routes/config.routes.js` | `94044bcc87888659f3591f0dc2016020e54961818ec334f2d73d37f7013e9184` |
 | `routes/crm.routes.js` | `8aa2c3fd2a721d484b327d2b6576f2b0cf2630c1abd4a6279259e604063563b6` |
+| `routes/financial.routes.js` | `1a12974e27ca9524522ee5946d63f88114b4a907f0ca2126cb3e3a23f37cc38f` |
 | `routes/health.routes.js` | `604f95b8d53d3032bf8df6d8900e9d6c135e5443e1f4d715be3fbe39661109d2` |
-| `routes/index.js` | `600ab61a9a71019b4dc289cee67451aecc69a162dafef4062143860d61d46b3f` |
+| `routes/index.js` | `82951d0d0e00cced326cf9ef8cf5a1425a29659d4f7058fe6104dbbae86d3b3f` |
 | `routes/inspection.routes.js` | `cc3940861f6199d1c42da9deea82647e1861f5277e9cfe3d2a8f88e452ad8469` |
 | `routes/inventory.routes.js` | `e406159437baadfa5b67a96a1a8b6613155bbd9525fe4ed402ce9c8f2e31bb2a` |
 | `routes/operation.routes.js` | `39eb318b5dbd09bb8797a909c7dc766f2c700d6f88c8927682076091e0725a60` |
@@ -110,7 +111,7 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 | `routes/state.routes.js` | `6edcdf1e1415f6e690b18113c84757b2a5d33a9e51e8c80392da477b71e5bf76` |
 | `routes/static.routes.js` | `468cc07ee015330b61ab29c854d147e32b53f9735e9cfc07f7821a78fa89057c` |
 | `routes/team.routes.js` | `15f035ceb4d9d0f81ce8a54fbb393c14c3e3fa455884a492c4d355e6b35623fb` |
-| `routes/voice.routes.js` | `21a7f528cb567f7c9c374fe72d3b9468a3ac20b4b7fc56f28bc8ec9f86a4d6be` |
+| `routes/voice.routes.js` | `52752011ee173065f187ab6ef29b4c0943037eec7d81a13d77e10d0ff39d4717` |
 | `routes/whatsapp.routes.js` | `27a4f812d4e8c26c12fe9432ac4877edc638a46b0f0ddb29534186f9e250f740` |
 | `scripts/auditar_execucao_tarefa_agendada.cjs` | `47a5d3e281bfcdb4737c23f159baab0dad00520d69feb82a3a6c482f27c46d69` |
 | `scripts/build_windows_pilot.cjs` | `ace15201cd79925808194e4876ec2bb67bf1f4c968f32b8a525249aea15182de` |
@@ -156,6 +157,7 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 | `services/customerTimelineService.js` | `e9a01b448a583e8c5b0bf716ad5e790eea5e28f8250efb94997ceaaa53f2df1c` |
 | `services/demoDataService.js` | `33ed44c377f6dd14ee9e9d414419ae4232880084bd2f77df828754cf2ba7dd01` |
 | `services/erpIntegrationService.js` | `3c76f606c7af5831e0a413acd7e7fa5caba373d36e032c13f91c0ee629018ba4` |
+| `services/financialAnalystService.js` | `5148ec73ef670e8d6d3f5858595dbb2949c4b494fb56e414afb2acee007839ac` |
 | `services/financialEngine.js` | `759a6a767f9ba676c154c6d1c2c88bf2ee434ab55d6d1c39e64714c95b0f23e5` |
 | `services/fiscal/decimal.js` | `5c060f6cb2308e6da4d0e4e747d52012cdaaa1964b46b02e5354b2169ff4a7f1` |
 | `services/fiscal/fiscalCalculationEngine.js` | `d6f2c2d7d0c694774f340e0aa6547dfad50473a9caaf2e1bd0a7f224d58cfe41` |
@@ -180,7 +182,7 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 | `services/operationalSummaryService.js` | `f6e54186349108a8c006e5da04a0f658cc12fd2c0d6c29184b5591094322e79c` |
 | `services/preOSEngine.js` | `822136da5e66bae52633f30c3954ac69130c8fe61a8da12f0b02137c5a5c8bca` |
 | `services/pricingEngine.js` | `776ea777ed22eeed9b6b23593d57ee1626eda53a68edefde4841c7bd0c2fcd07` |
-| `services/proactiveAlertsService.js` | `ab9141ee84742a6500f988c043e9069e8abaa9fd89156f1e3b9fba495858921b` |
+| `services/proactiveAlertsService.js` | `ab8a68fe053b545092b0ee82533fc218a2faceda6a801b6856f23e592b36fe3d` |
 | `services/procurementService.js` | `f9d1539aaec9e6f88c1eea32d893b2d0587a589f95cd32930e741a1c2b352af4` |
 | `services/productivityService.js` | `45f6e115fd99786a27403211b40a9f83177944895187feac3cad39fdf463ab21` |
 | `services/quotationService.js` | `2065e6288fe0f7dbdd9358a141d31345e03eaa5e7134fc0d0d70cb02d8afb024` |
@@ -200,10 +202,10 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 | `services/vehicleHistoryService.js` | `49a876ad65137f79cef018614391b3e161c458a2130f7030a2c63411df7aa17a` |
 | `services/vehicleLookupService.js` | `b3ea663abb8de5c6729ca56ff2eb92cebfc5c26758d0876dd4b0baacca89dbcf` |
 | `services/vehicleReconciliation.js` | `f7d77772caa7dc999b1d3250257096f3107ae2fa0260ade093bcc6b1eb296aba` |
-| `services/voiceActionEngine.js` | `22cfc13a820c62bc0f58272f98004b3608bb5532e2bad256ab6afeff9c139226` |
+| `services/voiceActionEngine.js` | `3761c6769c589ca836237991c1f71b2bf270415f425a2437ed0d862e5d30bc74` |
 | `services/warrantyService.js` | `e2772f7e3d8987ebba0d4e6a97e2dfad10f3210e490616902629c68d68ebb14b` |
 | `services/whatsapp/whatsappClient.js` | `2a40ffbea1a5554d28887e078579a68daee5b2d73b4ec61cba50307d5766265c` |
-| `services/whatsapp/whatsappHandlers.js` | `05f0f4018a0554e79b6370868c3db212c06cabeef0cf32ca2870898575ca8591` |
+| `services/whatsapp/whatsappHandlers.js` | `f955e81b30f5803ce5da9808c0127e5a32d087f31e375121e9a1cf62a917348b` |
 | `services/whatsapp/whatsappScheduler.js` | `7e971c4f02e848c1f83d36b328bd94d9e8ba1883b7c26f45f62f685a2c052497` |
 | `services/whatsapp/whatsappState.js` | `48b9b0ab3b9fb5aeacac740ad77fdd033737c1fe57598db38fd21b56bfd46353` |
 | `style.css` | `ea8a3021eebbd6b45d3d56dd88958139734a39599dd9c2300be46714ec0d8297` |
