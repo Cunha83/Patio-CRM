@@ -2,10 +2,10 @@
   "projeto": "Patio-CRM",
   "versao": "1.0.0",
   "fase": "Fase 3 — Piloto Controlado em Ambiente Operacional",
-  "dataGeracao": "2026-10-16T18:18:52.001Z",
+  "dataGeracao": "2026-10-16T18:43:32.993Z",
   "git": {
-    "commit": "a7e67758fb93f199e80840cc58eb64409ecb3209",
-    "branch": "main"
+    "commit": "d7c866c46f6611ae0fa57dd9137b880dee454ef1",
+    "branch": "feat/veronica-proactive-alerts"
   },
   "ambienteExecucao": {
     "node": "v24.19.0",
@@ -22,7 +22,7 @@
       "credenciais e certificados SEFAZ A1"
     ]
   },
-  "totalArquivosAuditados": 164,
+  "totalArquivosAuditados": 165,
   "arquivos": {
     "db.js": "9ed9a2aa49a78b54357683668bec399d8f92c16e34d98fd853277e20c7d9c652",
     "index.html": "fa925b96a7d3d6d3d9f97f6163bb396c56794a0c53e2e56d2fe2514c3d07cb2d",
@@ -34,7 +34,7 @@
     "js/financeiro.js": "c82ac60614cc684f026395d08bdc0f67c2b2c11d846bd5745da2f53cf1cf5e3b",
     "js/fiscal.js": "5338f76519ddd4ec6066f6f0d81bd803966f548f5e84c3311da55d3068171766",
     "js/icons.js": "911381271a8bbb0d6cca997f63d9f91e9951ac39e5c2725d4cfc3004a2346618",
-    "js/modules/agent_config.js": "acb8ab4c9d58fcc5227f4639df12abe40a38cd5fae1345c73cecc298d4350412",
+    "js/modules/agent_config.js": "79c2884d7926fa13bab1431e0508e08749324a91792114cb877ef4dbefaf8514",
     "js/modules/cadastros_fiscal.js": "d5b4daef5ce132c1b77eaefe1ee9c90a704ede93fc9a8213551a1f05cc282267",
     "js/modules/consulta_cliente.js": "75ea0f422a2a7b8c374a3675053464f1e476c96fa37860068e0d0cbf22c3b7de",
     "js/modules/events.js": "222586354812fea96f4b3e23888aeae319f53d30ad46d510bce35962b18e3209",
@@ -77,13 +77,13 @@
     "routes/auth.routes.js": "f63f73edab086ac0f0dc5328df773569a32e881e2549e6762f8325eb96bc43a9",
     "routes/backup.routes.js": "cddc099c9da5f9f13db9d9207fc8f6dcd52bcc8622a9fe52b2318752afd2e516",
     "routes/billing.routes.js": "8e2c8671171e8d0cf0d2db0af9ddb9085c6080c94ee3916ed8416d2da33ef6b8",
-    "routes/config.routes.js": "f0c043ac793609335883a85b322db40759868407a325f1c876ad4caa07b2fc07",
+    "routes/config.routes.js": "94044bcc87888659f3591f0dc2016020e54961818ec334f2d73d37f7013e9184",
     "routes/crm.routes.js": "8aa2c3fd2a721d484b327d2b6576f2b0cf2630c1abd4a6279259e604063563b6",
     "routes/health.routes.js": "604f95b8d53d3032bf8df6d8900e9d6c135e5443e1f4d715be3fbe39661109d2",
     "routes/index.js": "600ab61a9a71019b4dc289cee67451aecc69a162dafef4062143860d61d46b3f",
     "routes/inspection.routes.js": "cc3940861f6199d1c42da9deea82647e1861f5277e9cfe3d2a8f88e452ad8469",
     "routes/inventory.routes.js": "e406159437baadfa5b67a96a1a8b6613155bbd9525fe4ed402ce9c8f2e31bb2a",
-    "routes/operation.routes.js": "e760cea44123be75c30d24f74a5b6a08255963d23f777783bf35cf5c543c7000",
+    "routes/operation.routes.js": "39eb318b5dbd09bb8797a909c7dc766f2c700d6f88c8927682076091e0725a60",
     "routes/os.routes.js": "bd896c7b9bbc4f183944ada00aa15c8264b46cdf897b048dc48547155dcd1d3d",
     "routes/platform.routes.js": "33f262a318560c2836015d0e1f09ec81a7d9eedb447b7d636266df6398758c71",
     "routes/preOs.routes.js": "22915170aab52627ca09b0c7432450d7a505cbad426d67ab47885938c8daae5b",
@@ -162,6 +162,7 @@
     "services/operationalSummaryService.js": "f6e54186349108a8c006e5da04a0f658cc12fd2c0d6c29184b5591094322e79c",
     "services/preOSEngine.js": "822136da5e66bae52633f30c3954ac69130c8fe61a8da12f0b02137c5a5c8bca",
     "services/pricingEngine.js": "776ea777ed22eeed9b6b23593d57ee1626eda53a68edefde4841c7bd0c2fcd07",
+    "services/proactiveAlertsService.js": "ab9141ee84742a6500f988c043e9069e8abaa9fd89156f1e3b9fba495858921b",
     "services/procurementService.js": "f9d1539aaec9e6f88c1eea32d893b2d0587a589f95cd32930e741a1c2b352af4",
     "services/productivityService.js": "45f6e115fd99786a27403211b40a9f83177944895187feac3cad39fdf463ab21",
     "services/quotationService.js": "2065e6288fe0f7dbdd9358a141d31345e03eaa5e7134fc0d0d70cb02d8afb024",
@@ -185,7 +186,7 @@
     "services/warrantyService.js": "e2772f7e3d8987ebba0d4e6a97e2dfad10f3210e490616902629c68d68ebb14b",
     "services/whatsapp/whatsappClient.js": "2a40ffbea1a5554d28887e078579a68daee5b2d73b4ec61cba50307d5766265c",
     "services/whatsapp/whatsappHandlers.js": "05f0f4018a0554e79b6370868c3db212c06cabeef0cf32ca2870898575ca8591",
-    "services/whatsapp/whatsappScheduler.js": "3f24fca69277761e04ff5fa968498b71b79dd7f195bd6f9e833b481c75444ec3",
+    "services/whatsapp/whatsappScheduler.js": "7e971c4f02e848c1f83d36b328bd94d9e8ba1883b7c26f45f62f685a2c052497",
     "services/whatsapp/whatsappState.js": "48b9b0ab3b9fb5aeacac740ad77fdd033737c1fe57598db38fd21b56bfd46353",
     "style.css": "ea8a3021eebbd6b45d3d56dd88958139734a39599dd9c2300be46714ec0d8297"
   }

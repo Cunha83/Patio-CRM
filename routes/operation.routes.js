@@ -11,6 +11,7 @@ const {
 const financialEngine = require('../services/financialEngine');
 const operationalIntelligenceEngine = require('../services/operationalIntelligenceEngine');
 const operationalSummaryService = require('../services/operationalSummaryService');
+const proactiveAlertsService = require('../services/proactiveAlertsService');
 
 router.get('/api/financeiro/dashboard', requirePermission('financial:read'), async (req, res) => {
   try {
@@ -231,6 +232,36 @@ router.post('/api/operacao/avaliar', requirePermission('operation:manage'), asyn
     res.status(500).json({ error: err.message });
   } finally {
     runningEvaluations.delete(tenantId);
+  }
+});
+
+/* ── ALERTAS PROATIVOS DA VERÔNICA (ORÇAMENTOS PARADOS & GARGALOS EM BOXES) ── */
+router.get('/api/operacao/alertas-proativos', requirePermission('operation:read', 'assistant:settings'), async (req, res) => {
+  try {
+    const state = await getOrLoadState(req);
+    const tenantId = extractTenantId(req);
+    const resultado = proactiveAlertsService.avaliarAlertasProativos({ state, tenantId });
+    res.json(resultado);
+  } catch (err) {
+    console.error('[API /api/operacao/alertas-proativos GET] Erro:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.post('/api/operacao/alertas-proativos/disparar', requirePermission('operation:manage', 'assistant:settings', 'admin:settings'), async (req, res) => {
+  try {
+    const state = await getOrLoadState(req);
+    const tenantId = extractTenantId(req);
+    const { force } = req.body || {};
+    const resultado = await proactiveAlertsService.dispararAlertasProativos({
+      state,
+      tenantId,
+      force: Boolean(force)
+    });
+    res.json(resultado);
+  } catch (err) {
+    console.error('[API /api/operacao/alertas-proativos/disparar POST] Erro:', err);
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 
