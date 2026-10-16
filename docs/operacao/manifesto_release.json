@@ -2,10 +2,10 @@
   "projeto": "Patio-CRM",
   "versao": "1.0.0",
   "fase": "Fase 3 — Piloto Controlado em Ambiente Operacional",
-  "dataGeracao": "2026-10-16T20:32:00.404Z",
+  "dataGeracao": "2026-10-16T20:47:24.157Z",
   "git": {
-    "commit": "94fe99753ff0598acc86ad63584d90c424c12397",
-    "branch": "feat/veronica-financial-analyst"
+    "commit": "57e709d24ebd73a46b1da6381120cc13c00a2428",
+    "branch": "main"
   },
   "ambienteExecucao": {
     "node": "v24.19.0",
@@ -79,7 +79,7 @@
     "routes/billing.routes.js": "8e2c8671171e8d0cf0d2db0af9ddb9085c6080c94ee3916ed8416d2da33ef6b8",
     "routes/config.routes.js": "94044bcc87888659f3591f0dc2016020e54961818ec334f2d73d37f7013e9184",
     "routes/crm.routes.js": "8aa2c3fd2a721d484b327d2b6576f2b0cf2630c1abd4a6279259e604063563b6",
-    "routes/financial.routes.js": "1a12974e27ca9524522ee5946d63f88114b4a907f0ca2126cb3e3a23f37cc38f",
+    "routes/financial.routes.js": "a23941787da8d9f24c2715b92d09e90e4c28c2837672e22d79a7ffebeae88958",
     "routes/health.routes.js": "604f95b8d53d3032bf8df6d8900e9d6c135e5443e1f4d715be3fbe39661109d2",
     "routes/index.js": "82951d0d0e00cced326cf9ef8cf5a1425a29659d4f7058fe6104dbbae86d3b3f",
     "routes/inspection.routes.js": "cc3940861f6199d1c42da9deea82647e1861f5277e9cfe3d2a8f88e452ad8469",
@@ -139,7 +139,7 @@
     "services/customerTimelineService.js": "e9a01b448a583e8c5b0bf716ad5e790eea5e28f8250efb94997ceaaa53f2df1c",
     "services/demoDataService.js": "33ed44c377f6dd14ee9e9d414419ae4232880084bd2f77df828754cf2ba7dd01",
     "services/erpIntegrationService.js": "3c76f606c7af5831e0a413acd7e7fa5caba373d36e032c13f91c0ee629018ba4",
-    "services/financialAnalystService.js": "5148ec73ef670e8d6d3f5858595dbb2949c4b494fb56e414afb2acee007839ac",
+    "services/financialAnalystService.js": "b588f58ab72a2d451638a4a2edcd01b86efc7069b570227a5e0f98778dc8c3cf",
     "services/financialEngine.js": "759a6a767f9ba676c154c6d1c2c88bf2ee434ab55d6d1c39e64714c95b0f23e5",
     "services/fiscal/decimal.js": "5c060f6cb2308e6da4d0e4e747d52012cdaaa1964b46b02e5354b2169ff4a7f1",
     "services/fiscal/fiscalCalculationEngine.js": "d6f2c2d7d0c694774f340e0aa6547dfad50473a9caaf2e1bd0a7f224d58cfe41",
@@ -184,7 +184,7 @@
     "services/vehicleHistoryService.js": "49a876ad65137f79cef018614391b3e161c458a2130f7030a2c63411df7aa17a",
     "services/vehicleLookupService.js": "b3ea663abb8de5c6729ca56ff2eb92cebfc5c26758d0876dd4b0baacca89dbcf",
     "services/vehicleReconciliation.js": "f7d77772caa7dc999b1d3250257096f3107ae2fa0260ade093bcc6b1eb296aba",
-    "services/voiceActionEngine.js": "3761c6769c589ca836237991c1f71b2bf270415f425a2437ed0d862e5d30bc74",
+    "services/voiceActionEngine.js": "86bfc80ae0734c879c51b13d8b8e519ea6d8594657e44c615dbd114fd78ee73d",
     "services/warrantyService.js": "e2772f7e3d8987ebba0d4e6a97e2dfad10f3210e490616902629c68d68ebb14b",
     "services/whatsapp/whatsappClient.js": "2a40ffbea1a5554d28887e078579a68daee5b2d73b4ec61cba50307d5766265c",
     "services/whatsapp/whatsappHandlers.js": "f955e81b30f5803ce5da9808c0127e5a32d087f31e375121e9a1cf62a917348b",
