@@ -45,6 +45,7 @@ const includePatterns = [
   'package-lock.json',
   'lib',
   'services',
+  'routes',
   'js',
   'scripts',
   'public'

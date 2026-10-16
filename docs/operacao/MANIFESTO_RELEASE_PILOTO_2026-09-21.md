@@ -3,10 +3,10 @@
 **Projeto:** Pátio CRM  
 **Versão:** `1.0.0`  
 **Fase:** Piloto Controlado em Ambiente Operacional (1 Oficina)  
-**Data de Congelamento:** 2026-09-22T19:06:43.811Z  
-**Commit Git:** `9e7ffc23341a3a1d61bdc60b20af8dc9ee0f178e` (`branch: main`)  
+**Data de Congelamento:** 2026-10-16T16:31:30.923Z  
+**Commit Git:** `3522a260a711daaba612dc58703b141b992a01c6` (`branch: refactor/modularizacao`)  
 **Ambiente:** Node.js `v24.19.0` em `win32-x64`  
-**Total de Arquivos Auditados:** 128  
+**Total de Arquivos Auditados:** 158  
 
 ---
 
@@ -27,18 +27,18 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 
 | Arquivo Canônico | Hash SHA-256 |
 |---|---|
-| `server.js` | `7cbbaaa768eb33d3d25d252a07e6efd5c6e582ada564266dc6b08968d2433801` |
+| `server.js` | `cb4ce0f265423935421f1f33c50623bc271c7e4661e6c1b5f4a2499cbc382ef0` |
 | `db.js` | `9ed9a2aa49a78b54357683668bec399d8f92c16e34d98fd853277e20c7d9c652` |
 | `lib/tokens/securityToken.js` | `84ba877e14395e86d09df98c4edc7f27d7ebc20c4f9ac2b6b46950bac17d0f93` |
 | `lib/repository/stateRepository.js` | `1a46fdba59531ffa71ed1efda756f11b288c2912e954052d3473b5801e381c0d` |
 | `services/voiceActionEngine.js` | `22cfc13a820c62bc0f58272f98004b3608bb5532e2bad256ab6afeff9c139226` |
 | `services/backupService.js` | `8ce2f7725dfc49e830148980b20fcd23b7efa7257ad945777c8e94766bb40031` |
-| `package.json` | `12f560e9d58ed7501fb6e0b2520dfd46be47b2f1f5432a00472bd4becfeaa8ab` |
+| `package.json` | `98f4de261b287afb17a53293b7b5a3986e51c6c44d014ac17f67885a35e15b65` |
 | `package-lock.json` | `19ee349d862bdddc4a4aa8502a4ab86932627eef5420fedceb9c3eecfe41a96d` |
 
 ---
 
-## 3. Inventário Completo de Arquivos da Release (128 Arquivos)
+## 3. Inventário Completo de Arquivos da Release (158 Arquivos)
 
 | Caminho Relativo | Checksum SHA-256 |
 |---|---|
@@ -71,10 +71,11 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 | `lib/repository/stateRepository.js` | `1a46fdba59531ffa71ed1efda756f11b288c2912e954052d3473b5801e381c0d` |
 | `lib/security/logSanitizer.js` | `ab4b30fe514daf11794ae702542fa5c86c92eed2b4b6b4eeb44422b1e7e0048b` |
 | `lib/security/testPaths.js` | `03dc66d69f55bb9bd86fd172e681b2b1f7337bf0590a8325217a1e91762fca78` |
+| `lib/serverContext.js` | `066745f4648bef3f98a051792c907798779170d5c63e40dba563eb22ce816642` |
 | `lib/state-route.js` | `21a993009643dced5583850518c0d7ac5cc075a985b99624e568d88fd1c043c6` |
 | `lib/tokens/securityToken.js` | `84ba877e14395e86d09df98c4edc7f27d7ebc20c4f9ac2b6b46950bac17d0f93` |
 | `package-lock.json` | `19ee349d862bdddc4a4aa8502a4ab86932627eef5420fedceb9c3eecfe41a96d` |
-| `package.json` | `12f560e9d58ed7501fb6e0b2520dfd46be47b2f1f5432a00472bd4becfeaa8ab` |
+| `package.json` | `98f4de261b287afb17a53293b7b5a3986e51c6c44d014ac17f67885a35e15b65` |
 | `public/aprovacao.html` | `e6913313c55f2721188bca08e896abf752079537f6e7d3f17342b3d8294643c6` |
 | `public/assinatura.html` | `4ecf84c95ab4a09ce86e51230dc4dda29a09d7f9112375cf4a64e16ebf8457d6` |
 | `public/cadastro.html` | `66ef0a3ffbbfd065a5892f0116b7dd185421dde7f130f06e19b1f4599a843bf5` |
@@ -85,12 +86,33 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 | `public/support/inbox.js` | `5cd5aa690b37ffe933356e16a0379427de957014c113a844792ad15a5d3bee8a` |
 | `public/support/support.css` | `72e8b77e691b894949431806b0eb10258a0704591ca94f56b8cf16ceb8ebceab` |
 | `public/termos.html` | `8dc24746cd72514f49bbf9d4d3704c9244cd335d392e2324dedd5b7b6e6523b4` |
+| `routes/auth.routes.js` | `430eaf09c162744093c5d79748ddee5709242f0d2f651309c2e320a7e8e187da` |
+| `routes/backup.routes.js` | `77d8a31d94b3450d8305ec467512138e6ab897a00ec73d10473ae9ff5636b58d` |
+| `routes/billing.routes.js` | `6c2c09619db18cc2a22af40f33ea308759d16ba47f07fc5d79dfa0050a9fc803` |
+| `routes/config.routes.js` | `627e9dae3a5678008c319c5402ace67e46f22f89e2a41c649b57c5cf910cece4` |
+| `routes/crm.routes.js` | `0b57e1929f60c6961f36974877afcf55e0c474bdd9fff260283f4528ffb1ae42` |
+| `routes/health.routes.js` | `881c1872d327b396e5f8785f1994bb087b6754332735b7835ce098dce21978a1` |
+| `routes/index.js` | `2f4e863e08c8d060d50719482a2393eebb35eb62558fece6cdf0d127cc348876` |
+| `routes/inspection.routes.js` | `ca11f6322239c865c403603981e20bc832ca238a8ae344fac51635afdc96d72b` |
+| `routes/inventory.routes.js` | `f5943dea99fa5cfb36f9f5c819f708cc0ac1b9ac3cb58ae5a8dd999d373b51a7` |
+| `routes/operation.routes.js` | `d877c1f8691218712430c8e01dbdcdcb54046a5a1cfc3625639bf291e64bc492` |
+| `routes/os.routes.js` | `af5b213aa4f7f68ab6f1e25afe5723bdecb33f8a2c8e15b06cbcbd374e3200ff` |
+| `routes/platform.routes.js` | `c0d2c0a35f91fb269c4727cd303dad0f83c43d2ab6330070dd50353f23feb910` |
+| `routes/preOs.routes.js` | `958abac710795f71339bb74bb8f392dc8eb37f34613f7ebba24f32a1359b858e` |
+| `routes/pricing.routes.js` | `2d1d84d394a2408af24b80df91f10aa2427b888e917e4b8ea58bf673cce5ae83` |
+| `routes/quotation.routes.js` | `ec69fb073d7fe0899d82cdc317caf76f44e61698dc9fa6040cc0b4e6134fd0ec` |
+| `routes/state.routes.js` | `d570985b03808c147084151f19655bcb1d3d9483b4992a35f7b861146e2b4f65` |
+| `routes/static.routes.js` | `721c0dcc17659895cb5b011d74a3d321e84fe5de35a2ec73e3807cf5273d213f` |
+| `routes/team.routes.js` | `931fa9d7a283857006bc75b8db4bbbfb8dcee8b0e032006dfbd63c76e088d2ff` |
+| `routes/voice.routes.js` | `837712a573991567afa61cff37bd5f7ab05f96ef91ec5f932f8618c6f6df8437` |
+| `routes/whatsapp.routes.js` | `8ee379b0053270eb3c3e4bbe15eda07a125817a4223ddee143b5d41b9bb6c709` |
 | `scripts/auditar_execucao_tarefa_agendada.cjs` | `47a5d3e281bfcdb4737c23f159baab0dad00520d69feb82a3a6c482f27c46d69` |
+| `scripts/build_windows_pilot.cjs` | `ace15201cd79925808194e4876ec2bb67bf1f4c968f32b8a525249aea15182de` |
 | `scripts/comprovar_restauracao_remota_host.cjs` | `23e0abf8271406e22fa0c3f65edad977a3ebdf7fcf2057ea1474d4fe3e775fb5` |
 | `scripts/ensaio_operacional_host.cjs` | `e240261ba669656330634b57d41ff80f94014e4f3d1ccb7f77426712cf5d2516` |
 | `scripts/executar_backup_operacional.cjs` | `4e8dfe26963e69618d860bc46c99ff1171aa7ea394c62ed2e239cfd17cb9e46a` |
 | `scripts/executar_implantacao_real_piloto.cjs` | `6e160a5b1e3536609f0e75a4a6cede8ab7a9f344c1dd6ac213c7501dafd2c725` |
-| `scripts/gerar_manifesto_release.cjs` | `c2cff6006c0ce9d77aadb2b9d21e688f9c1b23670e9262bbf2ef383b4fb74f01` |
+| `scripts/gerar_manifesto_release.cjs` | `089c43225cad816a93d3dd491df48520066424b33fd0eb4b9c31c916701dd5c5` |
 | `scripts/gerar_tarefa_agendada_windows.cjs` | `bcfb7954532e84953fe6b81d909f4eef567be77845e66102817481ae14e28407` |
 | `scripts/homologar_frontend_agent_browser.cjs` | `2bd6bc393e59cddcd955d539f86983ab568eb7681b280994d8d0654198683d6d` |
 | `scripts/iniciar_piloto.bat` | `90224ca233e40299bf075dae3387af03d0d918b2e1b430664a15cebc4bbb6b66` |
@@ -98,6 +120,7 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 | `scripts/pilot_http_benchmark.cjs` | `9f0b762066fa9da0125d5bea2269972bd358606aafc790ff18bbfe978a9e3375` |
 | `scripts/pilot_load_benchmark.cjs` | `e22f00e52ad5a17bd6ad07337f9d41311b919426a6c60e1bc85dc8f2e7dbb83b` |
 | `scripts/preview-fiscal.cjs` | `e9e41b44dcf08fe28d1c94170f570f608b8b33ec8c027e232a8acd032db40367` |
+| `scripts/preview-jev.cjs` | `83a11cfe01da42831d0bf713f364c95fc1a44af61096ce85ccb77ba3bea46365` |
 | `scripts/preview-support.cjs` | `169ef7f2dcfc7f26f8cd07edd7c2693ab7f0308b6c6494f19ecfb1a3406792fe` |
 | `scripts/provision-admin.js` | `aac51bf72978b085408362cff531bc849601c83090b9a6351650116c1a6cbb8e` |
 | `scripts/provisionar_credenciais_finais.cjs` | `5234daa8141df4737d6b9f6d04e5f5d88995c894139ad04c135b46d415cb1956` |
@@ -113,7 +136,7 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 | `scripts/testar_restauracao_isolada.cjs` | `7cf45d9dd9ae7d0e7bb1693a706d29fe8171595f532603a9fa3a7c902b270128` |
 | `scripts/testar_restauracao_operacional_e2e.cjs` | `53cc914ec16e21e3056976a4be7e9e4411154de2a5675bcf797ee4d4959a2b5c` |
 | `scripts/verify_e2e_journey.js` | `545d3d49def890d0ccb5acb4728bf87b5e50ed02d80074cf287290322739441c` |
-| `server.js` | `7cbbaaa768eb33d3d25d252a07e6efd5c6e582ada564266dc6b08968d2433801` |
+| `server.js` | `cb4ce0f265423935421f1f33c50623bc271c7e4661e6c1b5f4a2499cbc382ef0` |
 | `services/afterSalesService.js` | `6f714f5307ccb1bd44d7d29121a4372af2670130726b7165cebcae42c0632d60` |
 | `services/appointmentService.js` | `9e2217c281b96489ad08488686516f2dd0e059f51269a0834fdf9337d303ae44` |
 | `services/backupService.js` | `8ce2f7725dfc49e830148980b20fcd23b7efa7257ad945777c8e94766bb40031` |
@@ -156,6 +179,7 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 | `services/quotationService.js` | `2065e6288fe0f7dbdd9358a141d31345e03eaa5e7134fc0d0d70cb02d8afb024` |
 | `services/recurrenceDetector.js` | `95a254366e48a8c836c0073617d11d5391bd9f86fe55d5e1eabb1c89e693df79` |
 | `services/relationshipService.js` | `44ffdaf30bfe37203c133ffc88c52b1b22e9b90e580ff53034a94e8a1b6d3802` |
+| `services/reportGenerationService.js` | `304bafb70a9b18130e71ea5d984cc4c13def6f4c77110348982a5a15cd052e8f` |
 | `services/subscriptionService.js` | `77d4b1c183b39fa912aca685c472a64292b813d73fc904bd9b632a959fcf2ad1` |
 | `services/supplierService.js` | `74d5a2302e3b5120e447a4001291739b81b0a27e48ead149fa05bb7641517b35` |
 | `services/support/agent.js` | `22d747b95bb410295d62d51bad3eae21e718827c95110c96dc090edc2aba0975` |
@@ -165,10 +189,16 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 | `services/support/repository.js` | `a0705e55ea09468590ada36f041f57254a50ce6254e0c8ef3a323ddb46d8602a` |
 | `services/support/router.js` | `2ecade228b6f695413888419a552683653ffc295c0a5a08d9c34b82e471c3641` |
 | `services/technicalIntakeEngine.js` | `d7d73468f7cb65a09a3c58129f4aee18746a6fbded9f1bc55735b0e03adfedff` |
+| `services/vehicleEntryService.js` | `acd886f59d60e091cf573717589a4d57bb570f64fd713168427ade3dc19dc74d` |
 | `services/vehicleHistoryService.js` | `49a876ad65137f79cef018614391b3e161c458a2130f7030a2c63411df7aa17a` |
+| `services/vehicleLookupService.js` | `10263299acb6d97f88e86edf8f2a36a0e01b462f081d3a17e98f8ad9b32764ef` |
 | `services/vehicleReconciliation.js` | `f7d77772caa7dc999b1d3250257096f3107ae2fa0260ade093bcc6b1eb296aba` |
 | `services/voiceActionEngine.js` | `22cfc13a820c62bc0f58272f98004b3608bb5532e2bad256ab6afeff9c139226` |
 | `services/warrantyService.js` | `e2772f7e3d8987ebba0d4e6a97e2dfad10f3210e490616902629c68d68ebb14b` |
+| `services/whatsapp/whatsappClient.js` | `42a50ddf76c999477b7ce373bfc5bfec5511b4ae2929ca4ce0c8a047bec88654` |
+| `services/whatsapp/whatsappHandlers.js` | `f91318e25625d1629ee71f0967b93116bbaa40cbedfb69912d37c4bb59828f8f` |
+| `services/whatsapp/whatsappScheduler.js` | `7f9bad5e6b4cbe9a727d8587af0341af4679a5b5e005c6c2e6847427f178d985` |
+| `services/whatsapp/whatsappState.js` | `06aad441cc77f1e5adc508fea0b1a17f0ff59cbbc4862fb0ce3ac761a51e936b` |
 | `style.css` | `ea8a3021eebbd6b45d3d56dd88958139734a39599dd9c2300be46714ec0d8297` |
 
 ---
