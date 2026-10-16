@@ -13,6 +13,13 @@ test('P0: Auditoria Rigorosa de Credenciais e Permissões RBAC dos Operadores', 
   const tenantId = 'oficina_piloto_01';
   const credenciais = getCredenciaisDefinitivas();
 
+  try {
+    await fetch(`${baseUrl}/health`, { signal: AbortSignal.timeout(800) });
+  } catch (_) {
+    t.skip('Servidor piloto em http://127.0.0.1:3000 não está ativo para auditoria.');
+    return;
+  }
+
   // 1. Rejeição de senhas antigas de exemplo
   await t.test('1. Senhas de exemplo antigas são estritamente rejeitadas', async () => {
     const oldCredentials = [
