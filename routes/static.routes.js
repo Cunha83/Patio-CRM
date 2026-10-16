@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const path = require('path');
+const fs = require('fs');
 const { UPLOADS_BASE } = require('../lib/file-storage');
 
 const ROOT_DIR = path.resolve(__dirname, '../');

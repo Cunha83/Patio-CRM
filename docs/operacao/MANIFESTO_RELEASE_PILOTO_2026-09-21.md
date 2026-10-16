@@ -3,10 +3,10 @@
 **Projeto:** Pátio CRM  
 **Versão:** `1.0.0`  
 **Fase:** Piloto Controlado em Ambiente Operacional (1 Oficina)  
-**Data de Congelamento:** 2026-10-16T16:31:30.923Z  
-**Commit Git:** `3522a260a711daaba612dc58703b141b992a01c6` (`branch: refactor/modularizacao`)  
+**Data de Congelamento:** 2026-10-16T17:29:29.066Z  
+**Commit Git:** `37d2303a55b42f557a295c5567324e37f67734dd` (`branch: refactor/modularizacao`)  
 **Ambiente:** Node.js `v24.19.0` em `win32-x64`  
-**Total de Arquivos Auditados:** 158  
+**Total de Arquivos Auditados:** 164  
 
 ---
 
@@ -38,20 +38,26 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 
 ---
 
-## 3. Inventário Completo de Arquivos da Release (158 Arquivos)
+## 3. Inventário Completo de Arquivos da Release (164 Arquivos)
 
 | Caminho Relativo | Checksum SHA-256 |
 |---|---|
 | `db.js` | `9ed9a2aa49a78b54357683668bec399d8f92c16e34d98fd853277e20c7d9c652` |
-| `index.html` | `e668acc01fa1598932847c9abee3bec12cb23d20852386c3416e7adacd7e45c9` |
+| `index.html` | `f28c46c2611589044ab4903b12c1da32cf40ee4c424b873568237ae636a5f552` |
 | `js/.eslintrc.json` | `836f600602e4b1e54d0800bd6f6c28e9252532c10c0893790bfa63688aa473b4` |
-| `js/app.js` | `7a7605f6818db33a9276da75851ddf40b6aaad1a98a06f412008a6affb42ee06` |
-| `js/cadastros.js` | `30d92b5e3570a87b7051186b809f9568f2175e1db38724b430da597c81d0e787` |
+| `js/app.js` | `b95a8135a1ff1627ed9ca169f8db5d61e454d063eabb71c869502d0134938e25` |
+| `js/cadastros.js` | `15e274b7aa672614b9f3eb3a541ab60ca653414e5723b0575d6524c316ae92ee` |
 | `js/dashboard_operacional.js` | `dfd3377bb807ee5167ff543bf2ef6b6f0bad2d53a7c046bc61f10a30e212c3e1` |
 | `js/estoque.js` | `d489aef08658fc13d4c3856291ac19faafc1ed6ad1663dad08e9411be70b50cf` |
 | `js/financeiro.js` | `c82ac60614cc684f026395d08bdc0f67c2b2c11d846bd5745da2f53cf1cf5e3b` |
 | `js/fiscal.js` | `5338f76519ddd4ec6066f6f0d81bd803966f548f5e84c3311da55d3068171766` |
 | `js/icons.js` | `911381271a8bbb0d6cca997f63d9f91e9951ac39e5c2725d4cfc3004a2346618` |
+| `js/modules/agent_config.js` | `7e329e2942868c65cb189c93d8441327304efee19bcf04750a8e11db5053eb23` |
+| `js/modules/cadastros_fiscal.js` | `71353d2e08cfa0c32e73e2bfa8a134321b138d1bcc760cbf8cc6b59cf7fd7460` |
+| `js/modules/consulta_cliente.js` | `7ece858b03b9c9beba957e34cffdca741f43d42cdfcf557dd641bec01a72b046` |
+| `js/modules/events.js` | `8078745b43de44876646e8993a6dc1b81beebbcef02b155e30b64bc8a19c063f` |
+| `js/modules/integrations.js` | `772d00897136a9ff96bf16202c90bde33e16951388cf2c77795f209b1678cbcb` |
+| `js/modules/navigation.js` | `ad67b448a14525e2d4a3e257469f6b384ccb05aba5cea98d7fd13f5d895c7c7d` |
 | `js/patio.js` | `b64885e423852a92f2c6e63c318ff5de3039a813d66048261edac1213e608bd1` |
 | `js/relatorios.js` | `d11cfae9738114dcd00466c1253495fa236964b828c0c98f47f85cc5ee6c1276` |
 | `js/state.js` | `a7bbfdb70d5e0fa9718436a2c8d4d57f6de7581a8415fa9369be932211e46dc3` |
@@ -102,7 +108,7 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 | `routes/pricing.routes.js` | `2d1d84d394a2408af24b80df91f10aa2427b888e917e4b8ea58bf673cce5ae83` |
 | `routes/quotation.routes.js` | `ec69fb073d7fe0899d82cdc317caf76f44e61698dc9fa6040cc0b4e6134fd0ec` |
 | `routes/state.routes.js` | `d570985b03808c147084151f19655bcb1d3d9483b4992a35f7b861146e2b4f65` |
-| `routes/static.routes.js` | `721c0dcc17659895cb5b011d74a3d321e84fe5de35a2ec73e3807cf5273d213f` |
+| `routes/static.routes.js` | `3afda329580645f9ecc20f0da6ce5543dc18f716d83bef32235bb4da3d5d745b` |
 | `routes/team.routes.js` | `931fa9d7a283857006bc75b8db4bbbfb8dcee8b0e032006dfbd63c76e088d2ff` |
 | `routes/voice.routes.js` | `837712a573991567afa61cff37bd5f7ab05f96ef91ec5f932f8618c6f6df8437` |
 | `routes/whatsapp.routes.js` | `8ee379b0053270eb3c3e4bbe15eda07a125817a4223ddee143b5d41b9bb6c709` |
