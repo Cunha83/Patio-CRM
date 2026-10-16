@@ -144,7 +144,48 @@ function folhaConfigAssistente() {
         </div>
       </div>
 
-      <!-- 6. Teste ao Vivo de Voz -->
+      <!-- 6. Alertas Proativos de SLA no WhatsApp -->
+      <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:12px">
+        <div class="entre" style="margin-bottom:10px">
+          <div style="font-weight:600;font-size:12px;color:#e2e8f0;display:flex;align-items:center;gap:6px">
+            <span>🚨</span> Alertas Proativos de SLA no WhatsApp
+          </div>
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
+            <input type="checkbox" id="modal-cfg-ass-alertas-ativos" ${ass.alertasProativosAtivos !== false ? 'checked' : ''}>
+            <span style="color:#38bdf8;font-weight:600">Ativo</span>
+          </label>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div style="background:rgba(0,0,0,0.2);padding:10px;border-radius:6px;border:1px solid rgba(255,255,255,0.05)">
+            <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer;margin-bottom:6px">
+              <input type="checkbox" id="modal-cfg-ass-alerta-orc" ${ass.alertaOrcamentoParadoAtivo !== false ? 'checked' : ''}>
+              <span>Orçamento Parado</span>
+            </label>
+            <div style="display:flex;align-items:center;gap:6px">
+              <span class="mini" style="color:#94a3b8">SLA (horas):</span>
+              <input type="number" id="modal-cfg-ass-sla-orc" min="1" max="72" value="${ass.slaOrcamentoParadoHoras || 4}" style="width:65px;background:#0f172a;color:#fff;border:1px solid #475569;border-radius:4px;padding:2px 6px;height:28px;font-size:12px">
+            </div>
+          </div>
+          <div style="background:rgba(0,0,0,0.2);padding:10px;border-radius:6px;border:1px solid rgba(255,255,255,0.05)">
+            <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer;margin-bottom:6px">
+              <input type="checkbox" id="modal-cfg-ass-alerta-box" ${ass.alertaGargaloBoxAtivo !== false ? 'checked' : ''}>
+              <span>Gargalo no Box</span>
+            </label>
+            <div style="display:flex;align-items:center;gap:6px">
+              <span class="mini" style="color:#94a3b8">SLA (horas):</span>
+              <input type="number" id="modal-cfg-ass-sla-box" min="1" max="72" value="${ass.slaGargaloBoxHoras || 6}" style="width:65px;background:#0f172a;color:#fff;border:1px solid #475569;border-radius:4px;padding:2px 6px;height:28px;font-size:12px">
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.05)">
+          <span class="mini" style="color:#94a3b8" id="modal-status-alertas-proativos">Anti-spam ativo: 4h de intervalo entre alertas repetidos</span>
+          <button type="button" class="btn btn-neutro" style="padding:4px 10px;font-size:11px;background:#334155;color:#fff;border:none;border-radius:4px;cursor:pointer" onclick="testarAlertasProativosModal()">
+            🔍 Verificar Pendências
+          </button>
+        </div>
+      </div>
+
+      <!-- 7. Teste ao Vivo de Voz -->
       <div style="display:flex;align-items:center;justify-content:space-between;background:rgba(59,130,246,0.12);border:1px solid rgba(59,130,246,0.3);padding:10px 14px;border-radius:8px">
         <div>
           <div style="font-weight:700;font-size:13px;color:#93c5fd">Testar Pronúncia & Áudio</div>
@@ -383,6 +424,19 @@ async function salvarConfigAssistenteModal() {
   const briefingSemanalDia = selBriefingSemanalDia ? selBriefingSemanalDia.value : (S.cfg?.assistente?.briefingSemanalDia || 'segunda');
   const briefingSemanalHorario = inpBriefingSemanalHora ? inpBriefingSemanalHora.value : (S.cfg?.assistente?.briefingSemanalHorario || '08:00');
 
+  const chkAlertasAtivos = document.getElementById('modal-cfg-ass-alertas-ativos');
+  const chkAlertaOrc = document.getElementById('modal-cfg-ass-alerta-orc');
+  const inpSlaOrc = document.getElementById('modal-cfg-ass-sla-orc');
+  const chkAlertaBox = document.getElementById('modal-cfg-ass-alerta-box');
+  const inpSlaBox = document.getElementById('modal-cfg-ass-sla-box');
+
+  const alertasProativosAtivos = chkAlertasAtivos ? chkAlertasAtivos.checked : (S.cfg?.assistente?.alertasProativosAtivos !== false);
+  const alertaOrcamentoParadoAtivo = chkAlertaOrc ? chkAlertaOrc.checked : (S.cfg?.assistente?.alertaOrcamentoParadoAtivo !== false);
+  const slaOrcamentoParadoHoras = inpSlaOrc ? Math.max(1, +inpSlaOrc.value || 4) : (S.cfg?.assistente?.slaOrcamentoParadoHoras || 4);
+  const alertaGargaloBoxAtivo = chkAlertaBox ? chkAlertaBox.checked : (S.cfg?.assistente?.alertaGargaloBoxAtivo !== false);
+  const slaGargaloBoxHoras = inpSlaBox ? Math.max(1, +inpSlaBox.value || 6) : (S.cfg?.assistente?.slaGargaloBoxHoras || 6);
+  const cooldownAlertasMinutos = S.cfg?.assistente?.cooldownAlertasMinutos || 240;
+
   S.cfg = S.cfg || {};
   S.cfg.assistente = {
     ...(S.cfg.assistente || {}),
@@ -397,7 +451,13 @@ async function salvarConfigAssistenteModal() {
     briefingDiarioHorario: briefingDiarioHorario,
     briefingSemanalAtivo: briefingSemanalAtivo,
     briefingSemanalDia: briefingSemanalDia,
-    briefingSemanalHorario: briefingSemanalHorario
+    briefingSemanalHorario: briefingSemanalHorario,
+    alertasProativosAtivos: alertasProativosAtivos,
+    alertaOrcamentoParadoAtivo: alertaOrcamentoParadoAtivo,
+    slaOrcamentoParadoHoras: slaOrcamentoParadoHoras,
+    alertaGargaloBoxAtivo: alertaGargaloBoxAtivo,
+    slaGargaloBoxHoras: slaGargaloBoxHoras,
+    cooldownAlertasMinutos: cooldownAlertasMinutos
   };
 
   salvar();
@@ -422,7 +482,13 @@ async function salvarConfigAssistenteModal() {
         briefingDiarioHorario: briefingDiarioHorario,
         briefingSemanalAtivo: briefingSemanalAtivo,
         briefingSemanalDia: briefingSemanalDia,
-        briefingSemanalHorario: briefingSemanalHorario
+        briefingSemanalHorario: briefingSemanalHorario,
+        alertasProativosAtivos: alertasProativosAtivos,
+        alertaOrcamentoParadoAtivo: alertaOrcamentoParadoAtivo,
+        slaOrcamentoParadoHoras: slaOrcamentoParadoHoras,
+        alertaGargaloBoxAtivo: alertaGargaloBoxAtivo,
+        slaGargaloBoxHoras: slaGargaloBoxHoras,
+        cooldownAlertasMinutos: cooldownAlertasMinutos
       })
     });
   } catch (err) {
@@ -436,6 +502,28 @@ async function salvarConfigAssistenteModal() {
   }
 
   render();
+}
+
+async function testarAlertasProativosModal() {
+  const statusEl = document.getElementById('modal-status-alertas-proativos');
+  if (statusEl) statusEl.textContent = 'Verificando orçamentos e boxes...';
+  try {
+    const reqHeaders = typeof obterHeadersRequisicao === 'function'
+      ? obterHeadersRequisicao()
+      : {};
+    const res = await fetch('/api/operacao/alertas-proativos', { headers: reqHeaders });
+    const data = await res.json();
+    if (data && data.resumo) {
+      const msg = `Encontrados: ${data.resumo.totalOrcamentosParados} orçamento(s) parado(s) e ${data.resumo.totalGargalosBox} box(es) com gargalo.`;
+      if (statusEl) statusEl.textContent = msg;
+      if (typeof torrar === 'function') {
+        torrar(data.resumo.totalAlertas > 0 ? `⚠️ ${msg}` : '✅ Operação em dia, sem orçamentos parados ou gargalos!');
+      }
+    }
+  } catch (err) {
+    if (statusEl) statusEl.textContent = 'Erro ao consultar alertas.';
+    if (typeof torrar === 'function') torrar('Falha ao consultar alertas proativos: ' + err.message, 'erro');
+  }
 }
 
 async function gerarEVisualizarBriefing() {

@@ -2,14 +2,54 @@ const { all } = require('../../db');
 const { extractTenantId, safeJsonParse } = require('../../lib/serverContext');
 const financialEngine = require('../financialEngine');
 const { enviarRelatorioGrupo, enviarRelatorioAdministradores } = require('../reportGenerationService');
+const proactiveAlertsService = require('../proactiveAlertsService');
 
 const ultimoDiaEnvioPorTenant = new Map();
 
+function iniciarAgendadorAlertasProativos() {
+  if (process.env.DISABLE_INTEGRATIONS === 'true' || process.env.DISABLE_WHATSAPP === 'true') {
+    console.log('[Agendador Alertas Proativos] Desativado em modo de teste / variáveis de ambiente.');
+    return;
+  }
+
+  console.log('[Agendador Alertas Proativos] Rotina periódica de SLA de orçamentos e boxes inicializada.');
+  // Executa checagem periódica a cada 2 minutos
+  setInterval(async () => {
+    try {
+      const rows = await all("SELECT key, value FROM kv WHERE key LIKE 'tenant:%:state' OR key = 'state'");
+      const tenantEntries = (rows && rows.length > 0)
+        ? rows.map(r => ({ key: extractTenantId(r.key), state: safeJsonParse(r.value) })).filter(e => e.state)
+        : [];
+
+      for (const entry of tenantEntries) {
+        const tenantKey = entry.key;
+        const tenantState = entry.state;
+        if (!tenantState) continue;
+
+        try {
+          await proactiveAlertsService.dispararAlertasProativos({
+            state: tenantState,
+            tenantId: tenantKey,
+            force: false
+          });
+        } catch (errTenant) {
+          console.warn(`[Agendador Alertas Proativos] Erro ao avaliar tenant ${tenantKey}:`, errTenant.message);
+        }
+      }
+    } catch (err) {
+      console.error('[Agendador Alertas Proativos] Erro no ciclo de avaliação:', err.message);
+    }
+  }, 120000).unref();
+}
+
 function iniciarAgendadorRelatorioDiario() {
-  if (process.env.DISABLE_INTEGRATIONS === 'true') {
+  if (process.env.DISABLE_INTEGRATIONS === 'true' || process.env.DISABLE_WHATSAPP === 'true') {
     console.log('[Agendador WhatsApp] DISABLE_INTEGRATIONS=true: Agendador inativo em modo de teste.');
     return;
   }
+
+  // Inicializa também o agendador de alertas proativos de SLA
+  iniciarAgendadorAlertasProativos();
 
   console.log('[Agendador WhatsApp] Rotina matinal diária multi-tenant inicializada.');
   setInterval(async () => {
@@ -68,5 +108,6 @@ function iniciarAgendadorRelatorioDiario() {
 }
 
 module.exports = {
-  iniciarAgendadorRelatorioDiario
+  iniciarAgendadorRelatorioDiario,
+  iniciarAgendadorAlertasProativos
 };

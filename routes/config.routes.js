@@ -209,7 +209,13 @@ router.get('/api/configuracoes/assistente', requirePermission('assistant:setting
       briefingSemanalAtivo: raw.briefingSemanalAtivo !== undefined ? Boolean(raw.briefingSemanalAtivo) : false,
       briefingSemanalDia: raw.briefingSemanalDia || 'segunda',
       briefingSemanalHorario: raw.briefingSemanalHorario || '08:00',
-      briefingDestinatarios: raw.briefingDestinatarios || 'gestores'
+      briefingDestinatarios: raw.briefingDestinatarios || 'gestores',
+      alertasProativosAtivos: raw.alertasProativosAtivos !== undefined ? Boolean(raw.alertasProativosAtivos) : true,
+      alertaOrcamentoParadoAtivo: raw.alertaOrcamentoParadoAtivo !== undefined ? Boolean(raw.alertaOrcamentoParadoAtivo) : true,
+      slaOrcamentoParadoHoras: (typeof raw.slaOrcamentoParadoHoras === 'number' && Number.isFinite(raw.slaOrcamentoParadoHoras) && raw.slaOrcamentoParadoHoras > 0) ? raw.slaOrcamentoParadoHoras : 4,
+      alertaGargaloBoxAtivo: raw.alertaGargaloBoxAtivo !== undefined ? Boolean(raw.alertaGargaloBoxAtivo) : true,
+      slaGargaloBoxHoras: (typeof raw.slaGargaloBoxHoras === 'number' && Number.isFinite(raw.slaGargaloBoxHoras) && raw.slaGargaloBoxHoras > 0) ? raw.slaGargaloBoxHoras : 6,
+      cooldownAlertasMinutos: (typeof raw.cooldownAlertasMinutos === 'number' && Number.isFinite(raw.cooldownAlertasMinutos) && raw.cooldownAlertasMinutos > 0) ? raw.cooldownAlertasMinutos : 240
     };
     res.json({ success: true, assistente: cfg });
   } catch (err) {
@@ -234,7 +240,13 @@ router.put('/api/configuracoes/assistente', requirePermission('assistant:setting
       briefingSemanalAtivo,
       briefingSemanalDia,
       briefingSemanalHorario,
-      briefingDestinatarios
+      briefingDestinatarios,
+      alertasProativosAtivos,
+      alertaOrcamentoParadoAtivo,
+      slaOrcamentoParadoHoras,
+      alertaGargaloBoxAtivo,
+      slaGargaloBoxHoras,
+      cooldownAlertasMinutos
     } = req.body || {};
 
     if (!state.cfg) state.cfg = {};
@@ -253,7 +265,13 @@ router.put('/api/configuracoes/assistente', requirePermission('assistant:setting
         briefingSemanalAtivo: false,
         briefingSemanalDia: 'segunda',
         briefingSemanalHorario: '08:00',
-        briefingDestinatarios: 'gestores'
+        briefingDestinatarios: 'gestores',
+        alertasProativosAtivos: true,
+        alertaOrcamentoParadoAtivo: true,
+        slaOrcamentoParadoHoras: 4,
+        alertaGargaloBoxAtivo: true,
+        slaGargaloBoxHoras: 6,
+        cooldownAlertasMinutos: 240
       };
     }
 
@@ -301,6 +319,24 @@ router.put('/api/configuracoes/assistente', requirePermission('assistant:setting
     }
     if (briefingDestinatarios !== undefined && typeof briefingDestinatarios === 'string') {
       state.cfg.assistente.briefingDestinatarios = briefingDestinatarios.trim();
+    }
+    if (alertasProativosAtivos !== undefined) {
+      state.cfg.assistente.alertasProativosAtivos = Boolean(alertasProativosAtivos);
+    }
+    if (alertaOrcamentoParadoAtivo !== undefined) {
+      state.cfg.assistente.alertaOrcamentoParadoAtivo = Boolean(alertaOrcamentoParadoAtivo);
+    }
+    if (slaOrcamentoParadoHoras !== undefined && slaOrcamentoParadoHoras !== null && Number.isFinite(Number(slaOrcamentoParadoHoras))) {
+      state.cfg.assistente.slaOrcamentoParadoHoras = Math.max(1, Number(slaOrcamentoParadoHoras));
+    }
+    if (alertaGargaloBoxAtivo !== undefined) {
+      state.cfg.assistente.alertaGargaloBoxAtivo = Boolean(alertaGargaloBoxAtivo);
+    }
+    if (slaGargaloBoxHoras !== undefined && slaGargaloBoxHoras !== null && Number.isFinite(Number(slaGargaloBoxHoras))) {
+      state.cfg.assistente.slaGargaloBoxHoras = Math.max(1, Number(slaGargaloBoxHoras));
+    }
+    if (cooldownAlertasMinutos !== undefined && cooldownAlertasMinutos !== null && Number.isFinite(Number(cooldownAlertasMinutos))) {
+      state.cfg.assistente.cooldownAlertasMinutos = Math.max(1, Number(cooldownAlertasMinutos));
     }
 
     const saveRes = await persistTenantState(req, state);
