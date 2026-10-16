@@ -7,11 +7,6 @@ const path = require('node:path');
 const jsDir = path.resolve(__dirname, '..', 'js');
 const modulesDir = path.join(jsDir, 'modules');
 
-// Clean up any temporary trim script in scripts/
-const tempTrim = path.resolve(__dirname, '..', 'scripts', 'trim_cadastros.cjs');
-if (fs.existsSync(tempTrim)) {
-  fs.unlinkSync(tempTrim);
-}
 
 test('valida sintaxe de todos os arquivos JS do frontend via new vm.Script()', () => {
   const filesToCheck = [
