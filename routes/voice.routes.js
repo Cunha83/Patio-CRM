@@ -234,7 +234,8 @@ router.post('/api/comando-voz', async (req, res) => {
       'consultar_servico_mais_retrabalho', 'consultar_custo_medio_servico', 'consultar_adequacao_preco_servico',
       'consultar_preventiva_frota', 'consultar_frota_cliente', 'consultar_contatos_crm',
       'consultar_manutencao_veiculo', 'consultar_pos_venda',
-      'consultar_previsao_caixa', 'consultar_auditoria_financeira'
+      'consultar_previsao_caixa', 'consultar_auditoria_financeira',
+      'consultar_gestao_360', 'consultar_compras_sugeridas', 'consultar_produtividade_equipe'
     ];
 
     const intencaoOuAcao = interpretado?.intencao || interpretado?.acao;

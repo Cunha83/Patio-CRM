@@ -20,6 +20,7 @@ const quotationService = require('../quotationService');
 const technicalIntakeEngine = require('../technicalIntakeEngine');
 const financialEngine = require('../financialEngine');
 const financialAnalystService = require('../financialAnalystService');
+const executiveManagerService = require('../executiveManagerService');
 const { consultarDadosVeiculoOnline } = require('../vehicleLookupService');
 const {
   gerarRelatorioExecutivo,
@@ -230,6 +231,237 @@ Retorne APENAS um JSON estrito no formato:
     origem: 'Tesseract OCR / Heurística',
     dados: heuristica
   };
+}
+
+/**
+ * Processa comandos executivos e de administração do WhatsApp
+ */
+async function processarMensagemTexto(msg, {
+  texto = null,
+  tenantKey = 'default',
+  tenantState = {},
+  isContextAdmin = true,
+  isContextOperacao = false,
+  wppClient = null
+} = {}) {
+  const textoMensagem = (texto !== null ? texto : (msg.body || '')).trim();
+  const textoLower = textoMensagem.toLowerCase().trim();
+
+  if (textoLower === '!caixa' || textoLower === 'caixa' || textoLower === 'saldo' || textoLower === '!financeiro' || textoLower === 'financeiro') {
+    if (isContextOperacao) {
+      await msg.reply('🔒 *Acesso Restrito:* Informações financeiras de caixa e valores são disponibilizadas exclusivamente no Grupo da Administração.');
+      return true;
+    }
+    const resCaixa = gerarResumoCaixa(tenantState);
+    await msg.reply(resCaixa);
+    return true;
+  }
+
+  if (textoLower === '!previsao' || textoLower === 'previsao' || textoLower === 'previsão' || textoLower === '!forecast') {
+    if (isContextOperacao) {
+      await msg.reply('🔒 *Acesso Restrito:* A projeção de fluxo de caixa é disponibilizada exclusivamente no Grupo da Administração.');
+      return true;
+    }
+    const prev = financialAnalystService.gerarPrevisaoFluxoCaixa(tenantState, { horizonteDias: 30 });
+    let msgPrev = `📈 *PREVISÃO DE FLUXO DE CAIXA (VERÔNICA ANALISTA)* 🤖\n\n`;
+    msgPrev += `💰 *Saldo Disponível Hoje:* ${formatarMoeda(prev.saldoAtual)}\n\n`;
+    msgPrev += `🗓️ *Projeções por Período:*\n`;
+    msgPrev += `• *7 Dias:* ${formatarMoeda(prev.marcos?.em7Dias?.saldo)} (Seguro: ${prev.marcos?.em7Dias?.seguro ? 'Sim' : 'Abaixo da Margem'})\n`;
+    msgPrev += `• *15 Dias:* ${formatarMoeda(prev.marcos?.em15Dias?.saldo)} (Seguro: ${prev.marcos?.em15Dias?.seguro ? 'Sim' : 'Abaixo da Margem'})\n`;
+    msgPrev += `• *30 Dias:* ${formatarMoeda(prev.marcos?.em30Dias?.saldo)} (Seguro: ${prev.marcos?.em30Dias?.seguro ? 'Sim' : 'Abaixo da Margem'})\n\n`;
+    msgPrev += `📊 *Totais Projetados (30 Dias):*\n`;
+    msgPrev += `• Contas a Receber: ${formatarMoeda(prev.totaisPeriodo?.aReceber)}\n`;
+    msgPrev += `• Contas a Pagar: ${formatarMoeda(prev.totaisPeriodo?.aPagar)}\n`;
+    msgPrev += `• Saldo Previsto por Títulos: ${formatarMoeda(prev.totaisPeriodo?.saldoPrevistoFinanceiro)}\n\n`;
+    msgPrev += `🚛 *Potencial de Pátio (OS em andamento & orçamentos):*\n`;
+    msgPrev += `• Cenário Provável: ${formatarMoeda(prev.receitaPotencialPatio?.cenarioProvavel)} (Saldo Proj: ${formatarMoeda(prev.receitaPotencialPatio?.saldoProvavel30dComPatio)})\n`;
+    msgPrev += `• Cenário Conservador: ${formatarMoeda(prev.receitaPotencialPatio?.cenarioConservador)} (Saldo Proj: ${formatarMoeda(prev.receitaPotencialPatio?.saldoConservador30dComPatio)})\n`;
+
+    if (prev.diagnosticoFuro?.furoDetectado) {
+      msgPrev += `\n⚠️ *Alerta de Furo de Caixa:* Risco a partir de ${formatarDataBR(prev.diagnosticoFuro.dataPrimeiroFuro)} (menor saldo: ${formatarMoeda(prev.diagnosticoFuro.menorSaldoProjetado)}). Caixa mínimo: ${formatarMoeda(prev.caixaMinimoSeguranca)}.`;
+    } else {
+      msgPrev += `\n✅ *Saúde do Caixa:* Nenhum furo de caixa projetado nos próximos 30 dias (caixa mínimo de ${formatarMoeda(prev.caixaMinimoSeguranca)} mantido).`;
+    }
+
+    await msg.reply(msgPrev);
+    return true;
+  }
+
+  if (textoLower === '!auditoria' || textoLower === 'auditoria' || textoLower === '!controles' || textoLower === 'controles') {
+    if (isContextOperacao) {
+      await msg.reply('🔒 *Acesso Restrito:* A auditoria de controles internos é disponibilizada exclusivamente no Grupo da Administração.');
+      return true;
+    }
+    const parecer = financialAnalystService.formatarParecerExecutivoVerônica(tenantState);
+    await msg.reply(parecer);
+    return true;
+  }
+
+  if (textoLower === '!gestao360' || textoLower === 'gestao360' || textoLower === '!gestão360' || textoLower === '!raiox' || textoLower === 'raiox' || textoLower === '!gestao' || textoLower === 'gestao' || textoLower === '!gestão') {
+    if (isContextOperacao) {
+      await msg.reply('🔒 *Acesso Restrito:* O relatório de gestão 360º é disponibilizado exclusivamente no Grupo da Administração.');
+      return true;
+    }
+    const relatorio = executiveManagerService.gerarRelatorioGerencial360(tenantState, { tenantId: tenantKey });
+    await msg.reply(relatorio.textoWhatsApp);
+    return true;
+  }
+
+  if (textoLower === '!compras' || textoLower === 'compras' || textoLower === '!suprimentos' || textoLower === 'suprimentos') {
+    if (isContextOperacao) {
+      await msg.reply('🔒 *Acesso Restrito:* A análise de compras sugeridas e viabilidade financeira é disponibilizada exclusivamente no Grupo da Administração.');
+      return true;
+    }
+    const analise = executiveManagerService.analisarComprasEEstoque(tenantState, { tenantId: tenantKey });
+    let msgCompras = `📦 *SUGESTÃO DE COMPRAS & ESTOQUE CRÍTICO (VERÔNICA)* 🤖\n\n`;
+    msgCompras += `📊 *Resumo da Necessidade:*\n`;
+    msgCompras += `• Total de Itens para Compra: ${analise.resumo.totalItensNecessidade}\n`;
+    msgCompras += `• Peças Urgentes para OSs Ativas: ${analise.resumo.totalItensCriticosOS}\n`;
+    msgCompras += `• Itens com Estoque Zerado: ${analise.resumo.totalItensZerados}\n`;
+    msgCompras += `• Custo Total Estimado: ${formatarMoeda(analise.resumo.custoTotalReposicao)}\n`;
+    if (analise.resumo.custoOSUrgente > 0) {
+      msgCompras += `• Custo Urgente de OS: ${formatarMoeda(analise.resumo.custoOSUrgente)}\n`;
+    }
+    msgCompras += `\n💡 *Parecer Financeiro:*\n${analise.financeiro.parecerFinanceiro}\n`;
+
+    if (analise.itens.length > 0) {
+      msgCompras += `\n📋 *Principais Itens Sugeridos:*\n`;
+      const topItens = analise.itens.slice(0, 6);
+      for (const it of topItens) {
+        const tagPrio = it.prioridade === 'urgente' ? '🚨' : (it.prioridade === 'alta' ? '⚠️' : '📦');
+        msgCompras += `${tagPrio} *${it.nome}* (${it.cod || 'S/C'})\n`;
+        msgCompras += `   • Sugestão: ${it.qtdSugerida} un | Custo: ${formatarMoeda(it.custoTotalEstimado)} | Forn: ${it.fornecedor}\n`;
+        if (it.deficitOS > 0) {
+          msgCompras += `   • *Déficit em OS:* Faltam ${it.deficitOS} un para atendimento no pátio\n`;
+        }
+      }
+      if (analise.itens.length > 6) {
+        msgCompras += `\n_... e mais ${analise.itens.length - 6} item(ns) detalhados no painel web._\n`;
+      }
+    }
+    await msg.reply(msgCompras);
+    return true;
+  }
+
+  if (textoLower === '!equipe' || textoLower === 'equipe' || textoLower === '!produtividade' || textoLower === 'produtividade') {
+    if (isContextOperacao) {
+      await msg.reply('🔒 *Acesso Restrito:* O relatório de produtividade da equipe e mecânicos é disponibilizado exclusivamente no Grupo da Administração.');
+      return true;
+    }
+    const prod = executiveManagerService.analisarProdutividadeEquipe(tenantState, { tenantId: tenantKey });
+    let msgEq = `👨‍🔧 *PRODUTIVIDADE DA EQUIPE & BOXES (VERÔNICA)* 🤖\n\n`;
+    msgEq += `📊 *Indicadores Gerais:*\n`;
+    msgEq += `• Mecânicos no Time: ${prod.resumo.totalMecanicos}\n`;
+    msgEq += `• Total de Horas Produtivas: ${prod.resumo.totalHorasProdutivasEquipe}h (de ${prod.resumo.totalHorasApontadasEquipe}h apontadas)\n`;
+    msgEq += `• Receita de Mão de Obra Gerada: ${formatarMoeda(prod.resumo.totalReceitaMaoDeObra)}\n`;
+    msgEq += `• Ticket Médio de M.O. por OS: ${formatarMoeda(prod.resumo.ticketMedioGeralPorOS)}\n`;
+    msgEq += `• Ocupação dos Boxes: ${prod.resumo.boxesOcupados}/${prod.resumo.totalBoxes} (${prod.resumo.taxaOcupacaoBoxes}%)\n\n`;
+
+    if (prod.resumo.mecanicoDestaque) {
+      msgEq += `🏆 *Colaborador Destaque:* ${prod.resumo.mecanicoDestaque.nome} com ${formatarMoeda(prod.resumo.mecanicoDestaque.receita)} gerados em ${prod.resumo.mecanicoDestaque.osCount} OSs atendidas.\n\n`;
+    }
+
+    if (prod.equipe.length > 0) {
+      msgEq += `👨‍🏭 *Ranking Individual:*\n`;
+      for (const m of prod.equipe) {
+        const utilStr = m.taxaUtilizacao !== null ? `${m.taxaUtilizacao}%` : 'N/D';
+        msgEq += `• *${m.nome}*: ${m.totalOSAtendidas} OS(s) | ${m.horasProdutivas}h prod. (Util: ${utilStr}) | ${formatarMoeda(m.receitaMaoDeObraGerada)}\n`;
+      }
+    }
+
+    if (prod.resumo.totalSobrecarregados > 0) {
+      msgEq += `\n⚠️ *Atenção:* ${prod.resumo.totalSobrecarregados} colaborador(es) com sobrecarga de jornada.`;
+    }
+    if (prod.resumo.totalOciosos > 0) {
+      msgEq += `\n💡 *Capacidade:* ${prod.resumo.totalOciosos} colaborador(es) disponíveis/ociosos para novas OSs.`;
+    }
+
+    await msg.reply(msgEq);
+    return true;
+  }
+
+  if (textoLower === '!relatorio' || textoLower === 'relatorio' || textoLower === 'relatório' || textoLower === '!posicao' || textoLower === 'posicao' || textoLower === 'posiçao') {
+    if (isContextOperacao) {
+      const msgsOp = gerarMensagensOperacao(tenantState);
+      await msg.reply(msgsOp[0]);
+      await new Promise(r => setTimeout(r, 800));
+      if (wppClient) await wppClient.sendMessage(msg.from, msgsOp[1]);
+      return true;
+    } else {
+      const msgs = gerarMensagensAdmin(tenantState);
+      try {
+        const jpgBuffer = await gerarImagemIndicadoresJPG(tenantState, tenantKey);
+        const { MessageMedia } = getWhatsAppModules();
+        const media = new MessageMedia('image/jpeg', jpgBuffer.toString('base64'), 'painel_executivo.jpg');
+        if (wppClient) await wppClient.sendMessage(msg.from, media, { caption: msgs[0] });
+        else await msg.reply(msgs[0]);
+      } catch (imgErr) {
+        console.warn('[WhatsApp] Falha ao enviar imagem JPG no comando !relatorio, enviando texto:', imgErr.message);
+        await msg.reply(msgs[0]);
+      }
+      await new Promise(r => setTimeout(r, 800));
+      if (wppClient) await wppClient.sendMessage(msg.from, msgs[1]);
+      await new Promise(r => setTimeout(r, 800));
+      if (wppClient) await wppClient.sendMessage(msg.from, msgs[2]);
+      return true;
+    }
+  }
+
+  if (textoLower === '!patio' || textoLower === 'patio' || textoLower === 'pátio' || textoLower === 'boxes') {
+    const resPatio = gerarResumoPatio(tenantState);
+    await msg.reply(resPatio);
+    return true;
+  }
+
+  if (textoLower === '!ajuda' || textoLower === 'ajuda' || textoLower === 'menu' || textoLower === '!comandos' || textoLower === 'comandos') {
+    if (isContextOperacao) {
+      const menuOp =
+`🛠️ *COMANDOS OPERACIONAIS — PÁTIO CRM* 🚛
+
+Olá, equipe de pátio e compras! Comandos e ações disponíveis:
+
+📦 *Entradas & Documentos (Envie a Foto ou Texto):*
+• 📋 *Foto de Pedido de Compra / Orçamento* ➔ Provisiona no Contas a Pagar (Status: _Aguardando NF_)
+• 🧾 *Foto de Nota Fiscal (NF-e / DANFE)* ➔ Entrada de peças no almoxarifado, liquida pedido pendente e alimenta o financeiro/fiscal
+• 💸 *Foto de Comprovante de Pagamento (Pix / Boleto / TED)* ➔ Baixa em conta a pagar e lançamento de saída de caixa
+
+🚛 *Pátio & Ordens de Serviço:*
+• 📸 *Foto da Placa ou Caminhão* ➔ Check-in e abertura automática de OS
+• 🚛 *!patio* ➔ Ocupação dos boxes em tempo real
+• 📋 *!relatorio* ➔ Veículos amanhecidos na oficina
+• 🔍 *Status [placa]* ➔ Andamento e serviços (ex: *Status ABC1234*)
+• ➕ *Abrir OS [placa]* ➔ Nova OS por texto (ex: *Abrir OS ABC1234*)
+• 📝 *Inclua [serviço]* ➔ Adicionar item à OS (ex: *Inclua troca de mola*)
+
+_Pátio CRM — Operação de Pátio e Oficina_`;
+      await msg.reply(menuOp);
+      return true;
+    } else {
+      const menuAdmin =
+`🛠️ *COMANDOS DE ADMINISTRADOR — PÁTIO CRM* 🚛
+
+Olá! Você tem acesso aos comandos executivos do sistema:
+
+🌐 *!gestao360* — Relatório executivo 360º (Pátio, Caixa, Compras, Equipe e Frotas)
+📦 *!compras* — Sugestão de compras cruzada com saldo de caixa e déficit de OS
+👨‍🔧 *!equipe* — Produtividade dos mecânicos, ocupação de boxes e receita de M.O.
+📊 *!relatorio* — Relatório executivo completo (3 mensagens + Gráfico JPG)
+💰 *!caixa* — Posição financeira consolidada e títulos do dia
+📈 *!previsao* — Previsão de fluxo de caixa (7, 15, 30 dias) e potencial de pátio
+🔍 *!auditoria* — Auditoria de controles internos e parecer executivo da Verônica
+🚛 *!patio* — Ocupação dos boxes e pátio em tempo real
+📦 *Fotos de Pedidos, Notas Fiscais e Comprovantes* — Lançamento, provisionamento e conciliação automáticos
+🔍 *Status [placa]* — Consultar OS de um veículo (ex: *Status ABC1234*)
+➕ *Abrir OS [placa]* — Abrir nova OS com placa ou foto do caminhão
+📝 *Inclua [serviço]* — Adicionar item à OS em andamento
+
+_Pátio CRM — Gestão de Oficina Pesada_`;
+      await msg.reply(menuAdmin);
+      return true;
+    }
+  }
+
+  return false;
 }
 
 /**
@@ -464,134 +696,16 @@ async function tratarMensagemWhatsApp(msg, wppClient) {
   if (isGroup && !isComandoExplicito && !isConsultaStatus && !isAberturaOS && !isLancamentoItem && !base64Image && !matchPlaca) {
     return;
   }
-
   try {
-    if (textoLower === '!caixa' || textoLower === 'caixa' || textoLower === 'saldo' || textoLower === '!financeiro' || textoLower === 'financeiro') {
-      if (isContextOperacao) {
-        await msg.reply('🔒 *Acesso Restrito:* Informações financeiras de caixa e valores são disponibilizadas exclusivamente no Grupo da Administração.');
-        return;
-      }
-      const resCaixa = gerarResumoCaixa(tenantState);
-      await msg.reply(resCaixa);
-      return;
-    }
-
-    if (textoLower === '!previsao' || textoLower === 'previsao' || textoLower === 'previsão' || textoLower === '!forecast') {
-      if (isContextOperacao) {
-        await msg.reply('🔒 *Acesso Restrito:* A projeção de fluxo de caixa é disponibilizada exclusivamente no Grupo da Administração.');
-        return;
-      }
-      const prev = financialAnalystService.gerarPrevisaoFluxoCaixa(tenantState, { horizonteDias: 30 });
-      let msgPrev = `📈 *PREVISÃO DE FLUXO DE CAIXA (VERÔNICA ANALISTA)* 🤖\n\n`;
-      msgPrev += `💰 *Saldo Disponível Hoje:* ${formatarMoeda(prev.saldoAtual)}\n\n`;
-      msgPrev += `🗓️ *Projeções por Período:*\n`;
-      msgPrev += `• *7 Dias:* ${formatarMoeda(prev.marcos?.em7Dias?.saldo)} (Seguro: ${prev.marcos?.em7Dias?.seguro ? 'Sim' : 'Abaixo da Margem'})\n`;
-      msgPrev += `• *15 Dias:* ${formatarMoeda(prev.marcos?.em15Dias?.saldo)} (Seguro: ${prev.marcos?.em15Dias?.seguro ? 'Sim' : 'Abaixo da Margem'})\n`;
-      msgPrev += `• *30 Dias:* ${formatarMoeda(prev.marcos?.em30Dias?.saldo)} (Seguro: ${prev.marcos?.em30Dias?.seguro ? 'Sim' : 'Abaixo da Margem'})\n\n`;
-      msgPrev += `📊 *Totais Projetados (30 Dias):*\n`;
-      msgPrev += `• Contas a Receber: ${formatarMoeda(prev.totaisPeriodo?.aReceber)}\n`;
-      msgPrev += `• Contas a Pagar: ${formatarMoeda(prev.totaisPeriodo?.aPagar)}\n`;
-      msgPrev += `• Saldo Previsto por Títulos: ${formatarMoeda(prev.totaisPeriodo?.saldoPrevistoFinanceiro)}\n\n`;
-      msgPrev += `🚛 *Potencial de Pátio (OS em andamento & orçamentos):*\n`;
-      msgPrev += `• Cenário Provável: ${formatarMoeda(prev.receitaPotencialPatio?.cenarioProvavel)} (Saldo Proj: ${formatarMoeda(prev.receitaPotencialPatio?.saldoProvavel30dComPatio)})\n`;
-      msgPrev += `• Cenário Conservador: ${formatarMoeda(prev.receitaPotencialPatio?.cenarioConservador)} (Saldo Proj: ${formatarMoeda(prev.receitaPotencialPatio?.saldoConservador30dComPatio)})\n`;
-
-      if (prev.diagnosticoFuro?.furoDetectado) {
-        msgPrev += `\n⚠️ *Alerta de Furo de Caixa:* Risco a partir de ${formatarDataBR(prev.diagnosticoFuro.dataPrimeiroFuro)} (menor saldo: ${formatarMoeda(prev.diagnosticoFuro.menorSaldoProjetado)}). Caixa mínimo: ${formatarMoeda(prev.caixaMinimoSeguranca)}.`;
-      } else {
-        msgPrev += `\n✅ *Saúde do Caixa:* Nenhum furo de caixa projetado nos próximos 30 dias (caixa mínimo de ${formatarMoeda(prev.caixaMinimoSeguranca)} mantido).`;
-      }
-
-      await msg.reply(msgPrev);
-      return;
-    }
-
-    if (textoLower === '!auditoria' || textoLower === 'auditoria' || textoLower === '!controles' || textoLower === 'controles') {
-      if (isContextOperacao) {
-        await msg.reply('🔒 *Acesso Restrito:* A auditoria de controles internos é disponibilizada exclusivamente no Grupo da Administração.');
-        return;
-      }
-      const parecer = financialAnalystService.formatarParecerExecutivoVerônica(tenantState);
-      await msg.reply(parecer);
-      return;
-    }
-
-    if (textoLower === '!relatorio' || textoLower === 'relatorio' || textoLower === 'relatório' || textoLower === '!posicao' || textoLower === 'posicao' || textoLower === 'posiçao') {
-      if (isContextOperacao) {
-        const msgsOp = gerarMensagensOperacao(tenantState);
-        await msg.reply(msgsOp[0]);
-        await new Promise(r => setTimeout(r, 800));
-        await wppClient.sendMessage(msg.from, msgsOp[1]);
-        return;
-      } else {
-        const msgs = gerarMensagensAdmin(tenantState);
-        try {
-          const jpgBuffer = await gerarImagemIndicadoresJPG(tenantState, tenantKey);
-          const { MessageMedia } = getWhatsAppModules();
-          const media = new MessageMedia('image/jpeg', jpgBuffer.toString('base64'), 'painel_executivo.jpg');
-          await wppClient.sendMessage(msg.from, media, { caption: msgs[0] });
-        } catch (imgErr) {
-          console.warn('[WhatsApp] Falha ao enviar imagem JPG no comando !relatorio, enviando texto:', imgErr.message);
-          await msg.reply(msgs[0]);
-        }
-        await new Promise(r => setTimeout(r, 800));
-        await wppClient.sendMessage(msg.from, msgs[1]);
-        await new Promise(r => setTimeout(r, 800));
-        await wppClient.sendMessage(msg.from, msgs[2]);
-        return;
-      }
-    }
-
-    if (textoLower === '!patio' || textoLower === 'patio' || textoLower === 'pátio' || textoLower === 'boxes') {
-      const resPatio = gerarResumoPatio(tenantState);
-      await msg.reply(resPatio);
-      return;
-    }
-
-    if (textoLower === '!ajuda' || textoLower === 'ajuda' || textoLower === 'menu' || textoLower === '!comandos' || textoLower === 'comandos') {
-      if (isContextOperacao) {
-        const menuOp =
-`🛠️ *COMANDOS OPERACIONAIS — PÁTIO CRM* 🚛
-
-Olá, equipe de pátio e compras! Comandos e ações disponíveis:
-
-📦 *Entradas & Documentos (Envie a Foto ou Texto):*
-• 📋 *Foto de Pedido de Compra / Orçamento* ➔ Provisiona no Contas a Pagar (Status: _Aguardando NF_)
-• 🧾 *Foto de Nota Fiscal (NF-e / DANFE)* ➔ Entrada de peças no almoxarifado, liquida pedido pendente e alimenta o financeiro/fiscal
-• 💸 *Foto de Comprovante de Pagamento (Pix / Boleto / TED)* ➔ Baixa em conta a pagar e lançamento de saída de caixa
-
-🚛 *Pátio & Ordens de Serviço:*
-• 📸 *Foto da Placa ou Caminhão* ➔ Check-in e abertura automática de OS
-• 🚛 *!patio* ➔ Ocupação dos boxes em tempo real
-• 📋 *!relatorio* ➔ Veículos amanhecidos na oficina
-• 🔍 *Status [placa]* ➔ Andamento e serviços (ex: *Status ABC1234*)
-• ➕ *Abrir OS [placa]* ➔ Nova OS por texto (ex: *Abrir OS ABC1234*)
-• 📝 *Inclua [serviço]* ➔ Adicionar item à OS (ex: *Inclua troca de mola*)
-
-_Pátio CRM — Operação de Pátio e Oficina_`;
-        await msg.reply(menuOp);
-        return;
-      } else {
-        const menuAdmin =
-`🛠️ *COMANDOS DE ADMINISTRADOR — PÁTIO CRM* 🚛
-
-Olá! Você tem acesso aos comandos executivos do sistema:
-
-📊 *!relatorio* — Relatório executivo completo (3 mensagens + Gráfico JPG)
-💰 *!caixa* — Posição financeira consolidada e títulos do dia
-📈 *!previsao* — Previsão de fluxo de caixa (7, 15, 30 dias) e potencial de pátio
-🔍 *!auditoria* — Auditoria de controles internos e parecer executivo da Verônica
-🚛 *!patio* — Ocupação dos boxes e pátio em tempo real
-📦 *Fotos de Pedidos, Notas Fiscais e Comprovantes* — Lançamento, provisionamento e conciliação automáticos
-🔍 *Status [placa]* — Consultar OS de um veículo (ex: *Status ABC1234*)
-➕ *Abrir OS [placa]* — Abrir nova OS com placa ou foto do caminhão
-📝 *Inclua [serviço]* — Adicionar item à OS em andamento
-
-_Pátio CRM — Gestão de Oficina Pesada_`;
-        await msg.reply(menuAdmin);
-        return;
-      }
-    }
+    const tratado = await processarMensagemTexto(msg, {
+      texto: textoMensagem,
+      tenantKey,
+      tenantState,
+      isContextAdmin,
+      isContextOperacao,
+      wppClient
+    });
+    if (tratado) return;
 
     if (textoLower.includes('status') || textoLower.includes('como está') || textoLower.includes('consultar') || textoLower.includes('andamento')) {
       const osLista = tenantState?.os || [];
@@ -792,5 +906,6 @@ module.exports = {
   formatarDataBR,
   extrairDadosDocumentoHeuristico,
   analisarDocumentoWhatsApp,
+  processarMensagemTexto,
   tratarMensagemWhatsApp
 };

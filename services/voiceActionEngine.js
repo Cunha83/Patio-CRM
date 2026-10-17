@@ -21,6 +21,7 @@ const relationshipService = require('./relationshipService');
 const appointmentService = require('./appointmentService');
 const financialEngine = require('./financialEngine');
 const financialAnalystService = require('./financialAnalystService');
+const executiveManagerService = require('./executiveManagerService');
 
 const BASE_CONHECIMENTO_SISTEMA = {
   cliente: 'Para cadastrar um cliente ou transportadora, acesse o menu Cadastros & Frotas, clique em Clientes e no botão Novo Cliente. Digite o CNPJ ou CPF e clique em Consultar para buscar via Sintegra/Serasa ou preencha manualmente os campos de Razão Social, IE, telefone e endereço, e clique em Salvar Cliente.',
@@ -338,6 +339,38 @@ function interpretarPorRegras(texto, context = {}, state = {}) {
     resultado.risco = 'baixo';
     resultado.subtipo = 'critico';
     resultado.resposta_falada = 'Consultando itens com estoque baixo ou crítico para reposição.';
+    return resultado;
+  }
+
+  // 2.8 Verônica Gestora 360º (Gestão 360, Compras Sugeridas e Produtividade da Equipe)
+  if (t.includes('relatório gerencial 360') || t.includes('relatorio gerencial 360') ||
+      t.includes('gestão 360') || t.includes('gestao 360') ||
+      t.includes('raio x da oficina') || t.includes('raio-x da oficina') ||
+      t.includes('raio x') || t.includes('raio-x') ||
+      t.includes('visão 360') || t.includes('visao 360') ||
+      t.includes('diagnóstico 360') || t.includes('diagnostico 360')) {
+    resultado.intencao = 'consultar_gestao_360';
+    resultado.risco = 'baixo';
+    resultado.resposta_falada = 'Gerando relatório e raio-x gerencial 360 da oficina.';
+    return resultado;
+  }
+
+  if (t.includes('o que precisa comprar') || t.includes('sugestão de compras') || t.includes('sugestao de compras') ||
+      t.includes('compras sugeridas') || t.includes('o que comprar') ||
+      t.includes('comprar no estoque') || t.includes('precisa comprar no estoque') ||
+      t.includes('peças para comprar') || t.includes('pecas para comprar')) {
+    resultado.intencao = 'consultar_compras_sugeridas';
+    resultado.risco = 'baixo';
+    resultado.resposta_falada = 'Analisando estoque crítico, demanda de ordens de serviço e sugestões de compras.';
+    return resultado;
+  }
+
+  if (t.includes('produtividade da equipe') || t.includes('produtividade dos mecânicos') || t.includes('produtividade dos mecanicos') ||
+      t.includes('ranking dos mecânicos') || t.includes('ranking dos mecanicos') ||
+      t.includes('desempenho da equipe') || t.includes('produtividade da oficina')) {
+    resultado.intencao = 'consultar_produtividade_equipe';
+    resultado.risco = 'baixo';
+    resultado.resposta_falada = 'Consultando produtividade da equipe técnica e desempenho dos boxes.';
     return resultado;
   }
 
@@ -3227,6 +3260,60 @@ async function executarAcao({ interpretado, input, context = {}, state = {} }) {
       acao: 'consultar_estoque',
       totalCriticas: criticas.length,
       criticas,
+      resposta: resp
+    };
+  }
+
+  // ── 2.8 VERÔNICA GESTORA 360º ────────────────────────────────
+  if (intencao === 'consultar_gestao_360') {
+    const tenantId = context.tenantId || state.tenantId || 'default';
+    const relatorio = executiveManagerService.gerarRelatorioGerencial360(state, { tenantId });
+    return {
+      ok: true,
+      acao: 'consultar_gestao_360',
+      relatorio,
+      resposta: relatorio.textoVoz || relatorio.textoWhatsApp
+    };
+  }
+
+  if (intencao === 'consultar_compras_sugeridas') {
+    const tenantId = context.tenantId || state.tenantId || 'default';
+    const analise = executiveManagerService.analisarComprasEEstoque(state, { tenantId });
+    let resp = '';
+    if (analise.resumo.totalItensNecessidade === 0) {
+      resp = 'O estoque de peças está regular. Nenhuma peça abaixo do estoque mínimo nem OS travada por falta de materiais.';
+    } else {
+      resp = `Análise de Compras: Temos ${analise.resumo.totalItensNecessidade} item(ns) com sugestão de compra, totalizando ${financialEngine.formatarMoeda(analise.resumo.custoTotalReposicao)}.`;
+      if (analise.resumo.totalItensCriticosOS > 0) {
+        resp += ` Atenção: ${analise.resumo.totalItensCriticosOS} item(ns) com déficit imediato para ordens de serviço ativas no pátio (${financialEngine.formatarMoeda(analise.resumo.custoOSUrgente)}).`;
+      }
+      resp += ` ${analise.financeiro.parecerFinanceiro}`;
+    }
+    return {
+      ok: true,
+      acao: 'consultar_compras_sugeridas',
+      analise,
+      resposta: resp
+    };
+  }
+
+  if (intencao === 'consultar_produtividade_equipe') {
+    const tenantId = context.tenantId || state.tenantId || 'default';
+    const analise = executiveManagerService.analisarProdutividadeEquipe(state, { tenantId });
+    let resp = `Produtividade da Equipe: ${analise.resumo.totalMecanicos} mecânico(s) ativos com ${analise.resumo.totalHorasProdutivasEquipe}h produtivas apontadas e ${financialEngine.formatarMoeda(analise.resumo.totalReceitaMaoDeObra)} em mão de obra gerada.`;
+    if (analise.resumo.mecanicoDestaque) {
+      resp += ` Mecânico destaque: ${analise.resumo.mecanicoDestaque.nome} com ${financialEngine.formatarMoeda(analise.resumo.mecanicoDestaque.receita)} gerados em ${analise.resumo.mecanicoDestaque.osCount} OSs.`;
+    }
+    if (analise.resumo.totalSobrecarregados > 0) {
+      resp += ` Há ${analise.resumo.totalSobrecarregados} colaborador(es) com sobrecarga de jornada.`;
+    }
+    if (analise.resumo.totalOciosos > 0) {
+      resp += ` Há ${analise.resumo.totalOciosos} colaborador(es) com ociosidade.`;
+    }
+    return {
+      ok: true,
+      acao: 'consultar_produtividade_equipe',
+      analise,
       resposta: resp
     };
   }
