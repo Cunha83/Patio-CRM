@@ -1,5 +1,5 @@
 const Tesseract = require('tesseract.js');
-const { isAdminPhone } = require('../../lib/core');
+const { isAdminPhone, normalizePhone } = require('../../lib/core');
 const {
   getOrLoadState,
   mutateTenantState,
@@ -9,7 +9,8 @@ const {
   extractTenantId,
   safeJsonParse,
   ultimasPlacas,
-  getAiClient
+  getAiClient,
+  recordSecurityAudit
 } = require('../../lib/serverContext');
 const {
   gerarTokenAcao
@@ -47,6 +48,223 @@ function formatarDataBR(d) {
     if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
   }
   return d;
+}
+
+// Rate limit em memória por número remetente (máx 15 requisições por janela de 1 minuto)
+const rateLimitMap = new Map();
+const RATE_LIMIT_JANELA_MS = 60 * 1000;
+const RATE_LIMIT_MAX_REQ = 15;
+
+function verificarRateLimit(numero) {
+  const norm = normalizePhone(numero) || String(numero || '');
+  if (!norm) return { permitido: true };
+  const agora = Date.now();
+  let entrada = rateLimitMap.get(norm);
+  if (!entrada || agora - entrada.inicioJanela > RATE_LIMIT_JANELA_MS) {
+    entrada = { inicioJanela: agora, contagem: 1 };
+    rateLimitMap.set(norm, entrada);
+    return { permitido: true };
+  }
+  entrada.contagem += 1;
+  if (entrada.contagem > RATE_LIMIT_MAX_REQ) {
+    return { permitido: false, excedido: true, contagem: entrada.contagem };
+  }
+  return { permitido: true };
+}
+
+// Limpeza periódica do mapa de rate limit a cada 5 minutos
+setInterval(() => {
+  const agora = Date.now();
+  for (const [num, ent] of rateLimitMap.entries()) {
+    if (agora - ent.inicioJanela > RATE_LIMIT_JANELA_MS * 5) {
+      rateLimitMap.delete(num);
+    }
+  }
+}, 5 * 60 * 1000).unref();
+
+// Idempotência por ID de mensagem do WhatsApp (TTL 10 minutos)
+const mensagensProcessadas = new Map();
+const IDEMPOTENCIA_TTL_MS = 10 * 60 * 1000;
+
+function verificarIdempotencia(msgId) {
+  if (!msgId) return { duplicada: false };
+  const agora = Date.now();
+  const reg = mensagensProcessadas.get(String(msgId));
+  if (reg && agora - reg.timestamp < IDEMPOTENCIA_TTL_MS) {
+    return { duplicada: true, resposta: reg.resposta };
+  }
+  return { duplicada: false };
+}
+
+function registrarIdempotencia(msgId, resposta = null) {
+  if (!msgId) return;
+  mensagensProcessadas.set(String(msgId), { timestamp: Date.now(), resposta });
+}
+
+setInterval(() => {
+  const agora = Date.now();
+  for (const [id, reg] of mensagensProcessadas.entries()) {
+    if (agora - reg.timestamp > IDEMPOTENCIA_TTL_MS) {
+      mensagensProcessadas.delete(id);
+    }
+  }
+}, 5 * 60 * 1000).unref();
+
+// Memória de operações financeiras de escrita aguardando confirmação explícita (TTL estrito de 2 minutos)
+const confirmacoesPendentes = new Map();
+const CONFIRMACAO_TTL_MS = 2 * 60 * 1000;
+
+setInterval(() => {
+  const agora = Date.now();
+  for (const [chave, item] of confirmacoesPendentes.entries()) {
+    if (agora > item.expiraEm) {
+      confirmacoesPendentes.delete(chave);
+    }
+  }
+}, 30 * 1000).unref();
+
+/**
+ * Extrai valor monetário de forma robusta e detecta ambiguidade/ausência
+ */
+function extrairValorMonetario(texto) {
+  const t = String(texto || '').trim();
+
+  // Padrões monetários explícitos
+  const regexExplicit = /(?:r\$\s*)(\d{1,3}(?:\.\d{3})*,\d{2}|\d+(?:[.,]\d{1,2})?)|\b(\d{1,3}(?:\.\d{3})*,\d{2}|\d+(?:[.,]\d{1,2})?)\s*(?:reais|real)\b|(?:com|de|saldo\s+de|valor\s+de)\s*(?:r\$\s*)?(\d{1,3}(?:\.\d{3})*,\d{2}|\d+(?:[.,]\d{1,2})?)/gi;
+  
+  const matches = [];
+  let m;
+  while ((m = regexExplicit.exec(t)) !== null) {
+    const rawVal = m[1] || m[2] || m[3];
+    if (rawVal) {
+      const num = parseFloat(rawVal.replace(/\./g, '').replace(',', '.'));
+      if (!isNaN(num) && num > 0) matches.push(num);
+    }
+  }
+
+  // Padrões de números soltos quando não houver moeda explícita
+  if (matches.length === 0) {
+    const regexNumeros = /\b(\d+(?:[.,]\d{1,2})?)\b/g;
+    while ((m = regexNumeros.exec(t)) !== null) {
+      const raw = m[1];
+      if (['2024', '2025', '2026', '2027'].includes(raw)) continue;
+      const num = parseFloat(raw.replace(',', '.'));
+      if (!isNaN(num) && num > 0) matches.push(num);
+    }
+  }
+
+  if (matches.length === 0) {
+    return { status: 'ausente' };
+  }
+
+  const unicos = [...new Set(matches)];
+  if (unicos.length > 1) {
+    return { status: 'ambiguo', valores: unicos };
+  }
+
+  return { status: 'valido', valor: unicos[0] };
+}
+
+/**
+ * Obtém o perfil de acesso do remetente do WhatsApp
+ */
+async function obterPerfilNumeroWhatsApp({ tenantKey = 'default', numero, tenantState = {} }) {
+  const norm = normalizePhone(numero);
+  if (!norm) return { role: 'desconhecido', permissions: [] };
+
+  // 1. Mecânicos cadastrados no estado
+  const mecanicos = Array.isArray(tenantState?.mecanicos) ? tenantState.mecanicos : (Array.isArray(tenantState?.workers) ? tenantState.workers : []);
+  const isMec = mecanicos.some(m => normalizePhone(m.fone || m.telefone || m.phone) === norm);
+  if (isMec) {
+    return { role: 'mecanico', permissions: ['os:read', 'labor:read', 'labor:write'] };
+  }
+
+  // 2. Atendentes cadastrados no estado
+  const atendentes = Array.isArray(tenantState?.atendentes) ? tenantState.atendentes : [];
+  const isAtend = atendentes.some(a => normalizePhone(a.fone || a.telefone || a.phone) === norm);
+  if (isAtend) {
+    return { role: 'atendente', permissions: ['os:read', 'os:write', 'crm:read'] };
+  }
+
+  // 3. Verificação no banco de dados persistente (users / memberships)
+  try {
+    const db = require('../../db');
+    if (db && typeof db.get === 'function') {
+      const userRow = await db.get('SELECT id FROM users WHERE phone = ?', [norm]);
+      if (userRow) {
+        const memRows = await db.all('SELECT role, permissions_json FROM memberships WHERE user_id = ?', [userRow.id]);
+        const mem = memRows.find(m => m.tenant_id === tenantKey) || memRows[0];
+        if (mem) {
+          const perms = JSON.parse(mem.permissions_json || '[]');
+          return { role: mem.role, permissions: perms };
+        }
+      }
+    }
+  } catch (_) {}
+
+  // 4. Se estiver em financeiroFones no cfg do tenant
+  const finFones = Array.isArray(tenantState?.cfg?.financeiroFones) ? tenantState.cfg.financeiroFones : [];
+  if (finFones.some(f => normalizePhone(f) === norm)) {
+    return { role: 'financeiro', permissions: ['financial:read', 'financial:write'] };
+  }
+
+  // 5. Se estiver em adminFones / WHATSAPP_ADMIN_NUMBERS (Dono / Administrador do Tenant)
+  const adminList = (process.env.WHATSAPP_ADMIN_NUMBERS || '')
+    .split(',')
+    .map(s => s.trim().replace(/\D/g, ''))
+    .filter(Boolean);
+  if (tenantState?.cfg?.adminFones && Array.isArray(tenantState.cfg.adminFones)) {
+    tenantState.cfg.adminFones.forEach(f => {
+      const clean = String(f).replace(/\D/g, '');
+      if (clean && !adminList.includes(clean)) adminList.push(clean);
+    });
+  }
+
+  if (isAdminPhone(norm, adminList)) {
+    return { role: 'tenant_admin', permissions: ['*'] };
+  }
+
+  return { role: 'desconhecido', permissions: [] };
+}
+
+function podeExecutarEscritaFinanceira(perfil) {
+  if (!perfil) return false;
+  if (perfil.role === 'mecanico' || perfil.role === 'atendente') return false;
+  if (['tenant_admin', 'admin', 'financeiro', 'platform_admin'].includes(perfil.role)) return true;
+  const perms = Array.isArray(perfil.permissions) ? perfil.permissions : [];
+  return perms.includes('*') || perms.includes('financial:write');
+}
+
+async function auditarComandoWhatsApp({ tenantId, numero, comando, resultado, detalhes = {} }) {
+  try {
+    const agoraSP = financialEngine.obterAgoraSP();
+    const entry = {
+      tenantId: tenantId || 'default',
+      actorId: `whatsapp:${numero || 'desconhecido'}`,
+      actorType: 'whatsapp_sender',
+      action: 'whatsapp_command',
+      entity: 'financial_agent',
+      entityId: comando || 'desconhecido',
+      details: {
+        numeroNormalizado: numero,
+        comando,
+        resultado,
+        horarioSP: `${agoraSP.dataBR} ${agoraSP.horaBR}`,
+        dataISO: agoraSP.dataISO,
+        ...detalhes
+      }
+    };
+    await recordSecurityAudit(entry);
+    try {
+      const st = await getOrLoadState(tenantId || 'default');
+      if (st) {
+        if (!Array.isArray(st.security_audit_log)) st.security_audit_log = [];
+        st.security_audit_log.unshift(entry);
+      }
+    } catch (_) {}
+  } catch (err) {
+    console.warn('[WhatsApp Audit] Falha não-bloqueante ao gravar auditoria:', err.message);
+  }
 }
 
 function extrairDadosDocumentoHeuristico(texto) {
@@ -242,24 +460,494 @@ async function processarMensagemTexto(msg, {
   tenantState = {},
   isContextAdmin = true,
   isContextOperacao = false,
+  isGroup = undefined,
+  fromNumber = null,
+  isSenderAdmin = undefined,
   wppClient = null
 } = {}) {
   const textoMensagem = (texto !== null ? texto : (msg.body || '')).trim();
   const textoLower = textoMensagem.toLowerCase().trim();
 
-  if (textoLower === '!caixa' || textoLower === 'caixa' || textoLower === 'saldo' || textoLower === '!financeiro' || textoLower === 'financeiro') {
-    if (isContextOperacao) {
-      await msg.reply('🔒 *Acesso Restrito:* Informações financeiras de caixa e valores são disponibilizadas exclusivamente no Grupo da Administração.');
+  const isGroupMsg = isGroup !== undefined ? isGroup : Boolean(msg.from && msg.from.includes('@g.us'));
+  const rawSender = fromNumber || ((msg.author || msg.from || '').split('@')[0]).replace(/\D/g, '');
+  const senderNorm = normalizePhone(rawSender) || rawSender;
+  const chavePendente = `${tenantKey}:${senderNorm}`;
+
+  // ── 0. CONFIRMAÇÃO OU CANCELAMENTO DE AÇÃO FINANCEIRA PENDENTE ──
+  if (confirmacoesPendentes.has(chavePendente)) {
+    const pendente = confirmacoesPendentes.get(chavePendente);
+    const agora = Date.now();
+
+    if (agora > pendente.expiraEm) {
+      confirmacoesPendentes.delete(chavePendente);
+      const respExp = '⏳ *Operação Cancelada:* O prazo de 2 minutos para confirmação expirou. Por favor, envie o comando novamente se desejar realizar a operação.';
+      await msg.reply(respExp);
+      await auditarComandoWhatsApp({
+        tenantId: tenantKey,
+        numero: senderNorm,
+        comando: textoMensagem,
+        resultado: 'confirmacao_expirada',
+        detalhes: { acao: pendente.acao, valor: pendente.valor }
+      });
+      return true;
+    }
+
+    if (textoMensagem.toUpperCase() === 'CONFIRMAR') {
+      confirmacoesPendentes.delete(chavePendente);
+      let resOp = null;
+      let msgSucesso = '';
+
+      if (pendente.acao === 'abrir_caixa') {
+        resOp = financialAnalystService.abrirCaixa(tenantState, {
+          tenantId: tenantKey,
+          saldoInicial: pendente.valor,
+          operador: senderNorm,
+          operadorNome: pendente.perfil?.role || 'Operador'
+        });
+        if (resOp.ok) {
+          msgSucesso = `✅ *Caixa Aberto com Sucesso!*\n\n• Saldo Inicial: ${financialEngine.formatarMoeda(pendente.valor)}\n• Responsável: ${senderNorm}\n• Turno: #${resOp.caixa.id}`;
+        } else {
+          msgSucesso = `⚠️ Não foi possível abrir o caixa: ${resOp.error}`;
+        }
+      } else if (pendente.acao === 'fechar_caixa') {
+        resOp = financialAnalystService.fecharCaixa(tenantState, {
+          tenantId: tenantKey,
+          operador: senderNorm,
+          operadorNome: pendente.perfil?.role || 'Operador'
+        });
+        if (resOp.ok) {
+          const rf = resOp.resumoFechamento || {};
+          msgSucesso = `🔒 *Caixa Fechado com Sucesso!*\n\n• Saldo Final: ${financialEngine.formatarMoeda(rf.saldoFinalCalculado || resOp.caixaFechado?.saldoAtual || 0)}\n• Entradas: ${financialEngine.formatarMoeda(rf.totalEntradas || 0)}\n• Saídas: ${financialEngine.formatarMoeda(rf.totalSaidas || 0)}\n• Responsável: ${senderNorm}`;
+        } else {
+          msgSucesso = `⚠️ Não foi possível fechar o caixa: ${resOp.error}`;
+        }
+      } else if (pendente.acao === 'lancar_entrada') {
+        resOp = financialAnalystService.registrarMovimentacao(tenantState, {
+          tenantId: tenantKey,
+          tipo: 'entrada',
+          valor: pendente.valor,
+          descricao: pendente.descricao,
+          operador: senderNorm
+        });
+        if (resOp.ok) {
+          msgSucesso = `✅ *Entrada Registrada com Sucesso!*\n\n• Valor: ${financialEngine.formatarMoeda(pendente.valor)}\n• Descrição: ${pendente.descricao}\n• Saldo Atual do Caixa: ${financialEngine.formatarMoeda(resOp.saldoCaixaAtual || 0)}`;
+        } else {
+          msgSucesso = `⚠️ Não foi possível registrar a entrada: ${resOp.error}`;
+        }
+      } else if (pendente.acao === 'lancar_saida') {
+        resOp = financialAnalystService.registrarMovimentacao(tenantState, {
+          tenantId: tenantKey,
+          tipo: 'saida',
+          valor: pendente.valor,
+          descricao: pendente.descricao,
+          operador: senderNorm
+        });
+        if (resOp.ok) {
+          msgSucesso = `🔴 *Saída Registrada com Sucesso!*\n\n• Valor: ${financialEngine.formatarMoeda(pendente.valor)}\n• Descrição: ${pendente.descricao}\n• Saldo Atual do Caixa: ${financialEngine.formatarMoeda(resOp.saldoCaixaAtual || 0)}`;
+        } else {
+          msgSucesso = `⚠️ Não foi possível registrar a saída: ${resOp.error}`;
+        }
+      }
+
+      try {
+        await salvarEstado(tenantKey, tenantState);
+      } catch (errPersist) {
+        console.warn('[WhatsApp Handlers] Falha tolerante ao persistir estado:', errPersist.message);
+      }
+      await msg.reply(msgSucesso);
+      await auditarComandoWhatsApp({
+        tenantId: tenantKey,
+        numero: senderNorm,
+        comando: 'CONFIRMAR',
+        resultado: resOp && resOp.ok ? 'sucesso' : 'falha_execucao',
+        detalhes: { acao: pendente.acao, valor: pendente.valor, descricao: pendente.descricao }
+      });
+      return true;
+    } else {
+      // Qualquer outra resposta cancela imediatamente
+      confirmacoesPendentes.delete(chavePendente);
+      const respCancel = `❌ *Operação Cancelada:* A operação de ${pendente.descricaoAcao || pendente.acao} no valor de ${financialEngine.formatarMoeda(pendente.valor)} foi cancelada.`;
+      await msg.reply(respCancel);
+      await auditarComandoWhatsApp({
+        tenantId: tenantKey,
+        numero: senderNorm,
+        comando: textoMensagem,
+        resultado: 'cancelado',
+        detalhes: { acao: pendente.acao, valor: pendente.valor, respostaRecebida: textoMensagem }
+      });
+      return true;
+    }
+  }
+
+  // ── COMANDOS DE ESCRITA FINANCEIRA (ABRIR/FECHAR CAIXA, LANÇAR ENTRADA/SAÍDA) ──
+  const isComandoAbrirCaixa = /(?:abrir|iniciar|abertura\s+de)\s*(?:o\s+)?caixa/i.test(textoLower);
+  const isComandoFecharCaixa = /(?:fechar|encerrar|fechamento\s+de)\s*(?:o\s+)?caixa/i.test(textoLower);
+  const isComandoEntrada = /(?:lançar|lancar|registrar)\s*(?:uma\s+)?(?:entrada|receita|suprimento)/i.test(textoLower) || /(?:suprimento|entrada)\s+de\s+caixa/i.test(textoLower);
+  const isComandoSaida = /(?:lançar|lancar|registrar)\s*(?:uma\s+)?(?:saída|saida|despesa|sangria)/i.test(textoLower) || /(?:sangria|saída|saida)\s+de\s+caixa/i.test(textoLower);
+
+  if (isComandoAbrirCaixa || isComandoFecharCaixa || isComandoEntrada || isComandoSaida) {
+    // 1. Whitelist obrigatória se vier de grupo
+    const adminList = (process.env.WHATSAPP_ADMIN_NUMBERS || '')
+      .split(',')
+      .map(s => s.trim().replace(/\D/g, ''))
+      .filter(Boolean);
+    if (tenantState?.cfg?.adminFones && Array.isArray(tenantState.cfg.adminFones)) {
+      tenantState.cfg.adminFones.forEach(f => {
+        const clean = String(f).replace(/\D/g, '');
+        if (clean && !adminList.includes(clean)) adminList.push(clean);
+      });
+    }
+    const remetenteNaWhitelist = isAdminPhone(senderNorm, adminList);
+
+    if (isGroupMsg && !remetenteNaWhitelist) {
+      const respNeg = '🔒 *Acesso Negado:* Comandos de escrita financeira via grupo exigem que o remetente esteja cadastrado na lista autorizada (whitelist).';
+      await msg.reply(respNeg);
+      await auditarComandoWhatsApp({
+        tenantId: tenantKey,
+        numero: senderNorm,
+        comando: textoMensagem,
+        resultado: 'negado_permissao',
+        detalhes: { motivo: 'remetente_grupo_nao_whitelist' }
+      });
+      return true;
+    }
+
+    // 2. Perfil do número: deve ser dono ou financeiro. Atendente e mecânico não executam escrita
+    const perfil = await obterPerfilNumeroWhatsApp({ tenantKey, numero: senderNorm, tenantState });
+    if (!podeExecutarEscritaFinanceira(perfil)) {
+      const respNeg = `🔒 *Acesso Negado:* Seu perfil de usuário (${perfil.role || 'desconhecido'}) não possui permissão para realizar operações de escrita no caixa. Esta operação é restrita a Donos e Financeiro.`;
+      await msg.reply(respNeg);
+      await auditarComandoWhatsApp({
+        tenantId: tenantKey,
+        numero: senderNorm,
+        comando: textoMensagem,
+        resultado: 'negado_permissao',
+        detalhes: { perfil: perfil.role }
+      });
+      return true;
+    }
+
+    // 3. Validação dos parâmetros e geração da confirmação
+    if (isComandoAbrirCaixa) {
+      const caixaAberto = financialAnalystService.obterCaixaAberto(tenantState, tenantKey);
+      if (caixaAberto) {
+        const respJaAberto = `⚠️ Já existe um caixa aberto no momento (#${caixaAberto.id}). Feche o caixa atual antes de iniciar um novo turno.`;
+        await msg.reply(respJaAberto);
+        await auditarComandoWhatsApp({ tenantId: tenantKey, numero: senderNorm, comando: textoMensagem, resultado: 'recusado_caixa_ja_aberto' });
+        return true;
+      }
+
+      const resValor = extrairValorMonetario(textoMensagem);
+      if (resValor.status === 'ausente') {
+        const respPedeVal = '⚠️ Não identifiquei o saldo inicial em dinheiro para a abertura do caixa. Por favor, informe o comando com o valor (ex: *Abrir caixa com R$ 100,00*).';
+        await msg.reply(respPedeVal);
+        await auditarComandoWhatsApp({ tenantId: tenantKey, numero: senderNorm, comando: textoMensagem, resultado: 'solicitado_esclarecimento_valor', detalhes: { motivo: 'valor_ausente' } });
+        return true;
+      }
+      if (resValor.status === 'ambiguo') {
+        const respAmbiguo = '⚠️ Identifiquei múltiplos valores no comando. Para evitar divergência no caixa, por favor informe o comando com um único valor (ex: *Abrir caixa com R$ 100,00*).';
+        await msg.reply(respAmbiguo);
+        await auditarComandoWhatsApp({ tenantId: tenantKey, numero: senderNorm, comando: textoMensagem, resultado: 'solicitado_esclarecimento_valor', detalhes: { motivo: 'valor_ambiguo', valores: resValor.valores } });
+        return true;
+      }
+
+      const valorFinal = resValor.valor;
+      confirmacoesPendentes.set(chavePendente, {
+        acao: 'abrir_caixa',
+        descricaoAcao: 'Abertura de Caixa',
+        valor: valorFinal,
+        descricao: 'Abertura de caixa com saldo inicial',
+        expiraEm: Date.now() + CONFIRMACAO_TTL_MS,
+        tenantKey,
+        fromNumber: senderNorm,
+        perfil
+      });
+
+      const msgConfirm =
+        `⚠️ *CONFIRMAÇÃO DE OPERAÇÃO FINANCEIRA* ⚠️\n\n` +
+        `Por favor, confira os dados da operação:\n` +
+        `• *Ação:* Abertura de Caixa\n` +
+        `• *Valor:* ${financialEngine.formatarMoeda(valorFinal)}\n` +
+        `• *Descrição:* Abertura de caixa com saldo inicial\n\n` +
+        `Para executar, responda exatamente *CONFIRMAR* em até 2 minutos.\n` +
+        `Qualquer outra resposta cancelará esta operação.`;
+
+      await msg.reply(msgConfirm);
+      await auditarComandoWhatsApp({ tenantId: tenantKey, numero: senderNorm, comando: textoMensagem, resultado: 'aguardando_confirmacao', detalhes: { acao: 'abrir_caixa', valor: valorFinal } });
+      return true;
+    }
+
+    if (isComandoFecharCaixa) {
+      const caixaAberto = financialAnalystService.obterCaixaAberto(tenantState, tenantKey);
+      if (!caixaAberto) {
+        const respSemCaixa = '⚠️ Não há nenhum turno de caixa aberto no momento para ser encerrado.';
+        await msg.reply(respSemCaixa);
+        await auditarComandoWhatsApp({ tenantId: tenantKey, numero: senderNorm, comando: textoMensagem, resultado: 'recusado_sem_caixa_aberto' });
+        return true;
+      }
+
+      const valorFinal = caixaAberto.saldoAtual || 0;
+      confirmacoesPendentes.set(chavePendente, {
+        acao: 'fechar_caixa',
+        descricaoAcao: 'Fechamento de Caixa',
+        valor: valorFinal,
+        descricao: `Fechamento do Caixa #${caixaAberto.id}`,
+        expiraEm: Date.now() + CONFIRMACAO_TTL_MS,
+        tenantKey,
+        fromNumber: senderNorm,
+        perfil
+      });
+
+      const msgConfirm =
+        `⚠️ *CONFIRMAÇÃO DE OPERAÇÃO FINANCEIRA* ⚠️\n\n` +
+        `Por favor, confira os dados da operação:\n` +
+        `• *Ação:* Fechamento de Caixa\n` +
+        `• *Valor em Caixa:* ${financialEngine.formatarMoeda(valorFinal)}\n` +
+        `• *Descrição:* Fechamento do Caixa #${caixaAberto.id}\n\n` +
+        `Para executar, responda exatamente *CONFIRMAR* em até 2 minutos.\n` +
+        `Qualquer outra resposta cancelará esta operação.`;
+
+      await msg.reply(msgConfirm);
+      await auditarComandoWhatsApp({ tenantId: tenantKey, numero: senderNorm, comando: textoMensagem, resultado: 'aguardando_confirmacao', detalhes: { acao: 'fechar_caixa', valor: valorFinal } });
+      return true;
+    }
+
+    if (isComandoEntrada) {
+      const caixaAberto = financialAnalystService.obterCaixaAberto(tenantState, tenantKey);
+      if (!caixaAberto) {
+        const respSemCaixa = '⚠️ Não há nenhum turno de caixa aberto no momento. Abra o caixa antes de registrar entradas.';
+        await msg.reply(respSemCaixa);
+        await auditarComandoWhatsApp({ tenantId: tenantKey, numero: senderNorm, comando: textoMensagem, resultado: 'recusado_sem_caixa_aberto' });
+        return true;
+      }
+
+      const resValor = extrairValorMonetario(textoMensagem);
+      if (resValor.status === 'ausente') {
+        const respPedeVal = '⚠️ Não identifiquei o valor exato para o lançamento de entrada. Por favor, envie o comando com valor e descrição (ex: *Lançar entrada de R$ 150,00 referente a adiantamento*).';
+        await msg.reply(respPedeVal);
+        await auditarComandoWhatsApp({ tenantId: tenantKey, numero: senderNorm, comando: textoMensagem, resultado: 'solicitado_esclarecimento_valor', detalhes: { motivo: 'valor_ausente' } });
+        return true;
+      }
+      if (resValor.status === 'ambiguo') {
+        const respAmbiguo = '⚠️ Identifiquei múltiplos valores no comando. Para evitar divergência no caixa, por favor informe o comando com um único valor (ex: *Lançar entrada de R$ 150,00 referente a adiantamento*).';
+        await msg.reply(respAmbiguo);
+        await auditarComandoWhatsApp({ tenantId: tenantKey, numero: senderNorm, comando: textoMensagem, resultado: 'solicitado_esclarecimento_valor', detalhes: { motivo: 'valor_ambiguo', valores: resValor.valores } });
+        return true;
+      }
+
+      const matchDesc = textoMensagem.match(/(?:referente\s+a|motivo|para|com|descrição|descricao)\s+(.+)$/i);
+      const descricaoFinal = matchDesc ? matchDesc[1].trim() : 'Entrada avulsa no caixa';
+
+      confirmacoesPendentes.set(chavePendente, {
+        acao: 'lancar_entrada',
+        descricaoAcao: 'Lançar Entrada',
+        valor: resValor.valor,
+        descricao: descricaoFinal,
+        expiraEm: Date.now() + CONFIRMACAO_TTL_MS,
+        tenantKey,
+        fromNumber: senderNorm,
+        perfil
+      });
+
+      const msgConfirm =
+        `⚠️ *CONFIRMAÇÃO DE OPERAÇÃO FINANCEIRA* ⚠️\n\n` +
+        `Por favor, confira os dados da operação:\n` +
+        `• *Ação:* Lançar Entrada\n` +
+        `• *Valor:* ${financialEngine.formatarMoeda(resValor.valor)}\n` +
+        `• *Descrição:* ${descricaoFinal}\n\n` +
+        `Para executar, responda exatamente *CONFIRMAR* em até 2 minutos.\n` +
+        `Qualquer outra resposta cancelará esta operação.`;
+
+      await msg.reply(msgConfirm);
+      await auditarComandoWhatsApp({ tenantId: tenantKey, numero: senderNorm, comando: textoMensagem, resultado: 'aguardando_confirmacao', detalhes: { acao: 'lancar_entrada', valor: resValor.valor, descricao: descricaoFinal } });
+      return true;
+    }
+
+    if (isComandoSaida) {
+      const caixaAberto = financialAnalystService.obterCaixaAberto(tenantState, tenantKey);
+      if (!caixaAberto) {
+        const respSemCaixa = '⚠️ Não há nenhum turno de caixa aberto no momento. Abra o caixa antes de registrar saídas.';
+        await msg.reply(respSemCaixa);
+        await auditarComandoWhatsApp({ tenantId: tenantKey, numero: senderNorm, comando: textoMensagem, resultado: 'recusado_sem_caixa_aberto' });
+        return true;
+      }
+
+      const resValor = extrairValorMonetario(textoMensagem);
+      if (resValor.status === 'ausente') {
+        const respPedeVal = '⚠️ Não identifiquei o valor exato para o lançamento de saída. Por favor, envie o comando com valor e descrição (ex: *Lançar saída de R$ 80,00 referente a compra de óleo*).';
+        await msg.reply(respPedeVal);
+        await auditarComandoWhatsApp({ tenantId: tenantKey, numero: senderNorm, comando: textoMensagem, resultado: 'solicitado_esclarecimento_valor', detalhes: { motivo: 'valor_ausente' } });
+        return true;
+      }
+      if (resValor.status === 'ambiguo') {
+        const respAmbiguo = '⚠️ Identifiquei múltiplos valores no comando. Para evitar divergência no caixa, por favor informe o comando com um único valor (ex: *Lançar saída de R$ 80,00 referente a compra de óleo*).';
+        await msg.reply(respAmbiguo);
+        await auditarComandoWhatsApp({ tenantId: tenantKey, numero: senderNorm, comando: textoMensagem, resultado: 'solicitado_esclarecimento_valor', detalhes: { motivo: 'valor_ambiguo', valores: resValor.valores } });
+        return true;
+      }
+
+      const matchDesc = textoMensagem.match(/(?:referente\s+a|motivo|para|com|descrição|descricao)\s+(.+)$/i);
+      const descricaoFinal = matchDesc ? matchDesc[1].trim() : 'Saída avulsa do caixa';
+
+      confirmacoesPendentes.set(chavePendente, {
+        acao: 'lancar_saida',
+        descricaoAcao: 'Lançar Saída',
+        valor: resValor.valor,
+        descricao: descricaoFinal,
+        expiraEm: Date.now() + CONFIRMACAO_TTL_MS,
+        tenantKey,
+        fromNumber: senderNorm,
+        perfil
+      });
+
+      const msgConfirm =
+        `⚠️ *CONFIRMAÇÃO DE OPERAÇÃO FINANCEIRA* ⚠️\n\n` +
+        `Por favor, confira os dados da operação:\n` +
+        `• *Ação:* Lançar Saída\n` +
+        `• *Valor:* ${financialEngine.formatarMoeda(resValor.valor)}\n` +
+        `• *Descrição:* ${descricaoFinal}\n\n` +
+        `Para executar, responda exatamente *CONFIRMAR* em até 2 minutos.\n` +
+        `Qualquer outra resposta cancelará esta operação.`;
+
+      await msg.reply(msgConfirm);
+      await auditarComandoWhatsApp({ tenantId: tenantKey, numero: senderNorm, comando: textoMensagem, resultado: 'aguardando_confirmacao', detalhes: { acao: 'lancar_saida', valor: resValor.valor, descricao: descricaoFinal } });
+      return true;
+    }
+  }
+
+  // 1. Saldo do Caixa (Leitura - Sem Confirmação)
+  if (
+    textoLower === '!caixa' || textoLower === 'caixa' ||
+    textoLower === '!saldo' || textoLower === 'saldo' ||
+    textoLower === 'saldo do caixa' || textoLower === 'saldo de caixa' ||
+    textoLower === '!financeiro' || textoLower === 'financeiro'
+  ) {
+    if (isContextOperacao || !isContextAdmin) {
+      await msg.reply('🔒 *Acesso Restrito:* Informações financeiras de caixa e valores são disponibilizadas exclusivamente para administradores autorizados.');
+      await auditarComandoWhatsApp({ tenantId: tenantKey, numero: (msg.author || msg.from || '').split('@')[0], comando: textoMensagem, resultado: 'negado_permissao' });
       return true;
     }
     const resCaixa = gerarResumoCaixa(tenantState);
     await msg.reply(resCaixa);
+    await auditarComandoWhatsApp({ tenantId: tenantKey, numero: (msg.author || msg.from || '').split('@')[0], comando: textoMensagem, resultado: 'sucesso' });
+    return true;
+  }
+
+  // 2. Entradas e Saídas do Dia (Movimentações de Hoje)
+  if (
+    textoLower.includes('entradas e saídas') || textoLower.includes('entradas e saidas') ||
+    textoLower.includes('movimentações do dia') || textoLower.includes('movimentacoes do dia') ||
+    textoLower.includes('movimentação do dia') || textoLower.includes('movimentacao do dia') ||
+    textoLower === '!movimentacoes' || textoLower === '!movimentos' ||
+    (textoLower.includes('entradas') && textoLower.includes('saídas')) ||
+    (textoLower.includes('entradas') && textoLower.includes('saidas'))
+  ) {
+    if (isContextOperacao || !isContextAdmin) {
+      await msg.reply('🔒 *Acesso Restrito:* As movimentações financeiras do dia são disponibilizadas exclusivamente para administradores autorizados.');
+      await auditarComandoWhatsApp({ tenantId: tenantKey, numero: (msg.author || msg.from || '').split('@')[0], comando: textoMensagem, resultado: 'negado_permissao' });
+      return true;
+    }
+    const agoraSP = financialEngine.obterAgoraSP();
+    const dHoje = agoraSP.dataISO;
+    const movimentos = Array.isArray(tenantState.movimentos) ? tenantState.movimentos : [];
+    const movsHoje = movimentos.filter(m => (m.data || '').slice(0, 10) === dHoje);
+
+    let totEntradas = 0;
+    let totSaidas = 0;
+    movsHoje.forEach(m => {
+      const v = Number(m.valor) || 0;
+      if (m.tipo === 'entrada') totEntradas += v;
+      else totSaidas += v;
+    });
+
+    const saldoDia = totEntradas - totSaidas;
+    let txtMov = `📊 *ENTRADAS E SAÍDAS DE HOJE (${agoraSP.dataBR})* 💵\n\n` +
+                 `• 🟢 *Total de Entradas:* ${financialEngine.formatarMoeda(totEntradas)}\n` +
+                 `• 🔴 *Total de Saídas:* ${financialEngine.formatarMoeda(totSaidas)}\n` +
+                 `• ⚖️ *Resultado do Dia:* ${saldoDia >= 0 ? '+' : ''}${financialEngine.formatarMoeda(saldoDia)}\n\n`;
+
+    if (movsHoje.length === 0) {
+      txtMov += `_Nenhuma movimentação avulsa registrada no caixa hoje até o momento._`;
+    } else {
+      txtMov += `📋 *Últimos Lançamentos:*\n`;
+      const ultimos = movsHoje.slice(0, 6);
+      ultimos.forEach(m => {
+        const icone = m.tipo === 'entrada' ? '🟢' : '🔴';
+        const horaFmt = m.hora || (m.criadoEm ? (m.criadoEm.slice(11, 16)) : '');
+        txtMov += `${icone} ${financialEngine.formatarMoeda(m.valor)} — ${m.descricao || m.categoria || 'Lançamento'}${horaFmt ? ` (${horaFmt})` : ''}\n`;
+      });
+      if (movsHoje.length > 6) {
+        txtMov += `_... e mais ${movsHoje.length - 6} lançamento(s) registrados._\n`;
+      }
+    }
+
+    await msg.reply(txtMov);
+    await auditarComandoWhatsApp({ tenantId: tenantKey, numero: (msg.author || msg.from || '').split('@')[0], comando: textoMensagem, resultado: 'sucesso' });
+    return true;
+  }
+
+  // 3. Contas a Pagar e a Receber do Dia
+  if (
+    textoLower.includes('contas a pagar e a receber') ||
+    textoLower.includes('pagar e receber do dia') ||
+    textoLower.includes('contas do dia') ||
+    textoLower.includes('títulos do dia') || textoLower.includes('titulos do dia') ||
+    textoLower.includes('vencimentos do dia') || textoLower.includes('vencimentos de hoje') ||
+    textoLower.includes('contas a pagar do dia') || textoLower.includes('contas a receber do dia') ||
+    textoLower.includes('contas a pagar') || textoLower.includes('contas a receber') ||
+    textoLower === '!contas' || textoLower === '!vencimentos'
+  ) {
+    if (isContextOperacao || !isContextAdmin) {
+      await msg.reply('🔒 *Acesso Restrito:* Contas a pagar e a receber são disponibilizadas exclusivamente para administradores autorizados.');
+      await auditarComandoWhatsApp({ tenantId: tenantKey, numero: (msg.author || msg.from || '').split('@')[0], comando: textoMensagem, resultado: 'negado_permissao' });
+      return true;
+    }
+    const agoraSP = financialEngine.obterAgoraSP();
+    const dHoje = agoraSP.dataISO;
+    const contas = Array.isArray(tenantState.contas) ? tenantState.contas : [];
+
+    const aPagarHoje = contas.filter(c => c.tipo === 'pagar' && !c.pago && (c.venc || '').slice(0, 10) === dHoje);
+    const aReceberHoje = contas.filter(c => c.tipo === 'receber' && !c.pago && (c.venc || '').slice(0, 10) === dHoje);
+
+    const totPagarHoje = aPagarHoje.reduce((acc, c) => acc + (Number(c.valor) || 0), 0);
+    const totReceberHoje = aReceberHoje.reduce((acc, c) => acc + (Number(c.valor) || 0), 0);
+    const liquido = totReceberHoje - totPagarHoje;
+
+    let txtContas = `📅 *TÍTULOS E VENCIMENTOS DE HOJE (${agoraSP.dataBR})* 🏢\n\n` +
+                    `🟢 *A Receber:* ${financialEngine.formatarMoeda(totReceberHoje)} (${aReceberHoje.length} título(s))\n` +
+                    `🔴 *A Pagar:* ${financialEngine.formatarMoeda(totPagarHoje)} (${aPagarHoje.length} conta(s))\n` +
+                    `⚖️ *Previsão Líquida:* ${liquido >= 0 ? '+' : ''}${financialEngine.formatarMoeda(liquido)}\n\n`;
+
+    if (aPagarHoje.length > 0) {
+      txtContas += `🔴 *Contas a Pagar Hoje:*\n`;
+      aPagarHoje.slice(0, 4).forEach(c => {
+        txtContas += `• ${c.desc || c.parte || 'Fornecedor'}: ${financialEngine.formatarMoeda(c.valor)}\n`;
+      });
+      if (aPagarHoje.length > 4) txtContas += `_... e mais ${aPagarHoje.length - 4} conta(s)._\n`;
+      txtContas += `\n`;
+    }
+
+    if (aReceberHoje.length > 0) {
+      txtContas += `🟢 *Títulos a Receber Hoje:*\n`;
+      aReceberHoje.slice(0, 4).forEach(c => {
+        txtContas += `• ${c.desc || c.parte || 'Cliente'}: ${financialEngine.formatarMoeda(c.valor)}\n`;
+      });
+      if (aReceberHoje.length > 4) txtContas += `_... e mais ${aReceberHoje.length - 4} título(s)._\n`;
+    }
+
+    if (aPagarHoje.length === 0 && aReceberHoje.length === 0) {
+      txtContas += `_Nenhum vencimento de contas a pagar ou a receber agendado para hoje._`;
+    }
+
+    await msg.reply(txtContas);
+    await auditarComandoWhatsApp({ tenantId: tenantKey, numero: (msg.author || msg.from || '').split('@')[0], comando: textoMensagem, resultado: 'sucesso' });
     return true;
   }
 
   if (textoLower === '!previsao' || textoLower === 'previsao' || textoLower === 'previsão' || textoLower === '!forecast') {
-    if (isContextOperacao) {
+    if (isContextOperacao || !isContextAdmin) {
       await msg.reply('🔒 *Acesso Restrito:* A projeção de fluxo de caixa é disponibilizada exclusivamente no Grupo da Administração.');
+      await auditarComandoWhatsApp({ tenantId: tenantKey, numero: (msg.author || msg.from || '').split('@')[0], comando: textoMensagem, resultado: 'negado_permissao' });
       return true;
     }
     const prev = financialAnalystService.gerarPrevisaoFluxoCaixa(tenantState, { horizonteDias: 30 });
@@ -380,14 +1068,25 @@ async function processarMensagemTexto(msg, {
     return true;
   }
 
-  if (textoLower === '!relatorio' || textoLower === 'relatorio' || textoLower === 'relatório' || textoLower === '!posicao' || textoLower === 'posicao' || textoLower === 'posiçao') {
+  if (
+    textoLower === '!relatorio' || textoLower === 'relatorio' || textoLower === 'relatório' ||
+    textoLower === '!posicao' || textoLower === 'posicao' || textoLower === 'posiçao' ||
+    textoLower.includes('relatório executivo') || textoLower.includes('relatorio executivo') ||
+    textoLower.includes('pedir relatório') || textoLower.includes('pedir relatorio')
+  ) {
     if (isContextOperacao) {
       const msgsOp = gerarMensagensOperacao(tenantState);
       await msg.reply(msgsOp[0]);
       await new Promise(r => setTimeout(r, 800));
       if (wppClient) await wppClient.sendMessage(msg.from, msgsOp[1]);
+      await auditarComandoWhatsApp({ tenantId: tenantKey, numero: (msg.author || msg.from || '').split('@')[0], comando: textoMensagem, resultado: 'sucesso' });
       return true;
     } else {
+      if (!isContextAdmin) {
+        await msg.reply('🔒 *Acesso Restrito:* O relatório executivo é disponibilizado exclusivamente para administradores autorizados.');
+        await auditarComandoWhatsApp({ tenantId: tenantKey, numero: (msg.author || msg.from || '').split('@')[0], comando: textoMensagem, resultado: 'negado_permissao' });
+        return true;
+      }
       const msgs = gerarMensagensAdmin(tenantState);
       try {
         const jpgBuffer = await gerarImagemIndicadoresJPG(tenantState, tenantKey);
@@ -403,6 +1102,7 @@ async function processarMensagemTexto(msg, {
       if (wppClient) await wppClient.sendMessage(msg.from, msgs[1]);
       await new Promise(r => setTimeout(r, 800));
       if (wppClient) await wppClient.sendMessage(msg.from, msgs[2]);
+      await auditarComandoWhatsApp({ tenantId: tenantKey, numero: (msg.author || msg.from || '').split('@')[0], comando: textoMensagem, resultado: 'sucesso' });
       return true;
     }
   }
@@ -472,6 +1172,16 @@ async function tratarMensagemWhatsApp(msg, wppClient) {
     return;
   }
 
+  const msgId = (msg.id && (msg.id._serialized || msg.id.id)) || msg.id || null;
+  const idemCheck = verificarIdempotencia(msgId);
+  if (idemCheck.duplicada) {
+    console.log('[WhatsApp Idempotência] Mensagem duplicada ignorada:', msgId);
+    if (idemCheck.resposta) {
+      try { await msg.reply(idemCheck.resposta); } catch (_) {}
+    }
+    return;
+  }
+
   const isGroup = msg.from.includes('@g.us');
   const rawAuthor = isGroup ? (msg.author || msg.from) : msg.from;
   const fromNumber = (rawAuthor || '').split('@')[0].replace(/\D/g, '');
@@ -497,6 +1207,22 @@ async function tratarMensagemWhatsApp(msg, wppClient) {
 
   const isSenderAdmin = isAdminPhone(fromNumber, adminList);
 
+  const rateCheck = verificarRateLimit(fromNumber);
+  if (!rateCheck.permitido) {
+    console.warn(`[WhatsApp RateLimit] Número ${fromNumber} excedeu o limite de requisições.`);
+    try {
+      await msg.reply('⚠️ Muitas mensagens recebidas em sequência. Por favor, aguarde um momento antes de tentar novamente.');
+    } catch (_) {}
+    await auditarComandoWhatsApp({
+      tenantId: tenantKey,
+      numero: normalizePhone(fromNumber) || fromNumber,
+      comando: msg.body || (msg.hasMedia ? '[midia]' : ''),
+      resultado: 'rate_limit_excedido',
+      detalhes: { contagem: rateCheck.contagem }
+    });
+    return;
+  }
+
   if (isGroup) {
     if (msg.from === '120363428179962435@g.us' || msg.from === '120363428840376088@g.us') {
       return;
@@ -510,6 +1236,13 @@ async function tratarMensagemWhatsApp(msg, wppClient) {
       try {
         if (!isSenderAdmin) {
           console.log(`[WhatsApp] Convite negado: remetente não é administrador.`);
+          await auditarComandoWhatsApp({
+            tenantId: tenantKey,
+            numero: normalizePhone(fromNumber) || fromNumber,
+            comando: msg.body || '',
+            resultado: 'recusado_nao_autorizado',
+            detalhes: { motivo: 'convite_grupo_por_desconhecido' }
+          });
           return;
         }
         const inviteCode = linkInviteMatch[1];
@@ -526,6 +1259,15 @@ async function tratarMensagemWhatsApp(msg, wppClient) {
     }
 
     if (!isSenderAdmin) {
+      // Número não cadastrado em adminFones recebe resposta neutra e nenhuma informação financeira
+      await msg.reply('Olá! Sou o assistente do Pátio CRM. No momento, o atendimento automatizado está disponível apenas para motoristas e clientes com veículos em serviço ou administradores autorizados. Para mais informações, entre em contato diretamente com a nossa recepção.');
+      await auditarComandoWhatsApp({
+        tenantId: tenantKey,
+        numero: normalizePhone(fromNumber) || fromNumber,
+        comando: msg.body || (msg.hasMedia ? '[midia]' : ''),
+        resultado: 'recusado_nao_autorizado',
+        detalhes: { motivo: 'numero_desconhecido' }
+      });
       return;
     }
   }
@@ -687,6 +1429,11 @@ async function tratarMensagemWhatsApp(msg, wppClient) {
   const placaContexto = (infoRecente && (Date.now() - infoRecente.timestamp < 15 * 60 * 1000)) ? infoRecente.placa : null;
 
   const isComandoExplicito = textoLower.startsWith('!') ||
+    confirmacoesPendentes.has(`${tenantKey}:${normalizePhone(fromNumber) || fromNumber}`) ||
+    textoLower === 'confirmar' || textoLower === 'cancelar' ||
+    textoLower.includes('abrir caixa') || textoLower.includes('fechar caixa') ||
+    textoLower.includes('lançar entrada') || textoLower.includes('lancar entrada') ||
+    textoLower.includes('lançar saída') || textoLower.includes('lancar saida') ||
     ['relatorio', 'relatório', 'caixa', 'saldo', 'patio', 'pátio', 'boxes', 'ajuda', 'menu', 'comandos', 'previsao', 'previsão', 'forecast', 'auditoria', 'controles'].includes(textoLower);
   const isConsultaStatus = textoLower.includes('status') || textoLower.includes('como está') || textoLower.includes('consultar') || textoLower.includes('andamento');
   const isAberturaOS = textoLower.includes('abrir os') || textoLower.startsWith('abrir ') || textoLower === 'abrir';
@@ -703,9 +1450,15 @@ async function tratarMensagemWhatsApp(msg, wppClient) {
       tenantState,
       isContextAdmin,
       isContextOperacao,
+      isGroup,
+      fromNumber,
+      isSenderAdmin,
       wppClient
     });
-    if (tratado) return;
+    if (tratado) {
+      registrarIdempotencia(msgId);
+      return;
+    }
 
     if (textoLower.includes('status') || textoLower.includes('como está') || textoLower.includes('consultar') || textoLower.includes('andamento')) {
       const osLista = tenantState?.os || [];
@@ -907,5 +1660,15 @@ module.exports = {
   extrairDadosDocumentoHeuristico,
   analisarDocumentoWhatsApp,
   processarMensagemTexto,
-  tratarMensagemWhatsApp
+  tratarMensagemWhatsApp,
+  verificarRateLimit,
+  auditarComandoWhatsApp,
+  rateLimitMap,
+  mensagensProcessadas,
+  confirmacoesPendentes,
+  verificarIdempotencia,
+  registrarIdempotencia,
+  extrairValorMonetario,
+  obterPerfilNumeroWhatsApp,
+  podeExecutarEscritaFinanceira
 };

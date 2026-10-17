@@ -224,26 +224,7 @@ test('Agendador de Relatório Diário do WhatsApp: Horário, Idempotência, Flag
 
     const mw = requirePermission('whatsapp:admin', 'financial:write');
 
-    // Simula atendente
-    let statusAtendente = null;
-    let jsonAtendente = null;
-    const reqAtendente = {
-      securityContext: {
-        role: 'atendente',
-        permissions: userRepository.ROLE_PERMISSIONS.atendente
-      }
-    };
-    const resAtendente = {
-      status(code) { statusAtendente = code; return this; },
-      json(obj) { jsonAtendente = obj; return this; }
-    };
-    mw(reqAtendente, resAtendente, () => {
-      assert.fail('Atendente não deveria ter permissão');
-    });
-    assert.equal(statusAtendente, 403, 'Atendente deve receber status 403');
-    assert.ok(jsonAtendente && jsonAtendente.error.includes('Acesso negado'));
-
-    // Simula mecanico
+    // Simula mecanico (negativo -> 403)
     let statusMecanico = null;
     let jsonMecanico = null;
     const reqMecanico = {
@@ -262,18 +243,92 @@ test('Agendador de Relatório Diário do WhatsApp: Horário, Idempotência, Flag
     assert.equal(statusMecanico, 403, 'Mecanico deve receber status 403');
     assert.ok(jsonMecanico && jsonMecanico.error.includes('Acesso negado'));
 
-    // Simula financeiro ou admin (permissão concedida)
-    let nextChamado = false;
-    const reqFinanceiro = {
+    // Simula atendente (negativo -> 403)
+    let statusAtendente = null;
+    let jsonAtendente = null;
+    const reqAtendente = {
+      securityContext: {
+        role: 'atendente',
+        permissions: userRepository.ROLE_PERMISSIONS.atendente
+      }
+    };
+    const resAtendente = {
+      status(code) { statusAtendente = code; return this; },
+      json(obj) { jsonAtendente = obj; return this; }
+    };
+    mw(reqAtendente, resAtendente, () => {
+      assert.fail('Atendente não deveria ter permissão');
+    });
+    assert.equal(statusAtendente, 403, 'Atendente deve receber status 403');
+    assert.ok(jsonAtendente && jsonAtendente.error.includes('Acesso negado'));
+
+    // Simula Dono (tenant_admin) e Financeiro executando o handler da rota com dryRun (positivo -> 200)
+    const handler = async (req, res) => {
+      const { dryRun, force, horaRef, dataRef } = req.body || {};
+      const resultados = await executarCicloDisparoRelatorioDiario({
+        dryRun: Boolean(dryRun),
+        force: Boolean(force),
+        horaRef,
+        dataRef
+      });
+      res.status(200).json({ success: true, resultados });
+    };
+
+    // Dono (tenant_admin)
+    let statusDono = null;
+    let jsonDono = null;
+    const reqDono = {
+      securityContext: {
+        role: 'tenant_admin',
+        permissions: userRepository.ROLE_PERMISSIONS.tenant_admin
+      },
+      body: { dryRun: true, force: true }
+    };
+    const resDono = {
+      statusCode: 200,
+      status(c) { this.statusCode = c; statusDono = c; return this; },
+      json(o) { jsonDono = o; return this; }
+    };
+
+    let mwDonoPassou = false;
+    await new Promise((resolve) => {
+      mw(reqDono, resDono, async () => {
+        mwDonoPassou = true;
+        await handler(reqDono, resDono);
+        resolve();
+      });
+    });
+    assert.equal(mwDonoPassou, true, 'Dono deve passar pelo middleware RBAC');
+    assert.equal(statusDono || resDono.statusCode, 200, 'Dono deve receber HTTP 200');
+    assert.equal(jsonDono?.success, true);
+
+    // Financeiro
+    let statusFin = null;
+    let jsonFin = null;
+    const reqFin = {
       securityContext: {
         role: 'financeiro',
         permissions: userRepository.ROLE_PERMISSIONS.financeiro
-      }
+      },
+      body: { dryRun: true, force: true }
     };
-    mw(reqFinanceiro, {}, () => {
-      nextChamado = true;
+    const resFin = {
+      statusCode: 200,
+      status(c) { this.statusCode = c; statusFin = c; return this; },
+      json(o) { jsonFin = o; return this; }
+    };
+
+    let mwFinPassou = false;
+    await new Promise((resolve) => {
+      mw(reqFin, resFin, async () => {
+        mwFinPassou = true;
+        await handler(reqFin, resFin);
+        resolve();
+      });
     });
-    assert.equal(nextChamado, true, 'Financeiro deve ter acesso concedido');
+    assert.equal(mwFinPassou, true, 'Financeiro deve passar pelo middleware RBAC');
+    assert.equal(statusFin || resFin.statusCode, 200, 'Financeiro deve receber HTTP 200');
+    assert.equal(jsonFin?.success, true);
   });
 
   // 7. Teste de Notificação de Caixa via WhatsApp (Abertura e Fechamento)
