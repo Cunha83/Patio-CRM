@@ -2,10 +2,10 @@
   "projeto": "Patio-CRM",
   "versao": "1.0.0",
   "fase": "Fase 3 — Piloto Controlado em Ambiente Operacional",
-  "dataGeracao": "2026-10-17T00:22:07.457Z",
+  "dataGeracao": "2026-10-17T00:33:07.277Z",
   "git": {
-    "commit": "79af4f41bc3c2a654f68ee0582f1ff9f93bdbe6a",
-    "branch": "feat/veronica-executive-manager"
+    "commit": "f38ced6856f95011e91bfafee41b445e3c577ce3",
+    "branch": "main"
   },
   "ambienteExecucao": {
     "node": "v24.19.0",
@@ -139,7 +139,7 @@
     "services/customerTimelineService.js": "e9a01b448a583e8c5b0bf716ad5e790eea5e28f8250efb94997ceaaa53f2df1c",
     "services/demoDataService.js": "33ed44c377f6dd14ee9e9d414419ae4232880084bd2f77df828754cf2ba7dd01",
     "services/erpIntegrationService.js": "3c76f606c7af5831e0a413acd7e7fa5caba373d36e032c13f91c0ee629018ba4",
-    "services/executiveManagerService.js": "8b32de93f464a049d6bba458f31c4af999de75f2090aec4cf83605724cf77e8c",
+    "services/executiveManagerService.js": "c0f8ca6065507b17c02960b31601ac0b665263218a74e92bee776e9972c908f3",
     "services/financialAnalystService.js": "b588f58ab72a2d451638a4a2edcd01b86efc7069b570227a5e0f98778dc8c3cf",
     "services/financialEngine.js": "759a6a767f9ba676c154c6d1c2c88bf2ee434ab55d6d1c39e64714c95b0f23e5",
     "services/fiscal/decimal.js": "5c060f6cb2308e6da4d0e4e747d52012cdaaa1964b46b02e5354b2169ff4a7f1",
