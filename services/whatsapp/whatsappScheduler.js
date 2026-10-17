@@ -285,14 +285,18 @@ async function executarCicloDisparoRelatorioDiario(options = {}) {
   return resultados;
 }
 
+let timerRelatorio = null;
+let timerAlertasProativos = null;
+
 function iniciarAgendadorAlertasProativos() {
   if (process.env.DISABLE_INTEGRATIONS === 'true' || process.env.DISABLE_WHATSAPP === 'true') {
     console.log('[Agendador Alertas Proativos] Desativado em modo de teste / variáveis de ambiente.');
     return;
   }
 
+  if (timerAlertasProativos) return;
   console.log('[Agendador Alertas Proativos] Rotina periódica de SLA de orçamentos e boxes inicializada.');
-  setInterval(async () => {
+  timerAlertasProativos = setInterval(async () => {
     try {
       const rows = await all("SELECT key, value FROM kv WHERE key LIKE 'tenant:%:state' OR key = 'state'");
       const tenantEntries = (rows && rows.length > 0)
@@ -317,7 +321,15 @@ function iniciarAgendadorAlertasProativos() {
     } catch (err) {
       console.error('[Agendador Alertas Proativos] Erro no ciclo de avaliação:', err.message);
     }
-  }, 120000).unref();
+  }, 120000);
+  if (timerAlertasProativos.unref) timerAlertasProativos.unref();
+}
+
+function pararAgendadorAlertasProativos() {
+  if (timerAlertasProativos) {
+    clearInterval(timerAlertasProativos);
+    timerAlertasProativos = null;
+  }
 }
 
 function iniciarAgendadorRelatorioDiario() {
@@ -330,21 +342,35 @@ function iniciarAgendadorRelatorioDiario() {
   iniciarAgendadorAlertasProativos();
 
   console.log('[Agendador WhatsApp] Rotina matinal diária multi-tenant inicializada.');
-  setInterval(async () => {
+  if (timerRelatorio) return;
+  timerRelatorio = setInterval(async () => {
     try {
       await executarCicloDisparoRelatorioDiario();
     } catch (err) {
       console.error('[Agendador WhatsApp] Erro na execução periódica:', err.message);
     }
-  }, 30000).unref();
+  }, 30000);
+  if (timerRelatorio.unref) timerRelatorio.unref();
+}
+
+function pararAgendadorRelatorioDiario() {
+  if (timerRelatorio) {
+    clearInterval(timerRelatorio);
+    timerRelatorio = null;
+  }
+  pararAgendadorAlertasProativos();
 }
 
 module.exports = {
   iniciarAgendadorRelatorioDiario,
+  pararAgendadorRelatorioDiario,
   iniciarAgendadorAlertasProativos,
+  pararAgendadorAlertasProativos,
   executarCicloDisparoRelatorioDiario,
   jaEnviouHoje,
   registrarEnvioSucesso,
   _tentativasFalhaPorTenant: tentativasFalhaPorTenant,
   _ultimoDiaEnvioPorTenant: ultimoDiaEnvioPorTenant
 };
+
+

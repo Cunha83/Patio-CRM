@@ -641,6 +641,94 @@ async function enviarRelatorioAdministradores(destinatarioEspecifico = null, con
   };
 }
 
+/**
+ * Notificação via WhatsApp para evento de Abertura ou Fechamento de Caixa
+ * Disparo orientado a eventos, não-bloqueante, respeitando dryRun e WhatsApp offline
+ */
+async function notificarEventoCaixaWhatsApp({
+  tipo, // 'abertura' ou 'fechamento'
+  operadorNome,
+  saldoInicial,
+  saldoFinal,
+  diferenca,
+  dataHoraSP,
+  tenantKey = 'default',
+  state = null,
+  dryRun = false
+}) {
+  try {
+    const currentState = state || (await getOrLoadState({ headers: { 'x-tenant-id': tenantKey } }));
+    const cfg = currentState?.cfg || {};
+
+    // 1. Verifica flag avisarCaixaWhatsapp
+    if (!cfg.avisarCaixaWhatsapp) {
+      return { disparado: false, motivo: 'flag_desligado' };
+    }
+
+    // 2. Destinatário: grupoAdminId
+    const targetChatId = (cfg.grupoAdminId || process.env.WHATSAPP_GRUPO_ADMIN_ID || '').trim();
+    if (!targetChatId) {
+      console.warn(`[WhatsApp Caixa] Tenant ${tenantKey}: avisarCaixaWhatsapp ativo, mas grupoAdminId não configurado.`);
+      return { disparado: false, motivo: 'grupo_admin_nao_configurado' };
+    }
+
+    const agoraSP = dataHoraSP || financialEngine.obterAgoraSP();
+    const hora = agoraSP.horaBR;
+    const data = agoraSP.dataBR;
+    const nome = operadorNome || 'Operador';
+
+    let mensagem = '';
+    if (tipo === 'abertura') {
+      const saldoIniFmt = financialEngine.formatarMoeda(saldoInicial || 0);
+      mensagem = `🔓 *Aviso de Abertura de Caixa*\n\n` +
+                 `👤 *Operador:* ${nome}\n` +
+                 `🕒 *Horário:* ${data} às ${hora} (SP)\n` +
+                 `💵 *Saldo Inicial:* ${saldoIniFmt}`;
+    } else {
+      const saldoFimFmt = financialEngine.formatarMoeda(saldoFinal || 0);
+      const difNum = Number(diferenca) || 0;
+      let linhaDif = '';
+      if (Math.abs(difNum) >= 0.01) {
+        const difFmt = financialEngine.formatarMoeda(Math.abs(difNum));
+        linhaDif = `\n⚖️ *Diferença:* ${difNum < 0 ? 'Quebra de -' : 'Sobra de +'}${difFmt}`;
+      } else {
+        linhaDif = `\n⚖️ *Diferença:* R$ 0,00 (Caixa 100% conferido)`;
+      }
+      mensagem = `🔒 *Aviso de Fechamento de Caixa*\n\n` +
+                 `👤 *Operador:* ${nome}\n` +
+                 `🕒 *Horário:* ${data} às ${hora} (SP)\n` +
+                 `💰 *Saldo Final:* ${saldoFimFmt}` +
+                 linhaDif;
+    }
+
+    // Modo dryRun
+    if (dryRun) {
+      return { disparado: true, dryRun: true, targetChatId, mensagem };
+    }
+
+    // Checagem de cliente WhatsApp conectado
+    const wppClient = getWppClient();
+    const wppStatus = getWppStatus();
+    if (!wppClient || wppStatus?.status !== 'pronto') {
+      console.warn(`[WhatsApp Caixa] WhatsApp desconectado ou não pronto (status: ${wppStatus?.status || 'desconhecido'}). Mensagem de caixa não enviada.`);
+      return { disparado: false, motivo: 'whatsapp_desconectado', wppStatus: wppStatus?.status };
+    }
+
+    await fecharModaisWhatsAppWeb();
+    const sent = await wppClient.sendMessage(targetChatId, mensagem, { waitUntilMsgSent: true });
+    return {
+      disparado: true,
+      sucesso: true,
+      targetChatId,
+      messageId: sent?.id?._serialized || null,
+      mensagem
+    };
+  } catch (err) {
+    console.error(`[WhatsApp Caixa] Falha não-bloqueante ao enviar notificação de ${tipo} de caixa:`, err.message);
+    return { disparado: false, erro: err.message };
+  }
+}
+
 module.exports = {
   gerarRelatorioExecutivo,
   gerarMensagensAdmin,
@@ -650,5 +738,7 @@ module.exports = {
   gerarImagemIndicadoresJPG,
   enviarRelatorioGrupo,
   enviarRelatorioAdministradores,
+  notificarEventoCaixaWhatsApp,
   closeRenderBrowser
 };
+

@@ -10,6 +10,7 @@ const {
 } = require('../lib/serverContext');
 const financialAnalystService = require('../services/financialAnalystService');
 const financialEngine = require('../services/financialEngine');
+const { notificarEventoCaixaWhatsApp } = require('../services/reportGenerationService');
 
 /**
  * 1. GET /api/financeiro/resumo
@@ -99,6 +100,20 @@ router.post('/api/financeiro/caixa/abrir', requirePermission('financial:write', 
       });
     }
 
+    // Disparo orientado a eventos para WhatsApp (não bloqueia nem quebra o caixa em caso de falha)
+    try {
+      const dryRun = Boolean(req.body?.dryRun);
+      notificarEventoCaixaWhatsApp({
+        tipo: 'abertura',
+        operadorNome,
+        saldoInicial: resultado.caixa?.saldoInicial,
+        tenantKey: tenantId,
+        dryRun
+      }).catch(errWpp => console.warn('[Caixa WhatsApp] Aviso ao enviar notificação de abertura:', errWpp.message));
+    } catch (eWpp) {
+      console.warn('[Caixa WhatsApp] Falha silenciosa no disparo de abertura:', eWpp.message);
+    }
+
     res.status(201).json({
       success: true,
       mensagem: resultado.mensagem,
@@ -148,6 +163,21 @@ router.post('/api/financeiro/caixa/fechar', requirePermission('financial:write',
         success: false,
         error: saveRes?.error || 'Falha ao persistir fechamento de caixa.'
       });
+    }
+
+    // Disparo orientado a eventos para WhatsApp (não bloqueia nem quebra o caixa em caso de falha)
+    try {
+      const dryRun = Boolean(req.body?.dryRun);
+      notificarEventoCaixaWhatsApp({
+        tipo: 'fechamento',
+        operadorNome,
+        saldoFinal: resultado.caixaFechado?.saldoFinal,
+        diferenca: resultado.resumoFechamento?.diferenca,
+        tenantKey: tenantId,
+        dryRun
+      }).catch(errWpp => console.warn('[Caixa WhatsApp] Aviso ao enviar notificação de fechamento:', errWpp.message));
+    } catch (eWpp) {
+      console.warn('[Caixa WhatsApp] Falha silenciosa no disparo de fechamento:', eWpp.message);
     }
 
     res.json({

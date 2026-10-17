@@ -217,9 +217,166 @@ test('Agendador de Relatório Diário do WhatsApp: Horário, Idempotência, Flag
     assert.equal(rAlfaRestart.motivo, 'ja_enviado_hoje');
   });
 
+  // 6. Teste de RBAC na rota /api/whatsapp/agendador-relatorio/executar
+  await t.test('6. RBAC: mecanico e atendente recebem 403 ao tentar executar agendador de relatório', async () => {
+    const { requirePermission } = require('../lib/serverContext');
+    const userRepository = require('../lib/auth/userRepository');
+
+    const mw = requirePermission('whatsapp:admin', 'financial:write');
+
+    // Simula atendente
+    let statusAtendente = null;
+    let jsonAtendente = null;
+    const reqAtendente = {
+      securityContext: {
+        role: 'atendente',
+        permissions: userRepository.ROLE_PERMISSIONS.atendente
+      }
+    };
+    const resAtendente = {
+      status(code) { statusAtendente = code; return this; },
+      json(obj) { jsonAtendente = obj; return this; }
+    };
+    mw(reqAtendente, resAtendente, () => {
+      assert.fail('Atendente não deveria ter permissão');
+    });
+    assert.equal(statusAtendente, 403, 'Atendente deve receber status 403');
+    assert.ok(jsonAtendente && jsonAtendente.error.includes('Acesso negado'));
+
+    // Simula mecanico
+    let statusMecanico = null;
+    let jsonMecanico = null;
+    const reqMecanico = {
+      securityContext: {
+        role: 'mecanico',
+        permissions: userRepository.ROLE_PERMISSIONS.mecanico
+      }
+    };
+    const resMecanico = {
+      status(code) { statusMecanico = code; return this; },
+      json(obj) { jsonMecanico = obj; return this; }
+    };
+    mw(reqMecanico, resMecanico, () => {
+      assert.fail('Mecanico não deveria ter permissão');
+    });
+    assert.equal(statusMecanico, 403, 'Mecanico deve receber status 403');
+    assert.ok(jsonMecanico && jsonMecanico.error.includes('Acesso negado'));
+
+    // Simula financeiro ou admin (permissão concedida)
+    let nextChamado = false;
+    const reqFinanceiro = {
+      securityContext: {
+        role: 'financeiro',
+        permissions: userRepository.ROLE_PERMISSIONS.financeiro
+      }
+    };
+    mw(reqFinanceiro, {}, () => {
+      nextChamado = true;
+    });
+    assert.equal(nextChamado, true, 'Financeiro deve ter acesso concedido');
+  });
+
+  // 7. Teste de Notificação de Caixa via WhatsApp (Abertura e Fechamento)
+  await t.test('7. Aviso de Caixa WhatsApp: flag ligado, desligado, WhatsApp offline tolerante e formato da mensagem', async () => {
+    const { notificarEventoCaixaWhatsApp } = require('../services/reportGenerationService');
+
+    const stateComFlagLigado = {
+      cfg: {
+        avisarCaixaWhatsapp: true,
+        grupoAdminId: '120363000000000001@g.us'
+      }
+    };
+
+    const stateComFlagDesligado = {
+      cfg: {
+        avisarCaixaWhatsapp: false,
+        grupoAdminId: '120363000000000001@g.us'
+      }
+    };
+
+    // A. Flag desligado -> não dispara
+    const resDesligado = await notificarEventoCaixaWhatsApp({
+      tipo: 'abertura',
+      operadorNome: 'Carlos Atendente',
+      saldoInicial: 250,
+      state: stateComFlagDesligado,
+      dryRun: false
+    });
+    assert.equal(resDesligado.disparado, false);
+    assert.equal(resDesligado.motivo, 'flag_desligado');
+
+    // B. Flag ligado e modo dryRun -> formata mensagem e valida dados
+    const resAberturaDry = await notificarEventoCaixaWhatsApp({
+      tipo: 'abertura',
+      operadorNome: 'Carlos Atendente',
+      saldoInicial: 300,
+      state: stateComFlagLigado,
+      dryRun: true
+    });
+    assert.equal(resAberturaDry.disparado, true);
+    assert.equal(resAberturaDry.dryRun, true);
+    assert.ok(resAberturaDry.mensagem.includes('Aviso de Abertura de Caixa'));
+    assert.ok(resAberturaDry.mensagem.includes('Carlos Atendente'));
+    assert.ok(resAberturaDry.mensagem.includes('R$ 300,00') || resAberturaDry.mensagem.includes('300,00'));
+
+    const resFechamentoDry = await notificarEventoCaixaWhatsApp({
+      tipo: 'fechamento',
+      operadorNome: 'Ana Gerente',
+      saldoFinal: 1850.50,
+      diferenca: -15.00,
+      state: stateComFlagLigado,
+      dryRun: true
+    });
+    assert.equal(resFechamentoDry.disparado, true);
+    assert.ok(resFechamentoDry.mensagem.includes('Aviso de Fechamento de Caixa'));
+    assert.ok(resFechamentoDry.mensagem.includes('Ana Gerente'));
+    assert.ok(resFechamentoDry.mensagem.includes('1.850,50'));
+    assert.ok(resFechamentoDry.mensagem.includes('Quebra de -'));
+
+    // C. WhatsApp offline -> não lança exceção e retorna motivo sem quebrar operação
+    setWppClient(null);
+    wppStatus.status = 'desconectado';
+
+    const resOffline = await notificarEventoCaixaWhatsApp({
+      tipo: 'abertura',
+      operadorNome: 'Carlos Atendente',
+      saldoInicial: 100,
+      state: stateComFlagLigado,
+      dryRun: false
+    });
+    assert.equal(resOffline.disparado, false);
+    assert.equal(resOffline.motivo, 'whatsapp_desconectado');
+
+    // D. WhatsApp conectado com Mock -> envia mensagem com sucesso
+    let msgsEnviadas = [];
+    const mockClientCaixa = {
+      sendMessage: async (chatId, msg) => {
+        msgsEnviadas.push({ chatId, msg });
+        return { id: { _serialized: `msg_cx_${Date.now()}` } };
+      }
+    };
+    setWppClient(mockClientCaixa);
+    wppStatus.status = 'pronto';
+
+    const resEnvioOk = await notificarEventoCaixaWhatsApp({
+      tipo: 'fechamento',
+      operadorNome: 'Ana Gerente',
+      saldoFinal: 2000,
+      diferenca: 0,
+      state: stateComFlagLigado,
+      dryRun: false
+    });
+    assert.equal(resEnvioOk.disparado, true);
+    assert.equal(resEnvioOk.sucesso, true);
+    assert.equal(msgsEnviadas.length, 1);
+    assert.equal(msgsEnviadas[0].chatId, '120363000000000001@g.us');
+    assert.ok(msgsEnviadas[0].msg.includes('Aviso de Fechamento de Caixa'));
+  });
+
   // Limpeza
   await closeDB();
   try {
     fs.rmSync(tempDir, { recursive: true, force: true });
   } catch (_) {}
 });
+

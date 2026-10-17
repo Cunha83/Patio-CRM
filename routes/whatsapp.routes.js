@@ -294,7 +294,7 @@ router.post('/api/whatsapp/disparar-relatorio-admin', authMiddleware, async (req
   }
 });
 
-router.post('/api/whatsapp/agendador-relatorio/executar', authMiddleware, async (req, res) => {
+router.post('/api/whatsapp/agendador-relatorio/executar', authMiddleware, requirePermission('whatsapp:admin', 'financial:write'), async (req, res) => {
   try {
     const { dryRun, force, horaRef, dataRef } = req.body || {};
     const resultados = await executarCicloDisparoRelatorioDiario({
@@ -320,6 +320,7 @@ router.get('/api/whatsapp/config-grupos', async (req, res) => {
       horaRelatorio: cfg.horaRelatorioDiario || process.env.HORA_RELATORIO_DIARIO || '07:30',
       envioAutomatico: cfg.envioAutomaticoRelatorio !== false && process.env.ENVIO_AUTOMATICO_RELATORIO !== 'false',
       apenasDiasUteis: cfg.relatorioApenasDiasUteis !== false && process.env.RELATORIO_APENAS_DIAS_UTEIS !== 'false',
+      avisarCaixaWhatsapp: Boolean(cfg.avisarCaixaWhatsapp),
       wppStatus: wppStatus.status
     });
   } catch (err) {
@@ -333,7 +334,7 @@ router.post('/api/whatsapp/config-grupos', authMiddleware, async (req, res) => {
     if (!targetState) return res.status(404).json({ error: 'Tenant não encontrado.' });
     if (!targetState.cfg) targetState.cfg = {};
 
-    const { grupoAdminId, grupoOperacaoId, horaRelatorio, envioAutomatico, apenasDiasUteis } = req.body || {};
+    const { grupoAdminId, grupoOperacaoId, horaRelatorio, envioAutomatico, apenasDiasUteis, avisarCaixaWhatsapp } = req.body || {};
 
     let cfgAtualizada = null;
     const mutateRes = await mutateTenantState(req, async (draft) => {
@@ -349,6 +350,7 @@ router.post('/api/whatsapp/config-grupos', authMiddleware, async (req, res) => {
       if (horaRelatorio) draft.cfg.horaRelatorioDiario = horaRelatorio;
       if (typeof envioAutomatico === 'boolean') draft.cfg.envioAutomaticoRelatorio = envioAutomatico;
       if (typeof apenasDiasUteis === 'boolean') draft.cfg.relatorioApenasDiasUteis = apenasDiasUteis;
+      if (typeof avisarCaixaWhatsapp === 'boolean') draft.cfg.avisarCaixaWhatsapp = avisarCaixaWhatsapp;
       cfgAtualizada = draft.cfg;
       return draft;
     });
@@ -373,12 +375,14 @@ router.get('/api/whatsapp/config-relatorio', async (req, res) => {
     const horaRelatorio = cfg.horaRelatorioDiario || process.env.HORA_RELATORIO_DIARIO || '07:30';
     const envioAutomatico = cfg.envioAutomaticoRelatorio !== false && process.env.ENVIO_AUTOMATICO_RELATORIO !== 'false';
     const apenasDiasUteis = cfg.relatorioApenasDiasUteis !== false && process.env.RELATORIO_APENAS_DIAS_UTEIS !== 'false';
+    const avisarCaixaWhatsapp = Boolean(cfg.avisarCaixaWhatsapp);
 
     res.json({
       adminFones,
       horaRelatorio,
       envioAutomatico,
       apenasDiasUteis,
+      avisarCaixaWhatsapp,
       wppStatus: wppStatus.status
     });
   } catch (err) {
@@ -388,7 +392,7 @@ router.get('/api/whatsapp/config-relatorio', async (req, res) => {
 
 router.post('/api/whatsapp/config-relatorio', authMiddleware, async (req, res) => {
   try {
-    const { adminFones, horaRelatorio, envioAutomatico, apenasDiasUteis } = req.body || {};
+    const { adminFones, horaRelatorio, envioAutomatico, apenasDiasUteis, avisarCaixaWhatsapp } = req.body || {};
 
     let cfgAtualizada = null;
     const mutateRes = await mutateTenantState(req, async (draft) => {
@@ -397,6 +401,7 @@ router.post('/api/whatsapp/config-relatorio', authMiddleware, async (req, res) =
       if (horaRelatorio) draft.cfg.horaRelatorioDiario = horaRelatorio;
       if (typeof envioAutomatico === 'boolean') draft.cfg.envioAutomaticoRelatorio = envioAutomatico;
       if (typeof apenasDiasUteis === 'boolean') draft.cfg.relatorioApenasDiasUteis = apenasDiasUteis;
+      if (typeof avisarCaixaWhatsapp === 'boolean') draft.cfg.avisarCaixaWhatsapp = avisarCaixaWhatsapp;
       cfgAtualizada = draft.cfg;
       return draft;
     });

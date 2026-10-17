@@ -35,7 +35,7 @@ const {
 
 const { resolverTenantPorChatId } = require('./services/whatsapp/whatsappState');
 const { iniciarWhatsApp, finalizarProcessosFilhos } = require('./services/whatsapp/whatsappClient');
-const { iniciarAgendadorRelatorioDiario } = require('./services/whatsapp/whatsappScheduler');
+const { iniciarAgendadorRelatorioDiario, pararAgendadorRelatorioDiario } = require('./services/whatsapp/whatsappScheduler');
 const { mountRoutes } = require('./routes');
 
 // Inicializa cliente Gemini AI se configurado
@@ -230,6 +230,7 @@ let shuttingDown = false;
 async function shutdown(signal) {
   if (shuttingDown) return;
   shuttingDown = true;
+  pararAgendadorRelatorioDiario();
   await finalizarProcessosFilhos(signal);
   if (patioSupport) await patioSupport.close();
   await enqueueWrite(() => closeDB());
