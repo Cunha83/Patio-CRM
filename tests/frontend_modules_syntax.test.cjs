@@ -36,7 +36,7 @@ test('valida sintaxe de todos os arquivos JS do frontend via new vm.Script()', (
   }
 
   const moduleFiles = fs.readdirSync(modulesDir).filter(f => f.endsWith('.js'));
-  assert.ok(moduleFiles.length >= 6, 'Diretório js/modules deve conter ao menos os 6 módulos extraídos');
+  assert.ok(moduleFiles.length >= 10, 'Diretório js/modules deve conter ao menos os 10 módulos extraídos');
 
   for (const mf of moduleFiles) {
     const filePath = path.join(modulesDir, mf);
@@ -57,13 +57,17 @@ test('index.html inclui todos os modulos na ordem correta', () => {
     'js/modules/navigation.js',
     'js/modules/integrations.js',
     'js/modules/consulta_cliente.js',
+    'js/modules/patio_render.js',
     'js/patio.js',
     'js/estoque.js',
     'js/financeiro.js',
+    'js/modules/financeiro_analista.js',
     'js/whatsapp.js',
     'js/modules/cadastros_fiscal.js',
     'js/cadastros.js',
+    'js/modules/cadastros_forms.js',
     'js/relatorios.js',
+    'js/modules/dashboard_metrics.js',
     'js/dashboard_operacional.js',
     'js/modules/agent_config.js',
     'js/app.js',

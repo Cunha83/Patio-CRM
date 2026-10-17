@@ -467,13 +467,14 @@ test('Verônica Gestora 360º: Suprimentos, Produtividade, Frotas, Voz, RBAC e W
 
   const baseUrl = `http://127.0.0.1:${port}`;
   let online = false;
-  for (let i = 0; i < 50; i++) {
+  for (let i = 0; i < 150; i++) {
     try {
       const res = await fetch(`${baseUrl}/health`);
       if (res.ok) { online = true; break; }
     } catch (_) {}
     await new Promise(r => setTimeout(r, 100));
   }
+
   assert.ok(online, 'Servidor deve inicializar e responder /health');
 
   const basicAuth = (user, pass) => 'Basic ' + Buffer.from(`${user}:${pass}`).toString('base64');

@@ -224,8 +224,14 @@ function calcularCustoRealOS({ tenantId, state, osId }) {
 }
 
 module.exports = {
+  // Existing exports
   calcularCustoMaoDeObraOS,
   calcularCustoPecasOS,
   calcularCustoRealOS,
+  // New alias for DRE per OS
+  obterDREPorOS: calcularCustoRealOS,
+  // Preserve previous alias for backward compatibility
   calcularMargemOS: calcularCustoRealOS
 };
+
+

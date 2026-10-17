@@ -9,6 +9,8 @@ const vm = require('vm');
 function loadPatioSandbox(perfilAtivo = 'mecanico') {
   const stateCode = fs.readFileSync(path.resolve(__dirname, '../js/state.js'), 'utf8');
   const iconsCode = fs.readFileSync(path.resolve(__dirname, '../js/icons.js'), 'utf8');
+  const patioRenderPath = path.resolve(__dirname, '../js/modules/patio_render.js');
+  const patioRenderCode = fs.existsSync(patioRenderPath) ? fs.readFileSync(patioRenderPath, 'utf8') : '';
   const patioCode = fs.readFileSync(path.resolve(__dirname, '../js/patio.js'), 'utf8');
 
   let windowPrintCalled = false;
@@ -47,7 +49,9 @@ function loadPatioSandbox(perfilAtivo = 'mecanico') {
   vm.createContext(sandbox);
   vm.runInContext(stateCode, sandbox);
   vm.runInContext(iconsCode, sandbox);
+  if (patioRenderCode) vm.runInContext(patioRenderCode, sandbox);
   vm.runInContext(patioCode, sandbox);
+
 
   // Inicializa estado lexical no contexto da VM
   vm.runInContext(`
