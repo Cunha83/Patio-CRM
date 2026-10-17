@@ -523,29 +523,31 @@ test('WhatsApp Agente Financeiro - Suíte Completa de Leitura e Escrita Controla
     assert.equal(caixaAberto, null, 'Caixa não deve abrir com confirmação expirada');
   });
 
-  // ── 10. IDEMPOTÊNCIA DURÁVEL EM SQLITE KV COM TTL ───────────────────
+  // ── 10. IDEMPOTÊNCIA DURÁVEL EM SQLITE KV COM TTL (PREFIXADA POR TENANT) ───
   await t.test('10. Idempotência durável em SQLite KV com TTL: sobrevive à limpeza da memória', async () => {
     const msgId = 'true_5511999998888@c.us_DURABLE_TEST_001';
+    const tenantId = 'oficina_alfa';
 
     // Inicialmente não duplicada
-    const check1 = await verificarIdempotencia(msgId);
+    const check1 = await verificarIdempotencia(msgId, tenantId);
     assert.equal(check1.duplicada, false);
 
     // Registra idempotência durável
-    await registrarIdempotencia(msgId, 'Resposta salva no SQLite KV');
+    await registrarIdempotencia(msgId, 'Resposta salva no SQLite KV', tenantId);
 
-    // Confere que gravou no SQLite KV
-    const row = await get('SELECT value FROM kv WHERE key = ?', [`wpp_msg:${msgId}`]);
-    assert.ok(row && row.value, 'Deve ter persistido no SQLite KV');
+    // Confere que gravou no SQLite KV com o prefixo do tenant
+    const row = await get('SELECT value FROM kv WHERE key = ?', [`tenant:${tenantId}:wpp_msg:${msgId}`]);
+    assert.ok(row && row.value, 'Deve ter persistido no SQLite KV com chave prefixada');
     const parsed = JSON.parse(row.value);
     assert.equal(parsed.resposta, 'Resposta salva no SQLite KV');
+    assert.equal(parsed.tenantKey, tenantId);
     assert.ok(parsed.expiraEm > Date.now());
 
     // Limpa a memória RAM para simular restart do processo
     mensagensProcessadas.clear();
 
     // Consulta novamente: deve buscar do SQLite KV e reportar duplicada com a mesma resposta
-    const check2 = await verificarIdempotencia(msgId);
+    const check2 = await verificarIdempotencia(msgId, tenantId);
     assert.equal(check2.duplicada, true);
     assert.equal(check2.resposta, 'Resposta salva no SQLite KV');
   });
@@ -572,5 +574,110 @@ test('WhatsApp Agente Financeiro - Suíte Completa de Leitura e Escrita Controla
     assert.equal(replies.length, 1);
     assert.match(replies[0], /whitelist/i);
     assert.equal(confirmacoesPendentes.size, 0);
+  });
+
+  // ── 12. ISOLAMENTO DE IDEMPOTÊNCIA ENTRE TENANTS DISTINTOS ─────────
+  await t.test('12. Isolamento de idempotência: mesmo msgId em tenants diferentes não conflita', async () => {
+    const msgId = 'msg_compartilhada_id_999';
+    const tenantA = 'tenant_oficina_a';
+    const tenantB = 'tenant_oficina_b';
+
+    mensagensProcessadas.clear();
+
+    // Registra mensagem no Tenant A
+    await registrarIdempotencia(msgId, 'Resposta Tenant A', tenantA);
+
+    // No Tenant A deve constar como duplicada
+    const checkA = await verificarIdempotencia(msgId, tenantA);
+    assert.equal(checkA.duplicada, true);
+    assert.equal(checkA.resposta, 'Resposta Tenant A');
+
+    // No Tenant B a mesma mensagem NÃO deve constar como duplicada
+    const checkB = await verificarIdempotencia(msgId, tenantB);
+    assert.equal(checkB.duplicada, false, 'Tenant B não deve ser afetado pelo registro do Tenant A');
+  });
+
+  // ── 13. LIMITE DE VALOR POR LANÇAMENTO VIA WHATSAPP (PADRÃO R$ 1.000)
+  await t.test('13. Limite de valor por lançamento via WhatsApp: padrão R$ 1.000,00, bloqueio pré-confirmação e auditoria', async () => {
+    const mockState = criarEstadoMock();
+    financialAnalystService.abrirCaixa(mockState, {
+      tenantId: 'default',
+      saldoInicial: 500,
+      operador: '5511999998888',
+      operadorNome: 'Admin'
+    });
+    const numeroAdmin = '5511999998888';
+
+    // 13.1 Valor no limite exato de R$ 1.000,00 -> passa para CONFIRMAÇÃO
+    const repliesNoLimite = [];
+    await processarMensagemTexto({
+      from: `${numeroAdmin}@c.us`,
+      author: `${numeroAdmin}@c.us`,
+      body: 'lançar entrada de R$ 1.000,00 referente a pagamento de serviço',
+      reply: async (txt) => { repliesNoLimite.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: numeroAdmin });
+
+    assert.equal(repliesNoLimite.length, 1);
+    assert.match(repliesNoLimite[0], /CONFIRMAÇÃO DE OPERAÇÃO FINANCEIRA/);
+    assert.match(repliesNoLimite[0], /1\.000,00/);
+    confirmacoesPendentes.clear();
+
+    // 13.2 Valor acima do limite padrão (ex: R$ 1.000,01 ou R$ 1.500,00) -> recusa sem pedir confirmação
+    const repliesAcima = [];
+    await processarMensagemTexto({
+      from: `${numeroAdmin}@c.us`,
+      author: `${numeroAdmin}@c.us`,
+      body: 'lançar entrada de R$ 1.500,00 referente a pagamento lote',
+      reply: async (txt) => { repliesAcima.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: numeroAdmin });
+
+    assert.equal(repliesAcima.length, 1);
+    assert.match(repliesAcima[0], /Limite Excedido/i);
+    assert.match(repliesAcima[0], /Pátio CRM Web/i);
+    assert.equal(confirmacoesPendentes.size, 0, 'Não deve gerar pendência quando exceder o limite');
+
+    // 13.3 Abertura de caixa acima do limite -> também recusa
+    const mockSemCaixa = criarEstadoMock();
+    const repliesAberturaAcima = [];
+    await processarMensagemTexto({
+      from: `${numeroAdmin}@c.us`,
+      author: `${numeroAdmin}@c.us`,
+      body: 'abrir caixa com R$ 2.000,00',
+      reply: async (txt) => { repliesAberturaAcima.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockSemCaixa, fromNumber: numeroAdmin });
+
+    assert.equal(repliesAberturaAcima.length, 1);
+    assert.match(repliesAberturaAcima[0], /Limite Excedido/i);
+    assert.equal(confirmacoesPendentes.size, 0);
+
+    // 13.4 Configuração customizada válida (ex: R$ 500,00)
+    mockState.cfg.limiteValorLancamentoWhatsapp = 500.00;
+    const repliesCustomAcima = [];
+    await processarMensagemTexto({
+      from: `${numeroAdmin}@c.us`,
+      author: `${numeroAdmin}@c.us`,
+      body: 'lançar saída de R$ 600,00 referente a ferramenta',
+      reply: async (txt) => { repliesCustomAcima.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: numeroAdmin });
+
+    assert.match(repliesCustomAcima[0], /Limite Excedido/i);
+    assert.match(repliesCustomAcima[0], /500,00/);
+
+    // 13.5 Configuração inválida, zerada ou negativa -> volta estritamente para o padrão R$ 1.000,00
+    mockState.cfg.limiteValorLancamentoWhatsapp = 0; // Inválido / Tentativa de burlar limite
+    const repliesCfgInvalida = [];
+    await processarMensagemTexto({
+      from: `${numeroAdmin}@c.us`,
+      author: `${numeroAdmin}@c.us`,
+      body: 'lançar saída de R$ 1.200,00 referente a peça cara',
+      reply: async (txt) => { repliesCfgInvalida.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: numeroAdmin });
+
+    assert.match(repliesCfgInvalida[0], /Limite Excedido/i);
+    assert.match(repliesCfgInvalida[0], /1\.000,00/, 'Deve adotar o fallback seguro de R$ 1.000,00');
+
+    // 13.6 Auditoria gravada com resultado negado_limite
+    const auditRows = await all("SELECT * FROM security_audit_log WHERE details_json LIKE '%negado_limite%'");
+    assert.ok(auditRows.length >= 3, 'Deve registrar eventos de auditoria com resultado negado_limite');
   });
 });

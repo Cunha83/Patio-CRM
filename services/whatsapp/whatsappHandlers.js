@@ -82,17 +82,18 @@ setInterval(() => {
   }
 }, 5 * 60 * 1000).unref();
 
-// Idempotência por ID de mensagem do WhatsApp (TTL 10 minutos, durável em SQLite KV)
+// Idempotência por ID de mensagem do WhatsApp prefixada por Tenant (TTL 10 minutos, durável em SQLite KV)
 const mensagensProcessadas = new Map();
 const IDEMPOTENCIA_TTL_MS = 10 * 60 * 1000;
 
-async function verificarIdempotencia(msgId) {
+async function verificarIdempotencia(msgId, tenantKey = 'default') {
   if (!msgId) return { duplicada: false };
   const agora = Date.now();
   const idStr = String(msgId);
+  const chaveTenant = `tenant:${tenantKey}:wpp_msg:${idStr}`;
 
   // 1. Cache em memória para resposta rápida
-  const regMem = mensagensProcessadas.get(idStr);
+  const regMem = mensagensProcessadas.get(chaveTenant);
   if (regMem && agora - regMem.timestamp < IDEMPOTENCIA_TTL_MS) {
     return { duplicada: true, resposta: regMem.resposta };
   }
@@ -101,11 +102,11 @@ async function verificarIdempotencia(msgId) {
   try {
     const { get } = require('../../db');
     if (get && typeof get === 'function') {
-      const row = await get('SELECT value FROM kv WHERE key = ?', [`wpp_msg:${idStr}`]);
+      const row = await get('SELECT value FROM kv WHERE key = ?', [chaveTenant]);
       if (row && row.value) {
         const parsed = safeJsonParse(row.value);
         if (parsed && agora < (parsed.expiraEm || 0)) {
-          mensagensProcessadas.set(idStr, { timestamp: parsed.timestamp, resposta: parsed.resposta });
+          mensagensProcessadas.set(chaveTenant, { timestamp: parsed.timestamp, resposta: parsed.resposta });
           return { duplicada: true, resposta: parsed.resposta };
         }
       }
@@ -117,22 +118,23 @@ async function verificarIdempotencia(msgId) {
   return { duplicada: false };
 }
 
-async function registrarIdempotencia(msgId, resposta = null) {
+async function registrarIdempotencia(msgId, resposta = null, tenantKey = 'default') {
   if (!msgId) return;
   const agora = Date.now();
   const idStr = String(msgId);
-  mensagensProcessadas.set(idStr, { timestamp: agora, resposta });
+  const chaveTenant = `tenant:${tenantKey}:wpp_msg:${idStr}`;
+  mensagensProcessadas.set(chaveTenant, { timestamp: agora, resposta });
 
   try {
     const { run } = require('../../db');
     if (run && typeof run === 'function') {
-      const key = `wpp_msg:${idStr}`;
       const value = JSON.stringify({
         timestamp: agora,
         resposta,
+        tenantKey,
         expiraEm: agora + IDEMPOTENCIA_TTL_MS
       });
-      await run('INSERT OR REPLACE INTO kv (key, value) VALUES (?, ?)', [key, value]);
+      await run('INSERT OR REPLACE INTO kv (key, value) VALUES (?, ?)', [chaveTenant, value]);
     }
   } catch (err) {
     console.warn('[WhatsApp Idempotência] Falha tolerante ao persistir KV SQLite:', err.message);
@@ -150,7 +152,7 @@ setInterval(async () => {
     const { run } = require('../../db');
     if (run && typeof run === 'function') {
       // Remove chaves antigas de mensagem expiradas do kv
-      await run("DELETE FROM kv WHERE key LIKE 'wpp_msg:%' AND json_extract(value, '$.expiraEm') < ?", [agora]);
+      await run("DELETE FROM kv WHERE key LIKE '%:wpp_msg:%' AND json_extract(value, '$.expiraEm') < ?", [agora]);
     }
   } catch (_) {}
 }, 5 * 60 * 1000).unref();
@@ -712,6 +714,22 @@ async function processarMensagemTexto(msg, {
       }
 
       const valorFinal = resValor.valor;
+      const rawLimite = Number(tenantState?.cfg?.limiteValorLancamentoWhatsapp);
+      const limiteMax = (!isNaN(rawLimite) && rawLimite > 0) ? rawLimite : 1000.00;
+
+      if (valorFinal > limiteMax) {
+        const respLimite = `🚫 *Limite Excedido:* O valor informado (${financialEngine.formatarMoeda(valorFinal)}) excede o limite máximo permitido para operações via WhatsApp (${financialEngine.formatarMoeda(limiteMax)}). Por questões de segurança, realize esta abertura diretamente pelo painel do Pátio CRM Web.`;
+        await msg.reply(respLimite);
+        await auditarComandoWhatsApp({
+          tenantId: tenantKey,
+          numero: senderNorm,
+          comando: textoMensagem,
+          resultado: 'negado_limite',
+          detalhes: { acao: 'abrir_caixa', valor: valorFinal, limite: limiteMax }
+        });
+        return true;
+      }
+
       confirmacoesPendentes.set(chavePendente, {
         acao: 'abrir_caixa',
         descricaoAcao: 'Abertura de Caixa',
@@ -795,13 +813,30 @@ async function processarMensagemTexto(msg, {
         return true;
       }
 
+      const valorFinal = resValor.valor;
+      const rawLimite = Number(tenantState?.cfg?.limiteValorLancamentoWhatsapp);
+      const limiteMax = (!isNaN(rawLimite) && rawLimite > 0) ? rawLimite : 1000.00;
+
+      if (valorFinal > limiteMax) {
+        const respLimite = `🚫 *Limite Excedido:* O valor informado (${financialEngine.formatarMoeda(valorFinal)}) excede o limite máximo permitido para operações via WhatsApp (${financialEngine.formatarMoeda(limiteMax)}). Por questões de segurança, realize este lançamento diretamente pelo painel do Pátio CRM Web.`;
+        await msg.reply(respLimite);
+        await auditarComandoWhatsApp({
+          tenantId: tenantKey,
+          numero: senderNorm,
+          comando: textoMensagem,
+          resultado: 'negado_limite',
+          detalhes: { acao: 'lancar_entrada', valor: valorFinal, limite: limiteMax }
+        });
+        return true;
+      }
+
       const matchDesc = textoMensagem.match(/(?:referente\s+a|motivo|para|com|descrição|descricao)\s+(.+)$/i);
       const descricaoFinal = matchDesc ? matchDesc[1].trim() : 'Entrada avulsa no caixa';
 
       confirmacoesPendentes.set(chavePendente, {
         acao: 'lancar_entrada',
         descricaoAcao: 'Lançar Entrada',
-        valor: resValor.valor,
+        valor: valorFinal,
         descricao: descricaoFinal,
         expiraEm: Date.now() + CONFIRMACAO_TTL_MS,
         tenantKey,
@@ -813,13 +848,13 @@ async function processarMensagemTexto(msg, {
         `⚠️ *CONFIRMAÇÃO DE OPERAÇÃO FINANCEIRA* ⚠️\n\n` +
         `Por favor, confira os dados da operação:\n` +
         `• *Ação:* Lançar Entrada\n` +
-        `• *Valor:* ${financialEngine.formatarMoeda(resValor.valor)}\n` +
+        `• *Valor:* ${financialEngine.formatarMoeda(valorFinal)}\n` +
         `• *Descrição:* ${descricaoFinal}\n\n` +
         `Para executar, responda exatamente *CONFIRMAR* em até 2 minutos.\n` +
         `Qualquer outra resposta cancelará esta operação.`;
 
       await msg.reply(msgConfirm);
-      await auditarComandoWhatsApp({ tenantId: tenantKey, numero: senderNorm, comando: textoMensagem, resultado: 'aguardando_confirmacao', detalhes: { acao: 'lancar_entrada', valor: resValor.valor, descricao: descricaoFinal } });
+      await auditarComandoWhatsApp({ tenantId: tenantKey, numero: senderNorm, comando: textoMensagem, resultado: 'aguardando_confirmacao', detalhes: { acao: 'lancar_entrada', valor: valorFinal, descricao: descricaoFinal } });
       return true;
     }
 
@@ -846,13 +881,30 @@ async function processarMensagemTexto(msg, {
         return true;
       }
 
+      const valorFinal = resValor.valor;
+      const rawLimite = Number(tenantState?.cfg?.limiteValorLancamentoWhatsapp);
+      const limiteMax = (!isNaN(rawLimite) && rawLimite > 0) ? rawLimite : 1000.00;
+
+      if (valorFinal > limiteMax) {
+        const respLimite = `🚫 *Limite Excedido:* O valor informado (${financialEngine.formatarMoeda(valorFinal)}) excede o limite máximo permitido para operações via WhatsApp (${financialEngine.formatarMoeda(limiteMax)}). Por questões de segurança, realize este lançamento diretamente pelo painel do Pátio CRM Web.`;
+        await msg.reply(respLimite);
+        await auditarComandoWhatsApp({
+          tenantId: tenantKey,
+          numero: senderNorm,
+          comando: textoMensagem,
+          resultado: 'negado_limite',
+          detalhes: { acao: 'lancar_saida', valor: valorFinal, limite: limiteMax }
+        });
+        return true;
+      }
+
       const matchDesc = textoMensagem.match(/(?:referente\s+a|motivo|para|com|descrição|descricao)\s+(.+)$/i);
       const descricaoFinal = matchDesc ? matchDesc[1].trim() : 'Saída avulsa do caixa';
 
       confirmacoesPendentes.set(chavePendente, {
         acao: 'lancar_saida',
         descricaoAcao: 'Lançar Saída',
-        valor: resValor.valor,
+        valor: valorFinal,
         descricao: descricaoFinal,
         expiraEm: Date.now() + CONFIRMACAO_TTL_MS,
         tenantKey,
@@ -1232,21 +1284,21 @@ async function tratarMensagemWhatsApp(msg, wppClient) {
     return;
   }
 
+  const isGroup = msg.from.includes('@g.us');
+  const rawAuthor = isGroup ? (msg.author || msg.from) : msg.from;
+  const fromNumber = (rawAuthor || '').split('@')[0].replace(/\D/g, '');
+
+  const { tenantKey, state: tenantState } = await resolverTenantPorChatId(msg.from, fromNumber);
   const msgId = (msg.id && (msg.id._serialized || msg.id.id)) || msg.id || null;
-  const idemCheck = await verificarIdempotencia(msgId);
+  const idemCheck = await verificarIdempotencia(msgId, tenantKey);
   if (idemCheck.duplicada) {
-    console.log('[WhatsApp Idempotência] Mensagem duplicada ignorada:', msgId);
+    console.log(`[WhatsApp Idempotência] Mensagem duplicada ignorada para tenant ${tenantKey}:`, msgId);
     if (idemCheck.resposta) {
       try { await msg.reply(idemCheck.resposta); } catch (_) {}
     }
     return;
   }
 
-  const isGroup = msg.from.includes('@g.us');
-  const rawAuthor = isGroup ? (msg.author || msg.from) : msg.from;
-  const fromNumber = (rawAuthor || '').split('@')[0].replace(/\D/g, '');
-
-  const { tenantKey, state: tenantState } = await resolverTenantPorChatId(msg.from, fromNumber);
   const cfg = tenantState?.cfg || {};
   const grupoAdminId = cfg.grupoAdminId || process.env.WHATSAPP_GRUPO_ADMIN_ID || '';
   const grupoOperacaoId = cfg.grupoOperacaoId || process.env.WHATSAPP_GRUPO_OPERACAO_ID || '';

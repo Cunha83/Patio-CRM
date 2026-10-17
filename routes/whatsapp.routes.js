@@ -377,6 +377,8 @@ router.get('/api/whatsapp/config-relatorio', async (req, res) => {
     const apenasDiasUteis = cfg.relatorioApenasDiasUteis !== false && process.env.RELATORIO_APENAS_DIAS_UTEIS !== 'false';
     const avisarCaixaWhatsapp = Boolean(cfg.avisarCaixaWhatsapp);
     const comandosFinanceirosEscrita = Boolean(cfg.comandosFinanceirosEscrita);
+    const rawLimite = Number(cfg.limiteValorLancamentoWhatsapp);
+    const limiteValorLancamentoWhatsapp = (!isNaN(rawLimite) && rawLimite > 0) ? rawLimite : 1000.00;
 
     res.json({
       adminFones,
@@ -385,6 +387,7 @@ router.get('/api/whatsapp/config-relatorio', async (req, res) => {
       apenasDiasUteis,
       avisarCaixaWhatsapp,
       comandosFinanceirosEscrita,
+      limiteValorLancamentoWhatsapp,
       wppStatus: wppStatus.status
     });
   } catch (err) {
@@ -394,7 +397,15 @@ router.get('/api/whatsapp/config-relatorio', async (req, res) => {
 
 router.post('/api/whatsapp/config-relatorio', authMiddleware, async (req, res) => {
   try {
-    const { adminFones, horaRelatorio, envioAutomatico, apenasDiasUteis, avisarCaixaWhatsapp, comandosFinanceirosEscrita } = req.body || {};
+    const {
+      adminFones,
+      horaRelatorio,
+      envioAutomatico,
+      apenasDiasUteis,
+      avisarCaixaWhatsapp,
+      comandosFinanceirosEscrita,
+      limiteValorLancamentoWhatsapp
+    } = req.body || {};
 
     let cfgAtualizada = null;
     const mutateRes = await mutateTenantState(req, async (draft) => {
@@ -405,6 +416,12 @@ router.post('/api/whatsapp/config-relatorio', authMiddleware, async (req, res) =
       if (typeof apenasDiasUteis === 'boolean') draft.cfg.relatorioApenasDiasUteis = apenasDiasUteis;
       if (typeof avisarCaixaWhatsapp === 'boolean') draft.cfg.avisarCaixaWhatsapp = avisarCaixaWhatsapp;
       if (typeof comandosFinanceirosEscrita === 'boolean') draft.cfg.comandosFinanceirosEscrita = comandosFinanceirosEscrita;
+
+      if (limiteValorLancamentoWhatsapp !== undefined) {
+        const limNum = Number(limiteValorLancamentoWhatsapp);
+        draft.cfg.limiteValorLancamentoWhatsapp = (!isNaN(limNum) && limNum > 0) ? limNum : 1000.00;
+      }
+
       cfgAtualizada = draft.cfg;
       return draft;
     });
