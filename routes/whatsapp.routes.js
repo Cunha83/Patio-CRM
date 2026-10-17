@@ -24,6 +24,7 @@ const {
   enviarRelatorioGrupo,
   enviarRelatorioAdministradores
 } = require('../services/reportGenerationService');
+const { executarCicloDisparoRelatorioDiario } = require('../services/whatsapp/whatsappScheduler');
 
 // Middleware local para injetar wppClient e wppStatus no escopo da rota
 router.use((req, res, next) => {
@@ -289,6 +290,22 @@ router.post('/api/whatsapp/disparar-relatorio-admin', authMiddleware, async (req
     res.json(resultado);
   } catch (err) {
     console.error('[API /api/whatsapp/disparar-relatorio-admin] Erro:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.post('/api/whatsapp/agendador-relatorio/executar', authMiddleware, async (req, res) => {
+  try {
+    const { dryRun, force, horaRef, dataRef } = req.body || {};
+    const resultados = await executarCicloDisparoRelatorioDiario({
+      dryRun: Boolean(dryRun),
+      force: Boolean(force),
+      horaRef,
+      dataRef
+    });
+    res.json({ success: true, resultados });
+  } catch (err) {
+    console.error('[API /api/whatsapp/agendador-relatorio/executar] Erro:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });

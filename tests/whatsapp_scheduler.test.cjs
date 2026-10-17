@@ -1,0 +1,225 @@
+'use strict';
+
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('fs');
+const path = require('path');
+const os = require('os');
+
+const { initDB, run, closeDB, get } = require('../db');
+const {
+  executarCicloDisparoRelatorioDiario,
+  jaEnviouHoje,
+  registrarEnvioSucesso,
+  _tentativasFalhaPorTenant,
+  _ultimoDiaEnvioPorTenant
+} = require('../services/whatsapp/whatsappScheduler');
+const { setWppClient, getWppStatus } = require('../services/whatsapp/whatsappState');
+
+test('Agendador de Relatório Diário do WhatsApp: Horário, Idempotência, Flags e Tolerância Offline', async (t) => {
+  // Prepara banco temporário isolado para os testes
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'patio_wpp_sched_'));
+  const testDb = path.join(tempDir, 'test_sched.db');
+  process.env.DB_PATH = testDb;
+
+  await initDB();
+
+  // Limpa estados de controle em memória
+  _tentativasFalhaPorTenant.clear();
+  _ultimoDiaEnvioPorTenant.clear();
+
+  const tenantAlfa = 'oficina_alfa_sched';
+  const tenantBeta = 'oficina_beta_sched';
+
+  // Seed do estado de dois tenants
+  // Tenant Alfa: Envio automático ativado, horário 07:30, admin cadastrado
+  const stateAlfa = {
+    cfg: {
+      horaRelatorioDiario: '07:30',
+      envioAutomaticoRelatorio: true,
+      relatorioApenasDiasUteis: false,
+      adminFones: ['5511999990001']
+    },
+    os: [],
+    clientes: []
+  };
+
+  // Tenant Beta: Envio automático expressamente desligado
+  const stateBeta = {
+    cfg: {
+      horaRelatorioDiario: '07:30',
+      envioAutomaticoRelatorio: false,
+      relatorioApenasDiasUteis: false,
+      adminFones: ['5511999990002']
+    },
+    os: [],
+    clientes: []
+  };
+
+  await run('INSERT INTO kv (key, value) VALUES (?, ?)', [`tenant:${tenantAlfa}:state`, JSON.stringify(stateAlfa)]);
+  await run('INSERT INTO kv (key, value) VALUES (?, ?)', [`tenant:${tenantBeta}:state`, JSON.stringify(stateBeta)]);
+
+  // Garante que o cliente WhatsApp não seja mockado com envio de mensagens reais pela rede
+  const wppStatus = getWppStatus();
+  setWppClient(null);
+  wppStatus.status = 'desconectado';
+
+  // 1. Teste de Horário: Se horaAtual != horaConfigurada, não deve disparar
+  await t.test('1. Horário configurado: ignora disparo se o horário não foi atingido', async () => {
+    const res = await executarCicloDisparoRelatorioDiario({
+      horaRef: '06:15',
+      dryRun: false
+    });
+
+    const alfaResult = res.find(r => r.tenantKey === tenantAlfa);
+    assert.ok(alfaResult, 'Deve avaliar tenant alfa');
+    assert.equal(alfaResult.disparado, false);
+    assert.equal(alfaResult.motivo, 'horario_nao_atingido');
+    assert.equal(alfaResult.horaAtual, '06:15');
+    assert.equal(alfaResult.horaConfig, '07:30');
+  });
+
+  // 2. Teste do Flag desligado: Se envioAutomaticoRelatorio === false, não envia
+  await t.test('2. Flag envioAutomaticoRelatorio = false: respeita configuração e bloqueia disparo', async () => {
+    const res = await executarCicloDisparoRelatorioDiario({
+      horaRef: '07:30',
+      dryRun: false
+    });
+
+    const betaResult = res.find(r => r.tenantKey === tenantBeta);
+    assert.ok(betaResult, 'Deve avaliar tenant beta');
+    assert.equal(betaResult.disparado, false);
+    assert.equal(betaResult.motivo, 'envio_automatico_desativado');
+  });
+
+  // 3. Teste Modo Dry-Run: simula envio no horário sem disparar e sem persistir envio definitivo
+  await t.test('3. Modo dry-run: simula aprovação do ciclo no horário sem disparos e sem registrar idempotência', async () => {
+    const res = await executarCicloDisparoRelatorioDiario({
+      horaRef: '07:30',
+      dryRun: true
+    });
+
+    const alfaResult = res.find(r => r.tenantKey === tenantAlfa);
+    assert.ok(alfaResult);
+    assert.equal(alfaResult.disparado, true);
+    assert.equal(alfaResult.dryRun, true);
+
+    // Confirma que não gravou no banco de dados como enviado
+    const enviado = await jaEnviouHoje(tenantAlfa, alfaResult.diaHoje);
+    assert.equal(enviado, false, 'Dry-run não deve marcar relatório como já enviado');
+  });
+
+  // 4. Teste de Tolerância a WhatsApp Desconectado: registra no log e limita tentativas sem quebrar
+  await t.test('4. WhatsApp offline: registra falha de conexão, respeita limite de tentativas e não lança exceção', async () => {
+    // Garante que está offline
+    setWppClient(null);
+    wppStatus.status = 'desconectado';
+    _tentativasFalhaPorTenant.clear();
+
+    // 1ª tentativa
+    const res1 = await executarCicloDisparoRelatorioDiario({
+      horaRef: '07:30',
+      dryRun: false,
+      force: true
+    });
+    const r1 = res1.find(r => r.tenantKey === tenantAlfa);
+    assert.equal(r1.disparado, false);
+    assert.equal(r1.motivo, 'whatsapp_desconectado');
+    assert.equal(r1.tentativa, 1);
+
+    // 2ª tentativa (forçando retry)
+    const res2 = await executarCicloDisparoRelatorioDiario({
+      horaRef: '07:30',
+      dryRun: false,
+      force: true
+    });
+    const r2 = res2.find(r => r.tenantKey === tenantAlfa);
+    assert.equal(r2.tentativa, 2);
+
+    // 3ª tentativa
+    const res3 = await executarCicloDisparoRelatorioDiario({
+      horaRef: '07:30',
+      dryRun: false,
+      force: true
+    });
+    const r3 = res3.find(r => r.tenantKey === tenantAlfa);
+    assert.equal(r3.tentativa, 3);
+
+    // 4ª tentativa: deve atingir o limite e abortar sem tentar reenviar
+    const res4 = await executarCicloDisparoRelatorioDiario({
+      horaRef: '07:30',
+      dryRun: false,
+      force: true
+    });
+    const r4 = res4.find(r => r.tenantKey === tenantAlfa);
+    assert.equal(r4.disparado, false);
+    assert.equal(r4.motivo, 'whatsapp_desconectado_limite_atingido');
+    assert.equal(r4.tentativas, 3);
+  });
+
+  // 5. Teste de Idempotência Durável: com mock seguro (sem rede), envia uma vez e bloqueia na segunda mesmo após restart
+  await t.test('5. Idempotência durável: nunca envia o mesmo relatório duas vezes no mesmo dia (inclusive pós-restart)', async () => {
+    const diaHoje = '2026-10-17';
+
+    // Mock seguro do WhatsApp em memória (apenas registra chamadas, nunca dispara socket ou requisição)
+    let mensagensEnviadas = [];
+    const mockWppClient = {
+      sendMessage: async (chatId, content) => {
+        mensagensEnviadas.push({ chatId, content });
+        return { id: { _serialized: `msg_mock_${Date.now()}` } };
+      }
+    };
+
+    setWppClient(mockWppClient);
+    wppStatus.status = 'pronto';
+
+    // 1º Envio
+    const resEnvio1 = await executarCicloDisparoRelatorioDiario({
+      horaRef: '07:30',
+      dataRef: diaHoje,
+      force: true
+    });
+
+    const rAlfa1 = resEnvio1.find(r => r.tenantKey === tenantAlfa);
+    assert.equal(rAlfa1.disparado, true);
+    assert.equal(rAlfa1.sucesso, true);
+
+    // Confirma gravação durável no SQLite
+    const rowKv = await get(
+      'SELECT value FROM kv WHERE key = ?',
+      [`tenant:${tenantAlfa}:relatorio_diario_enviado:${diaHoje}`]
+    );
+    assert.ok(rowKv && rowKv.value, 'Registro de envio diário deve persistir no banco SQLite');
+    const parsedKv = JSON.parse(rowKv.value);
+    assert.equal(parsedKv.diaISO, diaHoje);
+    assert.equal(parsedKv.tenantKey, tenantAlfa);
+
+    // 2º Envio no mesmo horário e dia: deve ser rejeitado por idempotência
+    const resEnvio2 = await executarCicloDisparoRelatorioDiario({
+      horaRef: '07:30',
+      dataRef: diaHoje
+    });
+
+    const rAlfa2 = resEnvio2.find(r => r.tenantKey === tenantAlfa);
+    assert.equal(rAlfa2.disparado, false);
+    assert.equal(rAlfa2.motivo, 'ja_enviado_hoje');
+
+    // 3º Simula Restart do Servidor: limpamos o cache em memória
+    _ultimoDiaEnvioPorTenant.clear();
+
+    const resEnvioAposRestart = await executarCicloDisparoRelatorioDiario({
+      horaRef: '07:30',
+      dataRef: diaHoje
+    });
+
+    const rAlfaRestart = resEnvioAposRestart.find(r => r.tenantKey === tenantAlfa);
+    assert.equal(rAlfaRestart.disparado, false, 'Mesmo após restart e cache limpo, deve consultar SQLite e bloquear');
+    assert.equal(rAlfaRestart.motivo, 'ja_enviado_hoje');
+  });
+
+  // Limpeza
+  await closeDB();
+  try {
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  } catch (_) {}
+});
