@@ -12,6 +12,7 @@ const financialEngine = require('../services/financialEngine');
 const operationalIntelligenceEngine = require('../services/operationalIntelligenceEngine');
 const operationalSummaryService = require('../services/operationalSummaryService');
 const proactiveAlertsService = require('../services/proactiveAlertsService');
+const executiveManagerService = require('../services/executiveManagerService');
 
 router.get('/api/financeiro/dashboard', requirePermission('financial:read'), async (req, res) => {
   try {
@@ -262,6 +263,55 @@ router.post('/api/operacao/alertas-proativos/disparar', requirePermission('opera
   } catch (err) {
     console.error('[API /api/operacao/alertas-proativos/disparar POST] Erro:', err);
     res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+/* ── VERÔNICA GESTORA 360º (SUPRIMENTOS, PRODUTIVIDADE & INTELIGÊNCIA COMERCIAL) ── */
+router.get('/api/operacao/gestao-360', requirePermission('operation:read'), async (req, res) => {
+  try {
+    const state = await getOrLoadState(req);
+    const tenantId = extractTenantId(req);
+    const { dataReferencia } = req.query || {};
+    const relatorio = executiveManagerService.gerarRelatorioGerencial360(state, {
+      tenantId,
+      dataReferencia
+    });
+    res.json(relatorio);
+  } catch (err) {
+    console.error('[API /api/operacao/gestao-360 GET] Erro:', err);
+    res.status(500).json({ sucesso: false, error: err.message });
+  }
+});
+
+router.get('/api/operacao/compras-sugeridas', requirePermission('operation:read'), async (req, res) => {
+  try {
+    const state = await getOrLoadState(req);
+    const tenantId = extractTenantId(req);
+    const { dataRef } = req.query || {};
+    const analise = executiveManagerService.analisarComprasEEstoque(state, {
+      tenantId,
+      dataRef
+    });
+    res.json(analise);
+  } catch (err) {
+    console.error('[API /api/operacao/compras-sugeridas GET] Erro:', err);
+    res.status(500).json({ sucesso: false, error: err.message });
+  }
+});
+
+router.get('/api/operacao/produtividade-equipe', requirePermission('operation:read'), async (req, res) => {
+  try {
+    const state = await getOrLoadState(req);
+    const tenantId = extractTenantId(req);
+    const { dataReferencia } = req.query || {};
+    const analise = executiveManagerService.analisarProdutividadeEquipe(state, {
+      tenantId,
+      dataReferencia
+    });
+    res.json(analise);
+  } catch (err) {
+    console.error('[API /api/operacao/produtividade-equipe GET] Erro:', err);
+    res.status(500).json({ sucesso: false, error: err.message });
   }
 });
 
