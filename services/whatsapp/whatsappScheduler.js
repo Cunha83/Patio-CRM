@@ -164,7 +164,7 @@ async function executarCicloDisparoRelatorioDiario(options = {}) {
       const wppClient = getWppClient();
       const wppPronto = Boolean(wppClient && wppStatus && wppStatus.status === 'pronto');
 
-      if (!wppPronto && process.env.DISABLE_INTEGRATIONS !== 'true') {
+      if (!wppPronto) {
         const infoFalha = tentativasFalhaPorTenant.get(tenantKey) || { dia: diaHoje, tentativas: 0, ultimaTentativa: 0 };
         if (infoFalha.dia !== diaHoje) {
           infoFalha.dia = diaHoje;

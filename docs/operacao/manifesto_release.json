@@ -98,7 +98,7 @@
     "routes/static.routes.js": "3afda329580645f9ecc20f0da6ce5543dc18f716d83bef32235bb4da3d5d745b",
     "routes/team.routes.js": "931fa9d7a283857006bc75b8db4bbbfb8dcee8b0e032006dfbd63c76e088d2ff",
     "routes/voice.routes.js": "e443f6cb150e6562c3400dc136547979aa5a7f93ab163ab11e03932f716d72cf",
-    "routes/whatsapp.routes.js": "bcbda6eeca0eeee622e9f0d4d46b90a591eed7ad8697a4c9a4e63d4abe7dc985",
+    "routes/whatsapp.routes.js": "529d70037f87cdf9b5f9086cb28694a7ebf5ff10d654d5b8ebcfae3dd7d094b0",
     "scripts/auditar_execucao_tarefa_agendada.cjs": "47a5d3e281bfcdb4737c23f159baab0dad00520d69feb82a3a6c482f27c46d69",
     "scripts/build_windows_pilot.cjs": "ace15201cd79925808194e4876ec2bb67bf1f4c968f32b8a525249aea15182de",
     "scripts/comprovar_restauracao_remota_host.cjs": "23e0abf8271406e22fa0c3f65edad977a3ebdf7fcf2057ea1474d4fe3e775fb5",
@@ -192,8 +192,8 @@
     "services/voiceActionEngine.js": "963bc5843cc26320598e5f96c36f70bbb29ac4433035ebfccaf34d27bdbaff8c",
     "services/warrantyService.js": "e2772f7e3d8987ebba0d4e6a97e2dfad10f3210e490616902629c68d68ebb14b",
     "services/whatsapp/whatsappClient.js": "42a50ddf76c999477b7ce373bfc5bfec5511b4ae2929ca4ce0c8a047bec88654",
-    "services/whatsapp/whatsappHandlers.js": "24c588b751d0f031818072fd90010e7466c9abc867eb35641fcbc289461ab596",
-    "services/whatsapp/whatsappScheduler.js": "3968fa5f3d1cf93fbd3505caf389d461a7b081c82ff77f682f5714fdcc977eea",
+    "services/whatsapp/whatsappHandlers.js": "1d37f979fdd82486910ca7be5189ecdb84014325b792f828c6dee9611540fe23",
+    "services/whatsapp/whatsappScheduler.js": "9f88be4f86d5c32465244b7b7a58c2c0b17f483d3bf895229da5b22d1af20d4e",
     "services/whatsapp/whatsappState.js": "06aad441cc77f1e5adc508fea0b1a17f0ff59cbbc4862fb0ce3ac761a51e936b",
     "style.css": "ea8a3021eebbd6b45d3d56dd88958139734a39599dd9c2300be46714ec0d8297"
   }

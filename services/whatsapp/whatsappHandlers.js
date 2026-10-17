@@ -82,32 +82,77 @@ setInterval(() => {
   }
 }, 5 * 60 * 1000).unref();
 
-// Idempotência por ID de mensagem do WhatsApp (TTL 10 minutos)
+// Idempotência por ID de mensagem do WhatsApp (TTL 10 minutos, durável em SQLite KV)
 const mensagensProcessadas = new Map();
 const IDEMPOTENCIA_TTL_MS = 10 * 60 * 1000;
 
-function verificarIdempotencia(msgId) {
+async function verificarIdempotencia(msgId) {
   if (!msgId) return { duplicada: false };
   const agora = Date.now();
-  const reg = mensagensProcessadas.get(String(msgId));
-  if (reg && agora - reg.timestamp < IDEMPOTENCIA_TTL_MS) {
-    return { duplicada: true, resposta: reg.resposta };
+  const idStr = String(msgId);
+
+  // 1. Cache em memória para resposta rápida
+  const regMem = mensagensProcessadas.get(idStr);
+  if (regMem && agora - regMem.timestamp < IDEMPOTENCIA_TTL_MS) {
+    return { duplicada: true, resposta: regMem.resposta };
   }
+
+  // 2. Persistência durável no SQLite kv
+  try {
+    const { get } = require('../../db');
+    if (get && typeof get === 'function') {
+      const row = await get('SELECT value FROM kv WHERE key = ?', [`wpp_msg:${idStr}`]);
+      if (row && row.value) {
+        const parsed = safeJsonParse(row.value);
+        if (parsed && agora < (parsed.expiraEm || 0)) {
+          mensagensProcessadas.set(idStr, { timestamp: parsed.timestamp, resposta: parsed.resposta });
+          return { duplicada: true, resposta: parsed.resposta };
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('[WhatsApp Idempotência] Falha tolerante ao verificar KV SQLite:', err.message);
+  }
+
   return { duplicada: false };
 }
 
-function registrarIdempotencia(msgId, resposta = null) {
+async function registrarIdempotencia(msgId, resposta = null) {
   if (!msgId) return;
-  mensagensProcessadas.set(String(msgId), { timestamp: Date.now(), resposta });
+  const agora = Date.now();
+  const idStr = String(msgId);
+  mensagensProcessadas.set(idStr, { timestamp: agora, resposta });
+
+  try {
+    const { run } = require('../../db');
+    if (run && typeof run === 'function') {
+      const key = `wpp_msg:${idStr}`;
+      const value = JSON.stringify({
+        timestamp: agora,
+        resposta,
+        expiraEm: agora + IDEMPOTENCIA_TTL_MS
+      });
+      await run('INSERT OR REPLACE INTO kv (key, value) VALUES (?, ?)', [key, value]);
+    }
+  } catch (err) {
+    console.warn('[WhatsApp Idempotência] Falha tolerante ao persistir KV SQLite:', err.message);
+  }
 }
 
-setInterval(() => {
+setInterval(async () => {
   const agora = Date.now();
   for (const [id, reg] of mensagensProcessadas.entries()) {
     if (agora - reg.timestamp > IDEMPOTENCIA_TTL_MS) {
       mensagensProcessadas.delete(id);
     }
   }
+  try {
+    const { run } = require('../../db');
+    if (run && typeof run === 'function') {
+      // Remove chaves antigas de mensagem expiradas do kv
+      await run("DELETE FROM kv WHERE key LIKE 'wpp_msg:%' AND json_extract(value, '$.expiraEm') < ?", [agora]);
+    }
+  } catch (_) {}
 }, 5 * 60 * 1000).unref();
 
 // Memória de operações financeiras de escrita aguardando confirmação explícita (TTL estrito de 2 minutos)
@@ -586,6 +631,21 @@ async function processarMensagemTexto(msg, {
   const isComandoSaida = /(?:lançar|lancar|registrar)\s*(?:uma\s+)?(?:saída|saida|despesa|sangria)/i.test(textoLower) || /(?:sangria|saída|saida)\s+de\s+caixa/i.test(textoLower);
 
   if (isComandoAbrirCaixa || isComandoFecharCaixa || isComandoEntrada || isComandoSaida) {
+    // 0. Flag comandosFinanceirosEscrita (padrão false, editável por /config-relatorio)
+    const escritaAtiva = Boolean(tenantState?.cfg?.comandosFinanceirosEscrita);
+    if (!escritaAtiva) {
+      const respDesativada = '🔒 *Operações Financeiras Desativadas:* Os comandos de movimentação e escrita financeira via WhatsApp estão desativados nas configurações. Para ativá-los, acesse as Configurações do WhatsApp no Pátio CRM Web.';
+      await msg.reply(respDesativada);
+      await auditarComandoWhatsApp({
+        tenantId: tenantKey,
+        numero: senderNorm,
+        comando: textoMensagem,
+        resultado: 'desativado_configuracao',
+        detalhes: { flag: 'comandosFinanceirosEscrita', ativo: false }
+      });
+      return true;
+    }
+
     // 1. Whitelist obrigatória se vier de grupo
     const adminList = (process.env.WHATSAPP_ADMIN_NUMBERS || '')
       .split(',')
@@ -1173,7 +1233,7 @@ async function tratarMensagemWhatsApp(msg, wppClient) {
   }
 
   const msgId = (msg.id && (msg.id._serialized || msg.id.id)) || msg.id || null;
-  const idemCheck = verificarIdempotencia(msgId);
+  const idemCheck = await verificarIdempotencia(msgId);
   if (idemCheck.duplicada) {
     console.log('[WhatsApp Idempotência] Mensagem duplicada ignorada:', msgId);
     if (idemCheck.resposta) {
@@ -1456,7 +1516,7 @@ async function tratarMensagemWhatsApp(msg, wppClient) {
       wppClient
     });
     if (tratado) {
-      registrarIdempotencia(msgId);
+      await registrarIdempotencia(msgId);
       return;
     }
 

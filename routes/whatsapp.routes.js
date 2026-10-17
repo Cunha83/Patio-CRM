@@ -376,6 +376,7 @@ router.get('/api/whatsapp/config-relatorio', async (req, res) => {
     const envioAutomatico = cfg.envioAutomaticoRelatorio !== false && process.env.ENVIO_AUTOMATICO_RELATORIO !== 'false';
     const apenasDiasUteis = cfg.relatorioApenasDiasUteis !== false && process.env.RELATORIO_APENAS_DIAS_UTEIS !== 'false';
     const avisarCaixaWhatsapp = Boolean(cfg.avisarCaixaWhatsapp);
+    const comandosFinanceirosEscrita = Boolean(cfg.comandosFinanceirosEscrita);
 
     res.json({
       adminFones,
@@ -383,6 +384,7 @@ router.get('/api/whatsapp/config-relatorio', async (req, res) => {
       envioAutomatico,
       apenasDiasUteis,
       avisarCaixaWhatsapp,
+      comandosFinanceirosEscrita,
       wppStatus: wppStatus.status
     });
   } catch (err) {
@@ -392,7 +394,7 @@ router.get('/api/whatsapp/config-relatorio', async (req, res) => {
 
 router.post('/api/whatsapp/config-relatorio', authMiddleware, async (req, res) => {
   try {
-    const { adminFones, horaRelatorio, envioAutomatico, apenasDiasUteis, avisarCaixaWhatsapp } = req.body || {};
+    const { adminFones, horaRelatorio, envioAutomatico, apenasDiasUteis, avisarCaixaWhatsapp, comandosFinanceirosEscrita } = req.body || {};
 
     let cfgAtualizada = null;
     const mutateRes = await mutateTenantState(req, async (draft) => {
@@ -402,6 +404,7 @@ router.post('/api/whatsapp/config-relatorio', authMiddleware, async (req, res) =
       if (typeof envioAutomatico === 'boolean') draft.cfg.envioAutomaticoRelatorio = envioAutomatico;
       if (typeof apenasDiasUteis === 'boolean') draft.cfg.relatorioApenasDiasUteis = apenasDiasUteis;
       if (typeof avisarCaixaWhatsapp === 'boolean') draft.cfg.avisarCaixaWhatsapp = avisarCaixaWhatsapp;
+      if (typeof comandosFinanceirosEscrita === 'boolean') draft.cfg.comandosFinanceirosEscrita = comandosFinanceirosEscrita;
       cfgAtualizada = draft.cfg;
       return draft;
     });

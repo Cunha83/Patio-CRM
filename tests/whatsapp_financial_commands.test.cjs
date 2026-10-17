@@ -11,7 +11,7 @@ const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'patio_wpp_fin_'));
 const testDb = path.join(tempDir, 'test_fin.db');
 process.env.DB_PATH = testDb;
 
-const { initDB, closeDB, run } = require('../db');
+const { initDB, closeDB, run, all, get } = require('../db');
 const {
   processarMensagemTexto,
   tratarMensagemWhatsApp,
@@ -40,11 +40,13 @@ test('WhatsApp Agente Financeiro - Suíte Completa de Leitura e Escrita Controla
   const agoraSP = financialEngine.obterAgoraSP();
   const hoje = agoraSP.dataISO;
 
-  function criarEstadoMock() {
+  function criarEstadoMock(cfgOverrides = {}) {
     return {
       cfg: {
         adminFones: ['5511999998888', '5511888887777'],
-        financeiroFones: ['5511977776666']
+        financeiroFones: ['5511977776666'],
+        comandosFinanceirosEscrita: true,
+        ...cfgOverrides
       },
       mecanicos: [
         { id: 'mec-1', nome: 'Mecânico João', fone: '5511955554444' }
@@ -161,7 +163,6 @@ test('WhatsApp Agente Financeiro - Suíte Completa de Leitura e Escrita Controla
       assert.doesNotMatch(replies[0], /saldo|caixa|1\.500|5\.000/i);
 
       // Consulta tanto no banco persistente de auditoria quanto na memória
-      const { all } = require('../db');
       const auditRows = await all("SELECT * FROM security_audit_log WHERE actor_id = 'whatsapp:5511911112222'");
       const memLogs = (defaultState.security_audit_log || []).filter(l => l.details?.numeroNormalizado === '5511911112222');
       assert.ok(auditRows.length > 0 || memLogs.length > 0, 'Deve registrar auditoria para número desconhecido');
@@ -175,11 +176,51 @@ test('WhatsApp Agente Financeiro - Suíte Completa de Leitura e Escrita Controla
     }
   });
 
-  // ── 3. PERFIL SEM PERMISSÃO DE ESCRITA (MECÂNICO E ATENDENTE) ───────
-  await t.test('3. Mecânico e Atendente são bloqueados ao tentar executar escrita financeira', async () => {
+  // ── 3. FLAG comandosFinanceirosEscrita (PADRÃO FALSE) ───────────────
+  await t.test('3. Flag comandosFinanceirosEscrita desligada: bloqueia escrita mas mantém leitura', async () => {
+    const mockStateDesativado = criarEstadoMock({ comandosFinanceirosEscrita: false });
+    const numeroAdmin = '5511999998888';
+
+    // 3.1 Tentativa de abrir caixa com flag desligada
+    const repliesEscrita = [];
+    const msgEscrita = {
+      from: `${numeroAdmin}@c.us`,
+      author: `${numeroAdmin}@c.us`,
+      body: 'abrir caixa com R$ 100,00',
+      reply: async (txt) => { repliesEscrita.push(txt); }
+    };
+    await processarMensagemTexto(msgEscrita, {
+      tenantKey: 'default',
+      tenantState: mockStateDesativado,
+      fromNumber: numeroAdmin
+    });
+
+    assert.equal(repliesEscrita.length, 1);
+    assert.match(repliesEscrita[0], /Operações Financeiras Desativadas/i);
+    assert.equal(confirmacoesPendentes.size, 0, 'Não deve criar confirmação quando flag estiver desligada');
+
+    // 3.2 Leitura continua funcionando com flag desligada
+    const repliesLeitura = [];
+    const msgLeitura = {
+      from: `${numeroAdmin}@c.us`,
+      author: `${numeroAdmin}@c.us`,
+      body: '!caixa',
+      reply: async (txt) => { repliesLeitura.push(txt); }
+    };
+    await processarMensagemTexto(msgLeitura, {
+      tenantKey: 'default',
+      tenantState: mockStateDesativado,
+      fromNumber: numeroAdmin
+    });
+    assert.equal(repliesLeitura.length, 1);
+    assert.match(repliesLeitura[0], /CAIXA|SALDO/i);
+  });
+
+  // ── 4. PERFIL SEM PERMISSÃO DE ESCRITA (MECÂNICO E ATENDENTE) ───────
+  await t.test('4. Mecânico e Atendente são bloqueados ao tentar executar escrita financeira', async () => {
     const mockState = criarEstadoMock();
 
-    // 3.1 Mecânico tenta abrir caixa
+    // 4.1 Mecânico tenta abrir caixa
     const repliesMec = [];
     const msgMec = {
       from: '5511955554444@c.us', // cadastrado em mockState.mecanicos
@@ -200,7 +241,7 @@ test('WhatsApp Agente Financeiro - Suíte Completa de Leitura e Escrita Controla
     assert.match(repliesMec[0], /mecanico/i);
     assert.equal(confirmacoesPendentes.size, 0, 'Não deve criar pendência para perfil sem permissão');
 
-    // 3.2 Atendente tenta lançar saída
+    // 4.2 Atendente tenta lançar saída
     const repliesAtend = [];
     const msgAtend = {
       from: '5511944443333@c.us', // cadastrado em mockState.atendentes
@@ -222,13 +263,12 @@ test('WhatsApp Agente Financeiro - Suíte Completa de Leitura e Escrita Controla
     assert.equal(confirmacoesPendentes.size, 0);
   });
 
-  // ── 4. VALOR AUSENTE OU AMBÍGUO (PERGUNTAR, NUNCA PRESUMIR) ─────────
-  await t.test('4. Valor ausente ou ambíguo: agente pergunta e não presume', async () => {
+  // ── 5. VALOR AUSENTE OU AMBÍGUO (PERGUNTAR, NUNCA PRESUMIR) ─────────
+  await t.test('5. Valor ausente ou ambíguo: agente pergunta e não presume', async () => {
     const mockState = criarEstadoMock();
-    // Abre um caixa para permitir testes de lançamento
     financialAnalystService.abrirCaixa(mockState, { tenantId: 'default', saldoInicial: 500 });
 
-    // 4.1 Valor ausente em lançamento de entrada
+    // 5.1 Valor ausente em lançamento de entrada
     const repliesAusente = [];
     const msgAusente = {
       from: '5511999998888@c.us',
@@ -247,7 +287,7 @@ test('WhatsApp Agente Financeiro - Suíte Completa de Leitura e Escrita Controla
     assert.match(repliesAusente[0], /Não identifiquei o valor exato/i);
     assert.equal(confirmacoesPendentes.size, 0, 'Não deve criar confirmação para valor ausente');
 
-    // 4.2 Valor ambíguo (dois valores no mesmo comando)
+    // 5.2 Valor ambíguo (dois valores no mesmo comando)
     const repliesAmbiguo = [];
     const msgAmbiguo = {
       from: '5511999998888@c.us',
@@ -266,7 +306,7 @@ test('WhatsApp Agente Financeiro - Suíte Completa de Leitura e Escrita Controla
     assert.match(repliesAmbiguo[0], /múltiplos valores/i);
     assert.equal(confirmacoesPendentes.size, 0);
 
-    // 4.3 Abertura de caixa sem valor inicial
+    // 5.3 Abertura de caixa sem valor inicial
     const mockSemCaixa = criarEstadoMock();
     const repliesAberturaSemVal = [];
     const msgAberturaSemVal = {
@@ -287,12 +327,12 @@ test('WhatsApp Agente Financeiro - Suíte Completa de Leitura e Escrita Controla
     assert.equal(confirmacoesPendentes.size, 0);
   });
 
-  // ── 5. FLUXO DE CONFIRMAÇÃO COM ESCRITA (CONFIRMAR) ────────────────
-  await t.test('5. Fluxo de escrita: resumo claro e execução apenas com CONFIRMAR explícito', async () => {
+  // ── 6. FLUXO DE CONFIRMAÇÃO COM ESCRITA (CONFIRMAR) ────────────────
+  await t.test('6. Fluxo de escrita: resumo claro e execução apenas com CONFIRMAR explícito', async () => {
     const mockState = criarEstadoMock();
     const numeroAdmin = '5511999998888';
 
-    // 5.1 Solicita abertura de caixa
+    // 6.1 Solicita abertura de caixa
     const repliesAbertura = [];
     const msgAbertura = {
       from: `${numeroAdmin}@c.us`,
@@ -314,7 +354,7 @@ test('WhatsApp Agente Financeiro - Suíte Completa de Leitura e Escrita Controla
     assert.match(repliesAbertura[0], /CONFIRMAR/);
     assert.equal(confirmacoesPendentes.size, 1, 'Deve conter 1 pendência ativa');
 
-    // 5.2 Responde CONFIRMAR
+    // 6.2 Responde CONFIRMAR
     const repliesConfirm = [];
     const msgConfirm = {
       from: `${numeroAdmin}@c.us`,
@@ -338,7 +378,7 @@ test('WhatsApp Agente Financeiro - Suíte Completa de Leitura e Escrita Controla
     assert.ok(caixaAberto, 'O turno de caixa deve estar aberto');
     assert.equal(caixaAberto.saldoAtual, 250);
 
-    // 5.3 Lança entrada com confirmação
+    // 6.3 Lança entrada com confirmação
     const repliesEntrada1 = [];
     await processarMensagemTexto({
       from: `${numeroAdmin}@c.us`,
@@ -363,8 +403,60 @@ test('WhatsApp Agente Financeiro - Suíte Completa de Leitura e Escrita Controla
     assert.equal(caixaAberto.saldoAtual, 370); // 250 + 120
   });
 
-  // ── 6. RESPOSTA DIFERENTE CANCELA OPERAÇÃO ───────────────────────────
-  await t.test('6. Qualquer resposta diferente de CONFIRMAR cancela a operação', async () => {
+  // ── 7. ISOLAMENTO DO CONFIRMAR: OUTRO NÚMERO NÃO EXECUTA NEM REVELA ──
+  await t.test('7. CONFIRMAR vindo de outro número não executa nem revela a pendência', async () => {
+    const mockState = criarEstadoMock();
+    const numero1 = '5511999998888';
+    const numero2 = '5511888887777'; // Outro admin
+
+    // Número 1 solicita abertura de caixa de R$ 500,00
+    await processarMensagemTexto({
+      from: `${numero1}@c.us`,
+      author: `${numero1}@c.us`,
+      body: 'abrir caixa com R$ 500,00',
+      reply: async () => {}
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: numero1 });
+
+    assert.equal(confirmacoesPendentes.size, 1);
+    assert.ok(confirmacoesPendentes.has(`default:${numero1}`));
+
+    // Número 2 tenta enviar CONFIRMAR
+    const repliesNumero2 = [];
+    const tratado = await processarMensagemTexto({
+      from: `${numero2}@c.us`,
+      author: `${numero2}@c.us`,
+      body: 'CONFIRMAR',
+      reply: async (txt) => { repliesNumero2.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: numero2 });
+
+    // Garante que o caixa NÃO foi aberto
+    const caixaAberto = financialAnalystService.obterCaixaAberto(mockState, 'default');
+    assert.equal(caixaAberto, null, 'Caixa não pode ter sido aberto por confirmação de outro número');
+
+    // Garante que nenhuma mensagem vazou os dados da pendência do número 1
+    repliesNumero2.forEach(txt => {
+      assert.doesNotMatch(txt, /500/);
+      assert.doesNotMatch(txt, /Abertura de Caixa/i);
+    });
+
+    // A pendência do número 1 continua intacta
+    assert.ok(confirmacoesPendentes.has(`default:${numero1}`));
+
+    // Quando o próprio número 1 confirma, executa
+    const repliesNumero1 = [];
+    await processarMensagemTexto({
+      from: `${numero1}@c.us`,
+      author: `${numero1}@c.us`,
+      body: 'CONFIRMAR',
+      reply: async (txt) => { repliesNumero1.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: numero1 });
+
+    assert.match(repliesNumero1[0], /Caixa Aberto com Sucesso/i);
+    assert.equal(confirmacoesPendentes.size, 0);
+  });
+
+  // ── 8. RESPOSTA DIFERENTE CANCELA OPERAÇÃO ───────────────────────────
+  await t.test('8. Qualquer resposta diferente de CONFIRMAR cancela a operação', async () => {
     const mockState = criarEstadoMock();
     const numeroAdmin = '5511999998888';
 
@@ -395,8 +487,8 @@ test('WhatsApp Agente Financeiro - Suíte Completa de Leitura e Escrita Controla
     assert.equal(caixaAberto, null, 'O caixa NÃO deve ser aberto');
   });
 
-  // ── 7. CONFIRMAÇÃO EXPIRADA (> 2 MINUTOS) ───────────────────────────
-  await t.test('7. Confirmação expirada (> 2 minutos) não executa e cancela', async () => {
+  // ── 9. CONFIRMAÇÃO EXPIRADA (> 2 MINUTOS) ───────────────────────────
+  await t.test('9. Confirmação expirada (> 2 minutos) não executa e cancela', async () => {
     const mockState = criarEstadoMock();
     const numeroAdmin = '5511999998888';
 
@@ -431,36 +523,35 @@ test('WhatsApp Agente Financeiro - Suíte Completa de Leitura e Escrita Controla
     assert.equal(caixaAberto, null, 'Caixa não deve abrir com confirmação expirada');
   });
 
-  // ── 8. IDEMPOTÊNCIA POR ID DE MENSAGEM (REENTREGA DO WHATSAPP) ───────
-  await t.test('8. Idempotência pelo id da mensagem descarta reentrega sem duplicar lançamentos', async () => {
-    const msgId = 'true_5511999998888@c.us_3EB0C34B198A_test';
+  // ── 10. IDEMPOTÊNCIA DURÁVEL EM SQLITE KV COM TTL ───────────────────
+  await t.test('10. Idempotência durável em SQLite KV com TTL: sobrevive à limpeza da memória', async () => {
+    const msgId = 'true_5511999998888@c.us_DURABLE_TEST_001';
 
-    const check1 = verificarIdempotencia(msgId);
+    // Inicialmente não duplicada
+    const check1 = await verificarIdempotencia(msgId);
     assert.equal(check1.duplicada, false);
 
-    registrarIdempotencia(msgId, 'Resposta gravada de teste');
+    // Registra idempotência durável
+    await registrarIdempotencia(msgId, 'Resposta salva no SQLite KV');
 
-    const check2 = verificarIdempotencia(msgId);
+    // Confere que gravou no SQLite KV
+    const row = await get('SELECT value FROM kv WHERE key = ?', [`wpp_msg:${msgId}`]);
+    assert.ok(row && row.value, 'Deve ter persistido no SQLite KV');
+    const parsed = JSON.parse(row.value);
+    assert.equal(parsed.resposta, 'Resposta salva no SQLite KV');
+    assert.ok(parsed.expiraEm > Date.now());
+
+    // Limpa a memória RAM para simular restart do processo
+    mensagensProcessadas.clear();
+
+    // Consulta novamente: deve buscar do SQLite KV e reportar duplicada com a mesma resposta
+    const check2 = await verificarIdempotencia(msgId);
     assert.equal(check2.duplicada, true);
-    assert.equal(check2.resposta, 'Resposta gravada de teste');
-
-    // Teste integrado em tratarMensagemWhatsApp
-    const mockMsg = {
-      id: { _serialized: msgId },
-      from: '5511999998888@c.us',
-      body: 'CONFIRMAR',
-      hasMedia: false,
-      reply: async (txt) => { replies.push(txt); }
-    };
-    const replies = [];
-
-    await tratarMensagemWhatsApp(mockMsg, null);
-    assert.equal(replies.length, 1);
-    assert.equal(replies[0], 'Resposta gravada de teste');
+    assert.equal(check2.resposta, 'Resposta salva no SQLite KV');
   });
 
-  // ── 9. MENSAGEM DE GRUPO: REMETENTE PRECISA ESTAR NA WHITELIST ───────
-  await t.test('9. Mensagem de grupo: remetente fora da whitelist é barrado na escrita', async () => {
+  // ── 11. MENSAGEM DE GRUPO: REMETENTE PRECISA ESTAR NA WHITELIST ─────
+  await t.test('11. Mensagem de grupo: remetente fora da whitelist é barrado na escrita', async () => {
     const mockState = criarEstadoMock();
 
     const replies = [];
