@@ -1098,6 +1098,181 @@ test('17. Rota POST /api/financeiro/titulos/:id/liquidar com RBAC, baixa no caix
   }
 });
 
+test('18. Validação de Liberação de Pátio (Portaria) e Override Auditado com RBAC (Frente 5A)', async () => {
+  const fs = require('fs');
+  const os = require('os');
+  const express = require('express');
+  const http = require('http');
+  const financialAnalystService = require('../services/financialAnalystService.js');
+  const financialRoutes = require('../routes/financial.routes');
+  const { salvarEstado } = require('../lib/serverContext');
+  const { getDefaultState } = require('../lib/repository/stateRepository');
+  const { initDB, closeDB, all } = require('../db');
+
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'patio-lib-saida-test-'));
+  const testDb = path.join(tempDir, 'test.db');
+  process.env.DB_PATH = testDb;
+
+  try {
+    await initDB();
+    const tenantId = 't_lib_saida';
+
+    // 18.1 Motor de validação: OS com pendência retida sem forçar -> 409
+    const stateMock = {
+      tenantId,
+      os: [
+        { id: '801', numero: '801', total: 1000, cliente: 'Cliente Devedor' },
+        { id: '802', numero: '802', total: 500, cliente: 'Cliente Quitado' }
+      ],
+      movimentos: [
+        { id: 'mov_pago_802', osId: '802', tipo: 'entrada', valor: 500, forma: 'pix', status: 'confirmado' }
+      ],
+      contas: []
+    };
+
+    const resCheck801 = financialAnalystService.validarOuAutorizarSaidaPatioOS(stateMock, {
+      osId: '801',
+      forcarLiberacao: false
+    });
+    assert.equal(resCheck801.ok, false);
+    assert.equal(resCheck801.status, 409);
+    assert.equal(resCheck801.code, 'OS_RETIDA_PENDENCIA_FINANCEIRA');
+    assert.equal(resCheck801.autorizado, false);
+    assert.equal(resCheck801.saldoRestante, 1000);
+
+    // 18.2 Motor de validação: OS quitada -> Autorizada de imediato
+    const resCheck802 = financialAnalystService.validarOuAutorizarSaidaPatioOS(stateMock, {
+      osId: '802',
+      forcarLiberacao: false
+    });
+    assert.equal(resCheck802.ok, true);
+    assert.equal(resCheck802.autorizado, true);
+    assert.equal(resCheck802.statusLiberacaoPatio, 'liberado_quitado');
+
+    // 18.3 Motor de validação: mecânico tenta forçar liberação -> 403
+    const resMecForca = financialAnalystService.validarOuAutorizarSaidaPatioOS(stateMock, {
+      osId: '801',
+      forcarLiberacao: true,
+      justificativa: 'Liberado pelo mecânico chefe',
+      operador: { perfil: 'mecanico', nome: 'Mecânico Zé' }
+    });
+    assert.equal(resMecForca.ok, false);
+    assert.equal(resMecForca.status, 403);
+    assert.equal(resMecForca.code, 'PERFIL_NAO_AUTORIZADO');
+
+    // 18.4 Motor de validação: dono tenta forçar sem justificativa válida (< 5 chars) -> 400
+    const resDonoSemJust = financialAnalystService.validarOuAutorizarSaidaPatioOS(stateMock, {
+      osId: '801',
+      forcarLiberacao: true,
+      justificativa: 'ok',
+      operador: { perfil: 'dono', nome: 'Dono da Oficina' }
+    });
+    assert.equal(resDonoSemJust.ok, false);
+    assert.equal(resDonoSemJust.status, 400);
+    assert.equal(resDonoSemJust.code, 'JUSTIFICATIVA_INVALIDA');
+
+    // 18.5 Motor de validação: dono autoriza excepcionalmente -> 200 e altera status
+    const resDonoSucesso = financialAnalystService.validarOuAutorizarSaidaPatioOS(stateMock, {
+      osId: '801',
+      forcarLiberacao: true,
+      justificativa: 'Liberado mediante promissória assinada e autorizada pelo dono',
+      operador: { perfil: 'dono', nome: 'Dono da Oficina' }
+    });
+    assert.equal(resDonoSucesso.ok, true);
+    assert.equal(resDonoSucesso.autorizado, true);
+    assert.equal(resDonoSucesso.statusLiberacaoPatio, 'liberado_excepcional');
+    assert.ok(resDonoSucesso.liberacaoExcepcional);
+    assert.equal(resDonoSucesso.liberacaoExcepcional.saldoPendenteNaSaida, 1000);
+
+    const resumoRecalculado = financialAnalystService.obterResumoFinanceiroOS(stateMock, '801');
+    assert.equal(resumoRecalculado.statusLiberacaoPatio, 'liberado_excepcional');
+
+    // 18.6 Teste de Rota HTTP REST com express e auditoria
+    const app = express();
+    app.use(express.json());
+    let mockContext = { role: 'dono', actorId: 'dono_1', tenantId, permissions: ['os:read', 'os:write', 'financial:write'] };
+    app.use((req, res, next) => {
+      req.securityContext = mockContext;
+      req.headers['x-tenant-id'] = tenantId;
+      next();
+    });
+    app.use(financialRoutes);
+
+    const base = getDefaultState(tenantId);
+    const testState = {
+      ...base,
+      tenantId,
+      os: [
+        { id: '850', numero: '850', total: 1500, cliente: 'Transportadora Alfa' }
+      ],
+      movimentos: [],
+      contas: []
+    };
+    await salvarEstado(tenantId, testState);
+
+    const server = http.createServer(app);
+    await new Promise(r => server.listen(0, '127.0.0.1', r));
+    const port = server.address().port;
+    const baseUrl = `http://127.0.0.1:${port}`;
+
+    try {
+      // Tentativa de liberação sem forçar -> 409
+      const resApi409 = await fetch(`${baseUrl}/api/financeiro/os/850/liberar-saida`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ forcarLiberacao: false })
+      });
+      assert.equal(resApi409.status, 409);
+      const json409 = await resApi409.json();
+      assert.equal(json409.code, 'OS_RETIDA_PENDENCIA_FINANCEIRA');
+
+      // Mecânico tentando forçar liberação -> 403
+      mockContext = { role: 'mecanico', actorId: 'mec_1', tenantId, permissions: ['os:read', 'operation:read'] };
+      const resApiMec = await fetch(`${baseUrl}/api/financeiro/os/850/liberar-saida`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ forcarLiberacao: true, justificativa: 'Mecânico liberando pátio' })
+      });
+      assert.equal(resApiMec.status, 403);
+      const jsonMec = await resApiMec.json();
+      assert.equal(jsonMec.code, 'PERFIL_NAO_AUTORIZADO');
+
+      // Dono liberando com justificativa -> 200 OK
+      mockContext = { role: 'dono', actorId: 'dono_1', tenantId, fullName: 'Diretor Comercial', permissions: ['financial:write', 'os:write'] };
+      const resApiDono = await fetch(`${baseUrl}/api/financeiro/os/850/liberar-saida`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          forcarLiberacao: true,
+          justificativa: 'Cliente corporativo com faturamento quinzenal acordado'
+        })
+      });
+      assert.equal(resApiDono.status, 200);
+      const jsonDono = await resApiDono.json();
+      assert.equal(jsonDono.success, true);
+      assert.equal(jsonDono.statusLiberacaoPatio, 'liberado_excepcional');
+      assert.equal(jsonDono.liberacaoExcepcional.autorizadoPor, 'Diretor Comercial');
+
+      // Verifica auditorias registradas no SQLite
+      const auditRows = await all(`
+        SELECT action, entity_id FROM security_audit_log
+        WHERE tenant_id = ? AND action LIKE 'financeiro:os:liberar_saida_%'
+        ORDER BY id ASC
+      `, [tenantId]);
+      assert.ok(auditRows.length >= 2, 'Devem existir auditorias de tentativa negada e liberação excepcional');
+      const acoes = auditRows.map(r => r.action);
+      assert.ok(acoes.includes('financeiro:os:liberar_saida_negada'));
+      assert.ok(acoes.includes('financeiro:os:liberar_saida_excepcional'));
+    } finally {
+      await new Promise(r => server.close(r));
+    }
+  } finally {
+    await closeDB().catch(() => {});
+    try { fs.rmSync(tempDir, { recursive: true, force: true }); } catch (_) {}
+  }
+});
+
+
 
 
 

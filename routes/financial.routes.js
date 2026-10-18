@@ -334,6 +334,111 @@ router.post('/api/financeiro/os/:osId/faturar', requirePermission('financial:wri
 });
 
 /**
+ * 4.1.1 POST /api/financeiro/os/:osId/liberar-saida
+ * Valida a liberação de saída da OS no pátio ou concede liberação excepcional auditada com RBAC
+ */
+router.post('/api/financeiro/os/:osId/liberar-saida', requirePermission('os:read', 'os:write', 'financial:read', 'financial:write', 'operation:read'), async (req, res) => {
+  try {
+    const tenantId = extractTenantId(req);
+    const osId = req.params.osId;
+    const { forcarLiberacao, justificativa } = req.body || {};
+    const role = (req.securityContext?.role || req.user?.role || '').toLowerCase();
+    const operadorNome = req.securityContext?.fullName || req.securityContext?.actorId || req.user?.username || 'operador';
+
+    let resultado = null;
+    const saveRes = await mutateTenantState(req, (draft) => {
+      resultado = financialAnalystService.validarOuAutorizarSaidaPatioOS(draft, {
+        osId,
+        forcarLiberacao: Boolean(forcarLiberacao),
+        justificativa,
+        operador: {
+          perfil: role,
+          nome: operadorNome,
+          actorId: req.securityContext?.actorId
+        }
+      });
+
+      if (!resultado.ok) {
+        return {
+          abort: true,
+          status: resultado.status || 400,
+          code: resultado.code,
+          error: resultado.error || resultado.message,
+          message: resultado.message,
+          saldoRestante: resultado.saldoRestante
+        };
+      }
+    });
+
+    if (saveRes?.aborted) {
+      const mutRes = saveRes.mutatorResult || saveRes;
+      // Registro de auditoria quando liberação for negada (por retenção ou por falta de permissão RBAC)
+      try {
+        await recordSecurityAudit({
+          tenantId,
+          actorId: req.securityContext?.actorId || 'operador',
+          action: 'financeiro:os:liberar_saida_negada',
+          entity: 'ordem_servico',
+          entityId: String(osId),
+          details: {
+            osId,
+            motivo: mutRes.code || 'bloqueado',
+            forcarLiberacao: Boolean(forcarLiberacao),
+            role,
+            saldoRestante: mutRes.saldoRestante
+          }
+        });
+      } catch (_) {}
+
+      return res.status(mutRes.status || saveRes.status || 400).json({
+        success: false,
+        code: mutRes.code,
+        error: mutRes.error,
+        message: mutRes.message,
+        saldoRestante: mutRes.saldoRestante
+      });
+    }
+
+    if (!saveRes || !saveRes.ok) {
+      return res.status(saveRes?.status || 500).json({
+        success: false,
+        error: saveRes?.error || 'Falha ao processar liberação de saída de pátio.'
+      });
+    }
+
+    // Registro de auditoria quando liberação excepcional for concedida
+    if (resultado.statusLiberacaoPatio === 'liberado_excepcional') {
+      try {
+        await recordSecurityAudit({
+          tenantId,
+          actorId: req.securityContext?.actorId || 'operador',
+          action: 'financeiro:os:liberar_saida_excepcional',
+          entity: 'ordem_servico',
+          entityId: String(osId),
+          details: {
+            osId,
+            justificativa,
+            saldoPendenteNaSaida: resultado.saldoRestante,
+            autorizadoPor: operadorNome,
+            role
+          }
+        });
+      } catch (auditErr) {
+        console.warn('[Financeiro Liberar Saida OS Audit] Falha não-bloqueante:', auditErr.message);
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      ...resultado
+    });
+  } catch (err) {
+    console.error('[API /api/financeiro/os/:osId/liberar-saida POST] Erro:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+/**
  * 4.1.2 POST /api/financeiro/titulos/:id/liquidar
  * Realiza a liquidação (baixa) de um título a receber ou conta a pagar com geração de movimento no caixa e auditoria
  */

@@ -1627,7 +1627,101 @@ test('WhatsApp Agente Financeiro - Suíte Completa de Leitura e Escrita Controla
     `);
     assert.ok(auditRows.length >= 2, 'Deve registrar auditorias no security_audit_log');
   });
+
+  await t.test('27. Comando liberar os <id> <justificativa> via WhatsApp com RBAC e confirmação em 2 etapas (Frente 5A)', async () => {
+    const mockState = criarEstadoMock();
+    const adminNum = '5511999998888';
+    const mecNum = '5511988887777';
+    mockState.cfg.adminFones = [adminNum];
+    mockState.cfg.comandosFinanceirosEscrita = true;
+    mockState.mecanicos = [
+      { id: 'usr_mec', nome: 'Mecânico Zé', telefone: mecNum }
+    ];
+    mockState.os = [
+      { id: '901', numero: '901', total: 2500, cliente: 'Transporte Rodoviário Silva' }
+    ];
+
+    // 27.1 Mecânico tenta executar comando de liberação -> Acesso Negado
+    const repliesMec = [];
+    await processarMensagemTexto({
+      from: `${mecNum}@c.us`,
+      author: `${mecNum}@c.us`,
+      body: 'liberar os 901 Acordo verbal com cliente',
+      reply: async (txt) => { repliesMec.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: mecNum, isSenderAdmin: false });
+
+    assert.equal(repliesMec.length, 1);
+    assert.match(repliesMec[0], /Acesso Negado/i);
+    assert.match(repliesMec[0], /Dono\/Administrador/i);
+
+    // 27.2 Dono tenta sem justificativa válida (< 5 chars)
+    const repliesDonoCurto = [];
+    await processarMensagemTexto({
+      from: `${adminNum}@c.us`,
+      author: `${adminNum}@c.us`,
+      body: 'liberar os 901 ok',
+      reply: async (txt) => { repliesDonoCurto.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: adminNum, isSenderAdmin: true });
+
+    assert.equal(repliesDonoCurto.length, 1);
+    assert.match(repliesDonoCurto[0], /pelo menos 5 caracteres/i);
+
+    // 27.3 Dono envia comando com justificativa válida -> Pedido de confirmação
+    const repliesDonoValido = [];
+    await processarMensagemTexto({
+      from: `${adminNum}@c.us`,
+      author: `${adminNum}@c.us`,
+      body: 'liberar os 901 Cliente frotista VIP liberado com duplicata emitida',
+      reply: async (txt) => { repliesDonoValido.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: adminNum, isSenderAdmin: true });
+
+    assert.equal(repliesDonoValido.length, 1);
+    assert.match(repliesDonoValido[0], /CONFIRMAÇÃO DE LIBERAÇÃO EXCEPCIONAL DE PÁTIO/i);
+    assert.match(repliesDonoValido[0], /901/);
+    assert.match(repliesDonoValido[0], /2\.500,00/);
+    assert.match(repliesDonoValido[0], /duplicata emitida/i);
+
+    // 27.4 Dono confirma com CONFIRMAR -> Sucesso e persistência
+    const repliesConf = [];
+    await processarMensagemTexto({
+      from: `${adminNum}@c.us`,
+      author: `${adminNum}@c.us`,
+      body: 'CONFIRMAR',
+      reply: async (txt) => { repliesConf.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: adminNum, isSenderAdmin: true });
+
+    assert.equal(repliesConf.length, 1);
+    assert.match(repliesConf[0], /Liberação Excepcional de Pátio Concedida/i);
+    assert.match(repliesConf[0], /901/);
+
+    // Verifica que a OS no state agora possui a liberação excepcional
+    const osGravada = mockState.os.find(o => o.id === '901');
+    assert.ok(osGravada.liberacaoExcepcional);
+    assert.equal(osGravada.liberacaoExcepcional.saldoPendenteNaSaida, 2500);
+    assert.match(osGravada.liberacaoExcepcional.justificativa, /duplicata emitida/);
+
+    // 27.5 Tentativa de liberar novamente a mesma OS já liberada -> Informa que já está liberada
+    const repliesJaLib = [];
+    await processarMensagemTexto({
+      from: `${adminNum}@c.us`,
+      author: `${adminNum}@c.us`,
+      body: 'liberar os 901 Nova tentativa',
+      reply: async (txt) => { repliesJaLib.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: adminNum, isSenderAdmin: true });
+
+    assert.equal(repliesJaLib.length, 1);
+    assert.match(repliesJaLib[0], /já se encontra liberada/i);
+
+    // 27.6 Verifica auditoria de segurança no SQLite
+    const auditRows = await all(`
+      SELECT action, entity_id FROM security_audit_log
+      WHERE action IN ('financeiro:os:liberar_saida_negada', 'financeiro:os:liberar_saida_excepcional')
+      ORDER BY id ASC
+    `);
+    assert.ok(auditRows.length >= 2, 'Deve conter auditorias de tentativa negada e concessao excepcional');
+  });
 });
+
 
 
 

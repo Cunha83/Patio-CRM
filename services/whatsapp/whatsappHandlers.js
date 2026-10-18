@@ -631,7 +631,8 @@ async function processarMensagemTexto(msg, {
   const isComandoSuprimento = /^!?suprimento\b/i.test(textoLower);
   const isComandoEstorno = /^(?:!estornar|estornar)\b/i.test(textoLower);
   const isComandoBaixa = /^(?:!baixar|baixar|pagar\s+conta|receber\s+titulo|receber\s+título)\b/i.test(textoLower);
-  const isComandoEscrita = isComandoAbrirCaixa || isComandoFecharCaixa || isComandoEntrada || isComandoSaida || isComandoSangria || isComandoSuprimento || isComandoEstorno || isComandoBaixa;
+  const isComandoLiberarOS = /^(?:!liberar\s+os|liberar\s+os)\b/i.test(textoLower);
+  const isComandoEscrita = isComandoAbrirCaixa || isComandoFecharCaixa || isComandoEntrada || isComandoSaida || isComandoSangria || isComandoSuprimento || isComandoEstorno || isComandoBaixa || isComandoLiberarOS;
 
   const matchComandoOS = textoLower.match(/(?:extrato|financeiro|saldo)\s+(?:da\s+|de\s+)?(?:os|o\.s\.)\s*#?\s*([a-zA-Z0-9_\-]+)/i) ||
                          textoLower.match(/(?:os|o\.s\.)\s*#?\s*([a-zA-Z0-9_\-]+)\s+(?:financeiro|extrato|saldo)/i) ||
@@ -1013,6 +1014,42 @@ async function processarMensagemTexto(msg, {
           } else {
             msgSucesso = `⚠️ Não foi possível liquidar o título: ${resOp.error}`;
           }
+        } else if (pendente.acao === 'liberar_saida_os') {
+          resOp = financialAnalystService.validarOuAutorizarSaidaPatioOS(tenantState, {
+            osId: pendente.osId,
+            forcarLiberacao: true,
+            justificativa: pendente.justificativa,
+            operador: {
+              perfil: pendente.perfil?.role || 'dono',
+              nome: `WhatsApp (${senderNorm})`,
+              numero: senderNorm
+            }
+          });
+          if (resOp.ok && resOp.autorizado) {
+            msgSucesso = `🔓 *Liberação Excepcional de Pátio Concedida!*\n\n• OS: #${resOp.osId}\n• Status: Liberado em Exceção\n• Saldo Pendente: ${financialEngine.formatarMoeda(resOp.saldoRestante || 0)}\n• Justificativa: ${pendente.justificativa}\n• Autorizado por: ${resOp.liberacaoExcepcional?.autorizadoPor}`;
+            try {
+              await recordSecurityAudit({
+                tenantId: tenantKey,
+                actorId: `whatsapp:${senderNorm}`,
+                actorType: 'whatsapp_sender',
+                action: 'financeiro:os:liberar_saida_excepcional',
+                entity: 'ordem_servico',
+                entityId: String(resOp.osId),
+                details: {
+                  osId: resOp.osId,
+                  saldoPendenteNaSaida: resOp.saldoRestante,
+                  justificativa: pendente.justificativa,
+                  perfil: pendente.perfil?.role || 'dono',
+                  autorizadoPor: `WhatsApp (${senderNorm})`,
+                  origem: 'whatsapp'
+                }
+              });
+            } catch (auditErr) {
+              console.warn('[WhatsApp Liberar OS Audit] Falha não-bloqueante:', auditErr.message);
+            }
+          } else {
+            msgSucesso = `⚠️ Não foi possível autorizar a liberação da OS: ${resOp.error || resOp.message}`;
+          }
         }
 
         try {
@@ -1099,17 +1136,18 @@ async function processarMensagemTexto(msg, {
 
     // 2. Perfil do número: deve ser dono ou financeiro. Atendente e mecânico não executam escrita
     const perfil = await obterPerfilNumeroWhatsApp({ tenantKey, numero: senderNorm, tenantState });
-    if (isComandoEstorno) {
+    if (isComandoEstorno || isComandoLiberarOS) {
       if (!podeExecutarEstorno(perfil)) {
-        const respNeg = `🔒 *Acesso Negado:* Seu perfil de usuário (${perfil.role || 'desconhecido'}) não possui permissão para realizar estorno de movimentações financeiras. O estorno é restrito exclusivamente ao Dono/Administrador.`;
+        const acaoMsg = isComandoLiberarOS ? 'conceder liberação excepcional de pátio' : 'realizar estorno de movimentações financeiras';
+        const respNeg = `🔒 *Acesso Negado:* Seu perfil de usuário (${perfil.role || 'desconhecido'}) não possui permissão para ${acaoMsg}. Esta ação é restrita exclusivamente ao Dono/Administrador.`;
         await msg.reply(respNeg);
         try {
           await recordSecurityAudit({
             tenantId: tenantKey,
             actorId: `whatsapp:${senderNorm}`,
             actorType: 'whatsapp_sender',
-            action: 'financeiro:movimento:estorno_negado',
-            entity: 'movimento_financeiro',
+            action: isComandoLiberarOS ? 'financeiro:os:liberar_saida_negada' : 'financeiro:movimento:estorno_negado',
+            entity: isComandoLiberarOS ? 'ordem_servico' : 'movimento_financeiro',
             details: { motivo: 'perfil_nao_autorizado', perfil: perfil.role, comando: textoMensagem }
           });
         } catch (_) {}
@@ -1118,7 +1156,7 @@ async function processarMensagemTexto(msg, {
           numero: senderNorm,
           comando: textoMensagem,
           resultado: 'negado_permissao',
-          detalhes: { perfil: perfil.role, acao: 'estornar' }
+          detalhes: { perfil: perfil.role, acao: isComandoLiberarOS ? 'liberar_os' : 'estornar' }
         });
         return true;
       }
@@ -1774,6 +1812,69 @@ async function processarMensagemTexto(msg, {
         comando: textoMensagem,
         resultado: 'aguardando_confirmacao',
         detalhes: { acao: 'liquidar_titulo', tituloId: tituloAlvo.id, valor: valorFinal, meio: meioLiquidacao }
+      });
+      return true;
+    } else if (isComandoLiberarOS) {
+      // Sintaxe: liberar os <numero> <justificativa>
+      const matchLiberar = textoMensagem.match(/^!?liberar\s+os\s*#?\s*([a-zA-Z0-9_\-]+)(?:\s+(.+))?$/i);
+      if (!matchLiberar || !matchLiberar[1]) {
+        const respAjuda = '⚠️ Formato inválido. Use: *liberar os <número> <justificativa>* (ex: *liberar os 101 Cliente VIP liberado com promissória assinada*).';
+        await msg.reply(respAjuda);
+        await auditarComandoWhatsApp({ tenantId: tenantKey, numero: senderNorm, comando: textoMensagem, resultado: 'solicitado_esclarecimento_liberar_os', detalhes: { motivo: 'formato_invalido' } });
+        return true;
+      }
+
+      const osAlvo = matchLiberar[1].trim();
+      const justificativa = (matchLiberar[2] || '').trim();
+
+      if (!justificativa || justificativa.length < 5) {
+        const respPedeJust = '⚠️ A justificativa para liberação excepcional é obrigatória e deve ter pelo menos 5 caracteres (ex: *liberar os 101 Cliente VIP aprovado pelo dono*).';
+        await msg.reply(respPedeJust);
+        await auditarComandoWhatsApp({ tenantId: tenantKey, numero: senderNorm, comando: textoMensagem, resultado: 'solicitado_esclarecimento_justificativa', detalhes: { motivo: 'justificativa_invalida' } });
+        return true;
+      }
+
+      const resumoOS = financialAnalystService.obterResumoFinanceiroOS(tenantState, osAlvo);
+      if (['liberado_quitado', 'liberado_faturado', 'liberado_excepcional'].includes(resumoOS.statusLiberacaoPatio)) {
+        const descStatus = resumoOS.statusLiberacaoPatio === 'liberado_quitado'
+          ? 'Totalmente Quitada'
+          : (resumoOS.statusLiberacaoPatio === 'liberado_faturado' ? 'Faturada a Prazo' : 'Exceção Auditada');
+        const respJaLib = `ℹ️ A OS #${osAlvo} já se encontra liberada (${descStatus}). Não é necessária nova liberação.`;
+        await msg.reply(respJaLib);
+        await auditarComandoWhatsApp({ tenantId: tenantKey, numero: senderNorm, comando: textoMensagem, resultado: 'recusado_os_ja_liberada', detalhes: { osId: osAlvo, status: resumoOS.statusLiberacaoPatio } });
+        return true;
+      }
+
+      confirmacoesPendentes.set(chavePendente, {
+        acao: 'liberar_saida_os',
+        descricaoAcao: 'Liberação Excepcional de Pátio',
+        osId: osAlvo,
+        justificativa,
+        valor: resumoOS.saldoRestante || 0,
+        expiraEm: Date.now() + CONFIRMACAO_TTL_MS,
+        tenantKey,
+        fromNumber: senderNorm,
+        perfil
+      });
+
+      const msgConfirm =
+        prefixoSubstituicao +
+        `⚠️ *CONFIRMAÇÃO DE LIBERAÇÃO EXCEPCIONAL DE PÁTIO* ⚠️\n\n` +
+        `Por favor, confira os dados da autorização:\n` +
+        `• *OS Alvo:* #${osAlvo} (${resumoOS.cliente || 'Geral'})\n` +
+        `• *Saldo Pendente em Aberto:* ${financialEngine.formatarMoeda(resumoOS.saldoRestante || 0)}\n` +
+        `• *Justificativa Auditada:* ${justificativa}\n` +
+        `• *Autorizador:* WhatsApp (${senderNorm}) [${perfil.role || 'dono'}]\n\n` +
+        `Para autorizar a saída deste veículo do pátio, responda exatamente *CONFIRMAR* ou *SIM* em até 2 minutos.\n` +
+        `Qualquer outra resposta cancelará esta operação.`;
+
+      await msg.reply(msgConfirm);
+      await auditarComandoWhatsApp({
+        tenantId: tenantKey,
+        numero: senderNorm,
+        comando: textoMensagem,
+        resultado: 'aguardando_confirmacao',
+        detalhes: { acao: 'liberar_saida_os', osId: osAlvo, justificativa, saldoPendente: resumoOS.saldoRestante }
       });
       return true;
     }
