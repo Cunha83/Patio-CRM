@@ -233,7 +233,7 @@ function registrarMovimentacao(state = {}, payload = {}) {
  * 4. Compensa o saldo do caixa atual.
  * 5. Idempotência: impede reestorno (409) ou estorno de lançamento de estorno (400).
  */
-function estornarMovimentacao(state = {}, { movimentoId, motivo, operador, operadorNome, tenantId = 'default' } = {}) {
+function estornarMovimentacao(state = {}, { movimentoId, motivo, operador, operadorNome, tenantId = 'default', origem, canal, autorNumero } = {}) {
   if (!movimentoId) {
     return { ok: false, code: 'PARAMETRO_INVALIDO', status: 400, error: 'O ID da movimentação é obrigatório para estorno.' };
   }
@@ -305,8 +305,9 @@ function estornarMovimentacao(state = {}, { movimentoId, motivo, operador, opera
     clienteId: movOriginal.clienteId || null,
     fornecedorId: movOriginal.fornecedorId || null,
     operador: String(operador || 'operador'),
-    origem: movOriginal.origem || 'web',
-    canal: movOriginal.canal || 'painel',
+    origem: origem || movOriginal.origem || 'web',
+    canal: canal || movOriginal.canal || 'painel',
+    autorNumero: autorNumero || movOriginal.autorNumero || null,
     estornoDeId: movOriginal.id,
     motivoEstorno: motivoTrim,
     criadoEm: agoraIso

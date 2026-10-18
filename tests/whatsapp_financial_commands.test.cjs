@@ -23,7 +23,8 @@ const {
   registrarIdempotencia,
   extrairValorMonetario,
   obterPerfilNumeroWhatsApp,
-  podeExecutarEscritaFinanceira
+  podeExecutarEscritaFinanceira,
+  podeExecutarEstorno
 } = require('../services/whatsapp/whatsappHandlers');
 const financialEngine = require('../services/financialEngine');
 const financialAnalystService = require('../services/financialAnalystService');
@@ -915,6 +916,216 @@ test('WhatsApp Agente Financeiro - Suíte Completa de Leitura e Escrita Controla
 
     assert.equal(repliesE.length, 1);
     assert.match(repliesE[0], /POSIÇÃO FINANCEIRA|Saldo em Caixa/i, 'JID @lid resolvido via propriedade de telefone real deve ser aceito');
+  });
+
+  // ── 17. CONSULTA DE EXTRATO RECENTE VIA WHATSAPP ──
+  await t.test('17. Consulta de extrato recente de caixa via WhatsApp com filtros de quantidade e origem', async () => {
+    const mockState = criarEstadoMock();
+    const adminNum = '5511999998888';
+
+    // Cria caixa e 3 lançamentos
+    mockState.caixas = [{
+      id: 'cx-extrato-1',
+      status: 'aberto',
+      aberto: true,
+      saldoInicial: 500,
+      saldoAtual: 850,
+      totalEntradas: 450,
+      totalSaidas: 100,
+      movimentacoesIds: ['m1', 'm2', 'm3']
+    }];
+    mockState.movimentos = [
+      { id: 'm3', caixaId: 'cx-extrato-1', tipo: 'entrada', valor: 450, desc: 'Entrada via Pix Oficina', origem: 'whatsapp', autorNumero: adminNum, confirmadoEm: new Date().toISOString() },
+      { id: 'm2', caixaId: 'cx-extrato-1', tipo: 'saida', valor: 100, desc: 'Combustível Teste', origem: 'web' },
+      { id: 'm1', caixaId: 'cx-extrato-1', tipo: 'entrada', valor: 500, desc: 'Abertura de Caixa', origem: 'web' }
+    ];
+
+    // 17.1 Extrato geral padrão
+    const repliesGeral = [];
+    await processarMensagemTexto({
+      from: `${adminNum}@c.us`,
+      author: `${adminNum}@c.us`,
+      body: 'extrato',
+      reply: async (txt) => { repliesGeral.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: adminNum });
+
+    assert.equal(repliesGeral.length, 1);
+    assert.match(repliesGeral[0], /EXTRATO RECENTE DE MOVIMENTAÇÕES/i);
+    assert.match(repliesGeral[0], /450,00/);
+    assert.match(repliesGeral[0], /100,00/);
+    assert.match(repliesGeral[0], /📱 WPP/);
+    assert.match(repliesGeral[0], /💻 WEB/);
+
+    // 17.2 Extrato com limite numérico (ex: extrato 1)
+    const repliesQtd = [];
+    await processarMensagemTexto({
+      from: `${adminNum}@c.us`,
+      author: `${adminNum}@c.us`,
+      body: 'extrato 1',
+      reply: async (txt) => { repliesQtd.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: adminNum });
+
+    assert.equal(repliesQtd.length, 1);
+    assert.ok(repliesQtd[0].includes('Exibindo:* 1') || repliesQtd[0].includes('1 lançamento'));
+    assert.match(repliesQtd[0], /Entrada via Pix Oficina/);
+    assert.doesNotMatch(repliesQtd[0], /Combustível Teste/);
+
+    // 17.3 Extrato filtrando apenas WhatsApp
+    const repliesWpp = [];
+    await processarMensagemTexto({
+      from: `${adminNum}@c.us`,
+      author: `${adminNum}@c.us`,
+      body: 'extrato whatsapp',
+      reply: async (txt) => { repliesWpp.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: adminNum });
+
+    assert.equal(repliesWpp.length, 1);
+    assert.match(repliesWpp[0], /Apenas WhatsApp/i);
+    assert.match(repliesWpp[0], /📱 WPP/);
+    assert.doesNotMatch(repliesWpp[0], /💻 WEB/);
+  });
+
+  // ── 18. COMANDO DE ESTORNO COM FLUXO EM 2 ETAPAS (CONFIRMAR) E REVERSÃO CONTÁBIL ──
+  await t.test('18. Comando estornar via WhatsApp: confirmação em 2 etapas, reversão de saldo e metadados', async () => {
+    const mockState = criarEstadoMock();
+    const adminNum = '5511999998888';
+
+    // Cria caixa ativo com R$ 200 de saldo inicial
+    mockState.caixas = [{
+      id: 'cx-est-1',
+      status: 'aberto',
+      aberto: true,
+      saldoInicial: 200,
+      saldoAtual: 300,
+      totalEntradas: 100,
+      totalSaidas: 0,
+      movimentacoesIds: ['mov-alvo-1']
+    }];
+    mockState.movimentos = [
+      { id: 'mov-alvo-1', caixaId: 'cx-est-1', tipo: 'entrada', valor: 100, desc: 'Lançamento de teste duplicado', origem: 'whatsapp', autorNumero: adminNum }
+    ];
+
+    // 18.1 Solicita estorno do último lançamento
+    const repliesEstorno = [];
+    await processarMensagemTexto({
+      from: `${adminNum}@c.us`,
+      author: `${adminNum}@c.us`,
+      body: 'estornar ultimo lançamento duplicado por engano',
+      reply: async (txt) => { repliesEstorno.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: adminNum });
+
+    assert.equal(repliesEstorno.length, 1);
+    assert.match(repliesEstorno[0], /CONFIRMAÇÃO DE ESTORNO CONTÁBIL/i);
+    assert.match(repliesEstorno[0], /mov-alvo-1/);
+    assert.match(repliesEstorno[0], /100,00/);
+    assert.match(repliesEstorno[0], /CONFIRMAR/);
+    assert.equal(confirmacoesPendentes.size, 1, 'Deve haver 1 pendência de estorno');
+
+    // 18.2 Confirma com 'CONFIRMAR'
+    const repliesConfirm = [];
+    await processarMensagemTexto({
+      from: `${adminNum}@c.us`,
+      author: `${adminNum}@c.us`,
+      body: 'CONFIRMAR',
+      reply: async (txt) => { repliesConfirm.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: adminNum });
+
+    assert.equal(repliesConfirm.length, 1);
+    assert.match(repliesConfirm[0], /Estorno Realizado com Sucesso/i);
+    assert.match(repliesConfirm[0], /Compensatório/);
+    assert.equal(confirmacoesPendentes.size, 0, 'Pendência deve ser consumida');
+
+    // Verifica saldo do caixa recalculado (300 - 100 = 200)
+    assert.equal(mockState.caixas[0].saldoAtual, 200, 'Saldo deve voltar para 200 após estorno de entrada');
+    const movOriginal = mockState.movimentos.find(m => m.id === 'mov-alvo-1');
+    assert.equal(movOriginal.estornado, true);
+    assert.equal(movOriginal.motivoEstorno, 'lançamento duplicado por engano');
+
+    // Verifica lançamento compensatório
+    const movComp = mockState.movimentos.find(m => m.estornoDeId === 'mov-alvo-1');
+    assert.ok(movComp, 'Lançamento compensatório deve ser gerado');
+    assert.equal(movComp.tipo, 'saida', 'Compensatório de entrada deve ser saída');
+    assert.equal(movComp.valor, 100);
+    assert.equal(movComp.origem, 'whatsapp', 'Deve preservar origem whatsapp');
+    assert.equal(movComp.autorNumero, adminNum, 'Deve registrar autorNumero do admin');
+  });
+
+  // ── 19. BLOQUEIO DE RBAC PARA MECÂNICO E ATENDENTE NO ESTORNO ──
+  await t.test('19. Bloqueio de RBAC para mecânico e atendente ao tentar estornar via WhatsApp com auditoria', async () => {
+    const mockState = criarEstadoMock();
+    const foneMecanico = '5511955554444';
+    const foneAtendente = '5511944443333';
+
+    mockState.caixas = [{ id: 'cx-rbac', status: 'aberto', aberto: true, saldoInicial: 100, saldoAtual: 100 }];
+    mockState.movimentos = [{ id: 'mov-rbac-1', caixaId: 'cx-rbac', tipo: 'entrada', valor: 50, desc: 'Teste' }];
+
+    // 19.1 Mecânico tenta estornar
+    const repliesMec = [];
+    await processarMensagemTexto({
+      from: `${foneMecanico}@c.us`,
+      author: `${foneMecanico}@c.us`,
+      body: 'estornar ultimo cancelamento indevido',
+      reply: async (txt) => { repliesMec.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: foneMecanico });
+
+    assert.equal(repliesMec.length, 1);
+    assert.match(repliesMec[0], /Acesso Negado|perfil de usuário \(mecanico\)/i);
+    assert.equal(confirmacoesPendentes.size, 0, 'Mecânico não pode criar pendência de estorno');
+
+    // 19.2 Atendente tenta estornar
+    const repliesAtend = [];
+    await processarMensagemTexto({
+      from: `${foneAtendente}@c.us`,
+      author: `${foneAtendente}@c.us`,
+      body: 'estornar ultimo cancelamento indevido',
+      reply: async (txt) => { repliesAtend.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: foneAtendente });
+
+    assert.equal(repliesAtend.length, 1);
+    assert.match(repliesAtend[0], /Acesso Negado|perfil de usuário \(atendente\)/i);
+    assert.equal(confirmacoesPendentes.size, 0, 'Atendente não pode criar pendência de estorno');
+
+    // 19.3 Verifica auditoria de estorno negado no SQLite
+    const auditRows = await all('SELECT action, actor_id FROM security_audit_log WHERE action = ?', ['financeiro:movimento:estorno_negado']);
+    assert.ok(auditRows.length >= 2, 'Deve registrar eventos de estorno negado no security_audit_log');
+  });
+
+  // ── 20. IDEMPOTÊNCIA E BLOQUEIO DE DUPLO ESTORNO VIA WHATSAPP ──
+  await t.test('20. Bloqueio de duplo estorno e bloqueio de estorno de lançamento compensatório via WhatsApp', async () => {
+    const mockState = criarEstadoMock();
+    const adminNum = '5511999998888';
+
+    mockState.caixas = [{ id: 'cx-idemp', status: 'aberto', aberto: true, saldoInicial: 100, saldoAtual: 100 }];
+    mockState.movimentos = [
+      { id: 'mov-ja-estornado', caixaId: 'cx-idemp', tipo: 'entrada', valor: 50, desc: 'Original', estornado: true, estornadoPor: 'Admin' },
+      { id: 'mov-compensatorio', caixaId: 'cx-idemp', tipo: 'saida', valor: 50, desc: 'Compensatório', estornoDeId: 'mov-ja-estornado', subtipo: 'estorno' }
+    ];
+
+    // 20.1 Tenta estornar movimentação já estornada
+    const repliesJaEst = [];
+    await processarMensagemTexto({
+      from: `${adminNum}@c.us`,
+      author: `${adminNum}@c.us`,
+      body: 'estornar mov-ja-estornado segundo estorno',
+      reply: async (txt) => { repliesJaEst.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: adminNum });
+
+    assert.equal(repliesJaEst.length, 1);
+    assert.match(repliesJaEst[0], /já foi estornada anteriormente/i);
+    assert.equal(confirmacoesPendentes.size, 0);
+
+    // 20.2 Tenta estornar movimentação compensatória
+    const repliesComp = [];
+    await processarMensagemTexto({
+      from: `${adminNum}@c.us`,
+      author: `${adminNum}@c.us`,
+      body: 'estornar mov-compensatorio estornar estorno',
+      reply: async (txt) => { repliesComp.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: adminNum });
+
+    assert.equal(repliesComp.length, 1);
+    assert.match(repliesComp[0], /Não é permitido estornar um lançamento compensatório/i);
+    assert.equal(confirmacoesPendentes.size, 0);
   });
 });
 

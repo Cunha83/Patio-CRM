@@ -50,6 +50,17 @@ function formatarDataBR(d) {
   return d;
 }
 
+function formatarHoraSimples(iso) {
+  if (!iso) return '';
+  try {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return String(iso).slice(11, 16);
+    return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  } catch (e) {
+    return String(iso).slice(11, 16);
+  }
+}
+
 // Rate limit em memória por número remetente (máx 15 requisições por janela de 1 minuto)
 const rateLimitMap = new Map();
 const RATE_LIMIT_JANELA_MS = 60 * 1000;
@@ -281,6 +292,14 @@ function podeExecutarEscritaFinanceira(perfil) {
   if (['tenant_admin', 'admin', 'financeiro', 'platform_admin'].includes(perfil.role)) return true;
   const perms = Array.isArray(perfil.permissions) ? perfil.permissions : [];
   return perms.includes('*') || perms.includes('financial:write');
+}
+
+function podeExecutarEstorno(perfil) {
+  if (!perfil) return false;
+  if (perfil.role === 'mecanico' || perfil.role === 'atendente' || perfil.role === 'financeiro') return false;
+  if (['tenant_admin', 'dono', 'owner', 'platform_admin', 'admin'].includes(perfil.role)) return true;
+  const perms = Array.isArray(perfil.permissions) ? perfil.permissions : [];
+  return perms.includes('*');
 }
 
 async function auditarComandoWhatsApp({ tenantId, numero, comando, resultado, detalhes = {} }) {
@@ -573,9 +592,20 @@ async function processarMensagemTexto(msg, {
   const isComandoFecharCaixa = /(?:fechar|encerrar|fechamento\s+de)\s*(?:o\s+)?caixa/i.test(textoLower);
   const isComandoEntrada = /(?:lançar|lancar|registrar)\s*(?:uma\s+)?(?:entrada|receita|suprimento)/i.test(textoLower) || /(?:suprimento|entrada)\s+de\s+caixa/i.test(textoLower);
   const isComandoSaida = /(?:lançar|lancar|registrar)\s*(?:uma\s+)?(?:saída|saida|despesa|sangria)/i.test(textoLower) || /(?:sangria|saída|saida)\s+de\s+caixa/i.test(textoLower);
-  const isComandoEscrita = isComandoAbrirCaixa || isComandoFecharCaixa || isComandoEntrada || isComandoSaida;
+  const isComandoEstorno = /^(?:!estornar|estornar)\b/i.test(textoLower);
+  const isComandoEscrita = isComandoAbrirCaixa || isComandoFecharCaixa || isComandoEntrada || isComandoSaida || isComandoEstorno;
+
+  const isComandoExtrato = (
+    textoLower === '!extrato' ||
+    textoLower.startsWith('extrato') ||
+    textoLower.includes('ultimos lancamentos') ||
+    textoLower.includes('últimos lançamentos') ||
+    textoLower.includes('últimas movimentações') ||
+    textoLower.includes('ultimas movimentacoes')
+  );
 
   const isComandoLeituraFinanceira = (
+    isComandoExtrato ||
     textoLower === '!caixa' || textoLower === 'caixa' ||
     textoLower === '!saldo' || textoLower === 'saldo' ||
     textoLower === 'saldo do caixa' || textoLower === 'saldo de caixa' ||
@@ -760,6 +790,42 @@ async function processarMensagemTexto(msg, {
           } else {
             msgSucesso = `⚠️ Não foi possível registrar a saída: ${resOp.error}`;
           }
+        } else if (pendente.acao === 'estornar_movimento') {
+          resOp = financialAnalystService.estornarMovimentacao(tenantState, {
+            movimentoId: pendente.movimentoId,
+            motivo: pendente.descricao,
+            operador: senderNorm,
+            operadorNome: `WhatsApp (${senderNorm})`,
+            tenantId: tenantKey,
+            origem: 'whatsapp',
+            canal: 'whatsapp',
+            autorNumero: senderNorm
+          });
+          if (resOp.ok) {
+            msgSucesso = `↩️ *Estorno Realizado com Sucesso!*\n\n• Movimento Original: #${resOp.movimentoEstornado?.id} (Estornado)\n• Compensatório: #${resOp.movimentoCompensatorio?.id} (${financialEngine.formatarMoeda(resOp.movimentoCompensatorio?.valor)})\n• Saldo Atual do Caixa: ${financialEngine.formatarMoeda(resOp.saldoAtual != null ? resOp.saldoAtual : 0)}\n• Motivo: ${pendente.descricao}`;
+            try {
+              await recordSecurityAudit({
+                tenantId: tenantKey,
+                actorId: `whatsapp:${senderNorm}`,
+                actorType: 'whatsapp_sender',
+                action: 'financeiro:movimento:estornar',
+                entity: 'movimento_financeiro',
+                entityId: pendente.movimentoId,
+                details: {
+                  movimentoId: pendente.movimentoId,
+                  compensatorioId: resOp.movimentoCompensatorio?.id,
+                  valor: resOp.movimentoCompensatorio?.valor,
+                  motivo: pendente.descricao,
+                  origemOriginal: resOp.movimentoEstornado?.origem || 'web',
+                  operador: senderNorm
+                }
+              });
+            } catch (auditErr) {
+              console.warn('[WhatsApp Estorno Audit] Falha não-bloqueante:', auditErr.message);
+            }
+          } else {
+            msgSucesso = `⚠️ Não foi possível realizar o estorno: ${resOp.error}`;
+          }
         }
 
         try {
@@ -846,7 +912,30 @@ async function processarMensagemTexto(msg, {
 
     // 2. Perfil do número: deve ser dono ou financeiro. Atendente e mecânico não executam escrita
     const perfil = await obterPerfilNumeroWhatsApp({ tenantKey, numero: senderNorm, tenantState });
-    if (!podeExecutarEscritaFinanceira(perfil)) {
+    if (isComandoEstorno) {
+      if (!podeExecutarEstorno(perfil)) {
+        const respNeg = `🔒 *Acesso Negado:* Seu perfil de usuário (${perfil.role || 'desconhecido'}) não possui permissão para realizar estorno de movimentações financeiras. O estorno é restrito exclusivamente ao Dono/Administrador.`;
+        await msg.reply(respNeg);
+        try {
+          await recordSecurityAudit({
+            tenantId: tenantKey,
+            actorId: `whatsapp:${senderNorm}`,
+            actorType: 'whatsapp_sender',
+            action: 'financeiro:movimento:estorno_negado',
+            entity: 'movimento_financeiro',
+            details: { motivo: 'perfil_nao_autorizado', perfil: perfil.role, comando: textoMensagem }
+          });
+        } catch (_) {}
+        await auditarComandoWhatsApp({
+          tenantId: tenantKey,
+          numero: senderNorm,
+          comando: textoMensagem,
+          resultado: 'negado_permissao',
+          detalhes: { perfil: perfil.role, acao: 'estornar' }
+        });
+        return true;
+      }
+    } else if (!podeExecutarEscritaFinanceira(perfil)) {
       const respNeg = `🔒 *Acesso Negado:* Seu perfil de usuário (${perfil.role || 'desconhecido'}) não possui permissão para realizar operações de escrita no caixa. Esta operação é restrita a Donos e Financeiro.`;
       await msg.reply(respNeg);
       await auditarComandoWhatsApp({
@@ -1099,6 +1188,195 @@ async function processarMensagemTexto(msg, {
       await auditarComandoWhatsApp({ tenantId: tenantKey, numero: senderNorm, comando: textoMensagem, resultado: 'aguardando_confirmacao', detalhes: { acao: 'lancar_saida', valor: resValor.valor, descricao: descricaoFinal } });
       return true;
     }
+
+    // 4. Estorno de Movimentação Financeira via WhatsApp
+    if (isComandoEstorno) {
+      if (!podeExecutarEstorno(perfil)) {
+        const respNeg = `🔒 *Acesso Negado:* Seu perfil de usuário (${perfil.role || 'desconhecido'}) não possui permissão para realizar estorno de movimentações financeiras. O estorno é restrito exclusivamente ao Dono/Administrador.`;
+        await msg.reply(respNeg);
+        try {
+          await recordSecurityAudit({
+            tenantId: tenantKey,
+            actorId: `whatsapp:${senderNorm}`,
+            actorType: 'whatsapp_sender',
+            action: 'financeiro:movimento:estorno_negado',
+            entity: 'movimento_financeiro',
+            details: { motivo: 'perfil_nao_autorizado', perfil: perfil.role, comando: textoMensagem }
+          });
+        } catch (_) {}
+        await auditarComandoWhatsApp({
+          tenantId: tenantKey,
+          numero: senderNorm,
+          comando: textoMensagem,
+          resultado: 'negado_permissao',
+          detalhes: { perfil: perfil.role, acao: 'estornar' }
+        });
+        return true;
+      }
+
+      // Sintaxe: estornar <id|ultimo> <motivo>
+      const matchEstorno = textoMensagem.match(/^!?estornar\s+(\S+)(?:\s+(.+))?$/i);
+      if (!matchEstorno) {
+        const respAjuda = '⚠️ Formato inválido. Use: *estornar ultimo <motivo>* ou *estornar <ID> <motivo>* (ex: *estornar ultimo lançamento em duplicidade*).';
+        await msg.reply(respAjuda);
+        await auditarComandoWhatsApp({ tenantId: tenantKey, numero: senderNorm, comando: textoMensagem, resultado: 'solicitado_esclarecimento_estorno', detalhes: { motivo: 'formato_invalido' } });
+        return true;
+      }
+
+      const paramAlvo = matchEstorno[1].trim();
+      const motivoEstorno = (matchEstorno[2] || '').trim();
+
+      if (!motivoEstorno || motivoEstorno.length < 3) {
+        const respPedeMotivo = '⚠️ O motivo do estorno é obrigatório e deve conter ao menos 3 caracteres (ex: *estornar ultimo valor digitado incorreto*).';
+        await msg.reply(respPedeMotivo);
+        await auditarComandoWhatsApp({ tenantId: tenantKey, numero: senderNorm, comando: textoMensagem, resultado: 'solicitado_esclarecimento_estorno', detalhes: { motivo: 'motivo_invalido' } });
+        return true;
+      }
+
+      const caixaAberto = financialAnalystService.obterCaixaAberto(tenantState, tenantKey);
+      const todosMovs = Array.isArray(tenantState.movimentos) ? tenantState.movimentos : [];
+
+      let movAlvo = null;
+      if (paramAlvo.toLowerCase() === 'ultimo' || paramAlvo.toLowerCase() === 'último') {
+        const movsCandidatos = caixaAberto
+          ? todosMovs.filter(m => (m.caixaId === caixaAberto.id) || (Array.isArray(caixaAberto.movimentacoesIds) && caixaAberto.movimentacoesIds.includes(m.id)))
+          : todosMovs;
+
+        movAlvo = movsCandidatos.find(m => !m.estornado && !m.estornoDeId && m.subtipo !== 'estorno');
+        if (!movAlvo) {
+          const respNaoEnc = '⚠️ Não foi encontrada nenhuma movimentação ativa recente elegível para estorno no turno atual.';
+          await msg.reply(respNaoEnc);
+          await auditarComandoWhatsApp({ tenantId: tenantKey, numero: senderNorm, comando: textoMensagem, resultado: 'recusado_movimento_nao_encontrado' });
+          return true;
+        }
+      } else {
+        movAlvo = todosMovs.find(m => m.id === paramAlvo || m.id.toLowerCase() === paramAlvo.toLowerCase() || m.id.endsWith(paramAlvo));
+        if (!movAlvo) {
+          const respNaoEnc = `⚠️ Movimentação com identificador "${paramAlvo}" não foi localizada.`;
+          await msg.reply(respNaoEnc);
+          await auditarComandoWhatsApp({ tenantId: tenantKey, numero: senderNorm, comando: textoMensagem, resultado: 'recusado_movimento_nao_encontrado', detalhes: { paramAlvo } });
+          return true;
+        }
+        if (movAlvo.estornado) {
+          const respJaEst = `⚠️ A movimentação #${movAlvo.id} já foi estornada anteriormente por ${movAlvo.estornadoPor || 'outro operador'}.`;
+          await msg.reply(respJaEst);
+          await auditarComandoWhatsApp({ tenantId: tenantKey, numero: senderNorm, comando: textoMensagem, resultado: 'recusado_ja_estornado', detalhes: { movimentoId: movAlvo.id } });
+          return true;
+        }
+        if (movAlvo.estornoDeId || movAlvo.subtipo === 'estorno') {
+          const respComp = '⚠️ Não é permitido estornar um lançamento compensatório de estorno.';
+          await msg.reply(respComp);
+          await auditarComandoWhatsApp({ tenantId: tenantKey, numero: senderNorm, comando: textoMensagem, resultado: 'recusado_estorno_compensatorio', detalhes: { movimentoId: movAlvo.id } });
+          return true;
+        }
+      }
+
+      confirmacoesPendentes.set(chavePendente, {
+        acao: 'estornar_movimento',
+        descricaoAcao: 'Estorno Contábil',
+        movimentoId: movAlvo.id,
+        movimentoOriginal: movAlvo,
+        valor: Number(movAlvo.valor) || 0,
+        descricao: motivoEstorno,
+        expiraEm: Date.now() + CONFIRMACAO_TTL_MS,
+        tenantKey,
+        fromNumber: senderNorm,
+        perfil
+      });
+
+      const isEntradaOriginal = movAlvo.tipo === 'entrada' || movAlvo.tipo === 'receita';
+      const impactoSaldo = isEntradaOriginal ? `Débito de ${financialEngine.formatarMoeda(movAlvo.valor)} (reduz o saldo)` : `Crédito de ${financialEngine.formatarMoeda(movAlvo.valor)} (restaura o saldo)`;
+
+      const msgConfirm =
+        prefixoSubstituicao +
+        `⚠️ *CONFIRMAÇÃO DE ESTORNO CONTÁBIL* ⚠️\n\n` +
+        `Por favor, confira os dados do estorno:\n` +
+        `• *Lançamento Alvo:* #${movAlvo.id} (${movAlvo.desc || movAlvo.descricao || 'Movimento'})\n` +
+        `• *Tipo Original:* ${isEntradaOriginal ? 'Entrada (+)' : 'Saída (−)'} de ${financialEngine.formatarMoeda(movAlvo.valor)}\n` +
+        `• *Impacto no Caixa:* ${impactoSaldo}\n` +
+        `• *Motivo do Estorno:* ${motivoEstorno}\n\n` +
+        `Para executar, responda exatamente *CONFIRMAR* ou *SIM* em até 2 minutos.\n` +
+        `Qualquer outra resposta cancelará esta operação.`;
+
+      await msg.reply(msgConfirm);
+      await auditarComandoWhatsApp({
+        tenantId: tenantKey,
+        numero: senderNorm,
+        comando: textoMensagem,
+        resultado: 'aguardando_confirmacao',
+        detalhes: { acao: 'estornar_movimento', movimentoId: movAlvo.id, valor: movAlvo.valor, motivo: motivoEstorno }
+      });
+      return true;
+    }
+  }
+
+  // 0. Extrato Recente de Movimentações (Leitura)
+  if (isComandoExtrato) {
+    if (isContextOperacao || !isContextAdmin) {
+      await msg.reply('🔒 *Acesso Restrito:* O extrato financeiro de caixa é disponibilizado exclusivamente para administradores autorizados.');
+      await auditarComandoWhatsApp({ tenantId: tenantKey, numero: senderNorm, comando: textoMensagem, resultado: 'negado_permissao' });
+      return true;
+    }
+
+    let qtd = 5;
+    const matchNum = textoLower.match(/\b([1-9]|10)\b/);
+    if (matchNum) {
+      qtd = parseInt(matchNum[1], 10);
+    }
+    const apenasWhatsapp = textoLower.includes('whatsapp') || textoLower.includes('wpp');
+
+    const caixaAberto = financialAnalystService.obterCaixaAberto(tenantState, tenantKey);
+    const todosMovs = Array.isArray(tenantState.movimentos) ? tenantState.movimentos : [];
+
+    let movs = caixaAberto
+      ? todosMovs.filter(m => (m.caixaId === caixaAberto.id) || (Array.isArray(caixaAberto.movimentacoesIds) && caixaAberto.movimentacoesIds.includes(m.id)))
+      : todosMovs.slice(0, 20);
+
+    if (apenasWhatsapp) {
+      movs = movs.filter(m => m.origem === 'whatsapp');
+    }
+
+    const ultimos = movs.slice(0, qtd);
+    const saldoAtual = caixaAberto ? (caixaAberto.saldoAtual || 0) : financialAnalystService.calcularSaldoConsolidado(tenantState, tenantKey);
+
+    let resposta = `📜 *EXTRATO RECENTE DE MOVIMENTAÇÕES* 📜\n\n`;
+    resposta += `• *Turno:* ${caixaAberto ? `#${caixaAberto.id} (Aberto)` : 'Nenhum Caixa Aberto'}\n`;
+    resposta += `• *Saldo Atual:* ${financialEngine.formatarMoeda(saldoAtual)}\n`;
+    resposta += `• *Exibindo:* ${ultimos.length} lançamento(s)${apenasWhatsapp ? ' (Apenas WhatsApp)' : ''}\n`;
+    resposta += `─────────────────────────\n`;
+
+    if (ultimos.length === 0) {
+      resposta += `Nenhuma movimentação registrada no turno atual.\n`;
+    } else {
+      ultimos.forEach((m, idx) => {
+        const isEstornado = Boolean(m.estornado);
+        const isComp = Boolean(m.estornoDeId || m.subtipo === 'estorno');
+        const isEnt = m.tipo === 'entrada' || m.tipo === 'receita';
+
+        let tagTipo = isEstornado ? '⚠️ Estornado' : isComp ? '↩️ Compensatório' : isEnt ? '🟢 Entrada' : '🔴 Saída';
+        const tagOrigem = m.origem === 'whatsapp' ? '📱 WPP' : '💻 WEB';
+        const horaStr = m.confirmadoEm ? formatarHoraSimples(m.confirmadoEm) : (m.hora ? m.hora : (m.data || 'Hoje'));
+        const idCurto = m.id ? (m.id.length > 8 ? m.id.slice(-6) : m.id) : `${idx + 1}`;
+
+        resposta += `*[${idCurto}]* ${tagTipo} • ${financialEngine.formatarMoeda(m.valor)}\n`;
+        resposta += `• *Desc:* ${m.desc || m.descricao || 'Movimento'}\n`;
+        resposta += `• *Canal:* ${tagOrigem} | *Horário:* ${horaStr}\n`;
+        if (isEstornado && m.motivoEstorno) {
+          resposta += `• *Motivo Estorno:* ${m.motivoEstorno}\n`;
+        }
+        resposta += `─────────────────────────\n`;
+      });
+    }
+
+    await msg.reply(resposta.trim());
+    await auditarComandoWhatsApp({
+      tenantId: tenantKey,
+      numero: senderNorm,
+      comando: textoMensagem,
+      resultado: 'sucesso',
+      detalhes: { qtdRetornada: ultimos.length, turnoId: caixaAberto ? caixaAberto.id : null }
+    });
+    return true;
   }
 
   // 1. Saldo do Caixa (Leitura - Sem Confirmação)
@@ -1970,5 +2248,6 @@ module.exports = {
   extrairValorMonetario,
   extrairTelefoneDeJid,
   obterPerfilNumeroWhatsApp,
-  podeExecutarEscritaFinanceira
+  podeExecutarEscritaFinanceira,
+  podeExecutarEstorno
 };
