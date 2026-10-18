@@ -234,7 +234,8 @@ router.get('/api/financeiro/movimentacoes', requirePermission('financial:read'),
       success: true,
       total: resultado.total,
       movimentacoes: resultado.movimentacoes,
-      resumoOrigem: resultado.resumoOrigem
+      resumoOrigem: resultado.resumoOrigem,
+      resumoMeiosPagamento: resultado.resumoMeiosPagamento
     });
   } catch (err) {
     console.error('[API /api/financeiro/movimentacoes GET] Erro:', err);

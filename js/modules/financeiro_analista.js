@@ -284,6 +284,12 @@ function blocoVeronicaAnalista() {
                   <div style="${isEstornado ? 'text-decoration:line-through;color:var(--aco-600)' : 'font-weight:700'}">
                     ${esc(m.desc || m.descricao || 'Movimentação')}
                   </div>
+                  ${(m.osId || m.placa) ? `
+                    <div style="display:flex;gap:4px;margin-top:2px;align-items:center;flex-wrap:wrap">
+                      ${m.osId ? `<span class="selo" style="background:#e0e7ff;color:#3730a3;font-size:9.5px;padding:1px 5px">OS #${esc(m.osId)}</span>` : ''}
+                      ${m.placa ? `<span class="selo mono" style="background:#fef3c7;color:#92400e;font-size:9.5px;padding:1px 5px">🚗 ${esc(m.placa)}</span>` : ''}
+                    </div>
+                  ` : ''}
                   <div class="mini">${esc(m.cat || m.categoria || 'Geral')}</div>
                   ${isEstornado ? `
                     <div class="mini" style="color:var(--tijolo);font-weight:700;margin-top:2px">
@@ -316,7 +322,11 @@ function blocoVeronicaAnalista() {
                     </div>
                   `}
                 </td>
-                <td><span class="mono">${esc((m.forma || m.formaPagamento || 'dinheiro').toUpperCase())}</span></td>
+                <td>
+                  ${typeof renderBadgeMeioPagamento === 'function'
+                    ? renderBadgeMeioPagamento(m.forma || m.formaPagamento)
+                    : `<span class="mono">${esc((m.forma || m.formaPagamento || 'dinheiro').toUpperCase())}</span>`}
+                </td>
                 <td style="text-align:right;font-weight:700;color:${isEstornado ? 'var(--aco-500)' : isEnt ? 'var(--verde)' : 'var(--tijolo)'}" class="num">
                   <span style="${isEstornado ? 'text-decoration:line-through' : ''}">
                     ${isEnt ? '+' : '-'}${brl(m.valor)}

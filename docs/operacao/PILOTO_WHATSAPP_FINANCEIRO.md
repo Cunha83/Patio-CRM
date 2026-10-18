@@ -252,3 +252,37 @@ Caso um lançamento seja realizado por engano via WhatsApp ou Web (ex.: valor di
        -d '{"motivo": "Lançamento incorreto via WhatsApp"}'
      ```
 
+---
+
+## 8. Fechamento Auditado por Origem, Meios de Pagamento e Vinculação de OS/Placa
+
+Para garantir conformidade na conciliação diária de caixas de oficina e oficinas a diesel que operam turnos híbridos, o Pátio-CRM consolida automaticamente as movimentações por canais, meios de pagamento e vínculos operacionais.
+
+### A. Meios de Pagamento Canônicos e Vinculação de OS/Placa
+1. **Normalização dos Meios de Pagamento**:
+   - Cada movimentação financeira (via bot WhatsApp ou Painel Web) é classificada em um meio canônico:
+     * pix: Pagamentos instantâneos via Pix.
+     * dinheiro: Espécie e fundo de troco físico.
+     * cartao_credito: Cartão de crédito.
+     * cartao_debito: Cartão de débito.
+     * oleto: Boletos bancários compensados.
+     * 	ransferencia: TED/DOC e transferências entre contas.
+2. **Vinculação de Ordens de Serviço e Placas**:
+   - Comandos de lançamento via WhatsApp aceitam menção a OS e veículo (ex.: lançar entrada de R$ 350,00 referente a adiantamento OS #401 placa ABC1D23 pix).
+   - O bot extrai automaticamente osId e placa, repassando-os para a movimentação e exibindo-os com selos temáticos na tabela de extrato web e no mobile.
+3. **Consolidação em APIs e Dashboards**:
+   - O endpoint GET /api/financeiro/movimentacoes expõe o objeto esumoMeiosPagamento, computando quantidade e volume total por meio financeiro no período filtrado.
+
+### B. Boletim de Fechamento Auditado e Trava de Imutabilidade
+1. **Snapshot de Fechamento no Banco de Dados**:
+   - Ao encerrar o caixa (echar caixa via WhatsApp ou botão 🔒 Fechar Caixa do Turno no painel web), o objeto echamento armazena:
+     * esumoOrigem: Volumes e quantidades de lançamentos WhatsApp vs Web vs Estornos.
+     * esumoTextoWhatsapp: Texto pré-formatado pronto para disparo ou compartilhamento nos grupos gerenciais.
+     * inanceiro:caixa:fechar: Evento registrado perenemente na tabela security_audit_log.
+2. **Trava de Imutabilidade em Caixas Encerrados**:
+   - Uma vez fechado o turno, movimentações vinculadas àquele caixa tornam-se estritamente imutáveis.
+   - Qualquer tentativa de estorno ou inclusão de novos lançamentos em caixa encerrado é bloqueada imediatamente com status  9 Conflict (CAIXA_JA_FECHADO).
+3. **Comandos de Resumo e Fechamento Parcial via WhatsApp**:
+   - Envie esumo caixa ou echamento parcial para o bot para visualizar a qualquer momento o boletim de posição parcial do turno atual (com quebra por origem e meios de pagamento).
+4. **Visualização e Cópia no Painel Web**:
+   - Na aba **Fluxo de Caixa**, utilize o botão **📜 Boletim de Fechamento** para abrir a janela com o texto completo do turno e copiar com 1 clique para o WhatsApp.

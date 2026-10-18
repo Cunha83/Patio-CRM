@@ -1203,5 +1203,67 @@ test('WhatsApp Agente Financeiro - Suíte Completa de Leitura e Escrita Controla
     assert.ok(cxEncerrado.fechamento.resumoTextoWhatsapp);
     assert.match(cxEncerrado.fechamento.resumoTextoWhatsapp, /BOLETIM DE FECHAMENTO DE CAIXA/);
   });
+
+  // ── 22. MEIOS DE PAGAMENTO, OS E PLACA: EXTRAÇÃO HEURÍSTICA E PERSISTÊNCIA ──
+  await t.test('22. Extração heurística de meio de pagamento, OS e placa com confirmação e persistência', async () => {
+    const mockState = criarEstadoMock();
+    const adminNum = '5511999998888';
+    mockState.cfg.adminFones = [adminNum];
+    mockState.caixas = [
+      {
+        id: 'cx-meios-1',
+        status: 'aberto',
+        aberto: true,
+        abertoPor: adminNum,
+        saldoInicial: 500,
+        saldoAtual: 500,
+        totalEntradas: 0,
+        totalSaidas: 0,
+        movimentacoesIds: []
+      }
+    ];
+
+    // 22.1 Envia comando com valor, descrição, meio de pagamento (pix), OS e placa
+    const repliesEntrada = [];
+    await processarMensagemTexto({
+      from: `${adminNum}@c.us`,
+      author: `${adminNum}@c.us`,
+      body: 'lançar entrada de R$ 350,00 adiantamento OS #502 placa ABC1D23 via pix',
+      reply: async (txt) => { repliesEntrada.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: adminNum });
+
+    assert.equal(repliesEntrada.length, 1);
+    assert.match(repliesEntrada[0], /CONFIRMAÇÃO DE OPERAÇÃO FINANCEIRA/i);
+    assert.match(repliesEntrada[0], /350,00/);
+    assert.match(repliesEntrada[0], /PIX/);
+    assert.match(repliesEntrada[0], /502/);
+    assert.match(repliesEntrada[0], /ABC1D23/);
+
+    // 22.2 Confirmação explícita
+    const repliesConfirm = [];
+    await processarMensagemTexto({
+      from: `${adminNum}@c.us`,
+      author: `${adminNum}@c.us`,
+      body: 'CONFIRMAR',
+      reply: async (txt) => { repliesConfirm.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: adminNum });
+
+    assert.equal(repliesConfirm.length, 1);
+    assert.match(repliesConfirm[0], /Entrada Registrada com Sucesso/i);
+
+    const movCriada = mockState.movimentos[0];
+    assert.equal(movCriada.valor, 350);
+    assert.equal(movCriada.forma, 'pix');
+    assert.equal(movCriada.osId, '502');
+    assert.equal(movCriada.placa, 'ABC1D23');
+    assert.equal(movCriada.origem, 'whatsapp');
+    assert.equal(movCriada.autorNumero, adminNum);
+
+    // 22.3 Validação de resumoMeiosPagamento via financialAnalystService
+    const listaRes = financialAnalystService.listarMovimentacoes(mockState, { caixaId: 'cx-meios-1' });
+    assert.ok(listaRes.resumoMeiosPagamento);
+    assert.equal(listaRes.resumoMeiosPagamento.pix?.qtd, 1);
+    assert.equal(listaRes.resumoMeiosPagamento.pix?.total, 350);
+  });
 });
 

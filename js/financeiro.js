@@ -906,6 +906,41 @@ function formatarHoraSimples(iso) {
   }
 }
 
+function renderBadgeMeioPagamento(forma = 'dinheiro') {
+  const f = String(forma || '').toLowerCase().trim();
+  let rotulo = 'Dinheiro';
+  let icone = '💵';
+  let estilo = 'background:#f1f5f9;color:#334155;border:1px solid #cbd5e1';
+
+  if (f.includes('pix')) {
+    rotulo = 'Pix';
+    icone = '⚡';
+    estilo = 'background:#ecfdf5;color:#047857;border:1px solid #a7f3d0';
+  } else if (f.includes('credito') || f.includes('crédito')) {
+    rotulo = 'Cartão Crédito';
+    icone = '💳';
+    estilo = 'background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe';
+  } else if (f.includes('debito') || f.includes('débito')) {
+    rotulo = 'Cartão Débito';
+    icone = '💳';
+    estilo = 'background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0';
+  } else if (f.includes('cartao') || f.includes('cartão')) {
+    rotulo = 'Cartão';
+    icone = '💳';
+    estilo = 'background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe';
+  } else if (f.includes('boleto')) {
+    rotulo = 'Boleto';
+    icone = '📄';
+    estilo = 'background:#fffbeb;color:#b45309;border:1px solid #fde68a';
+  } else if (f.includes('transferencia') || f.includes('transferência') || f.includes('ted') || f.includes('doc')) {
+    rotulo = 'Transferência';
+    icone = '🏦';
+    estilo = 'background:#faf5ff;color:#7e22ce;border:1px solid #e9d5ff';
+  }
+
+  return `<span class="selo" style="${estilo};font-size:10px;padding:2px 7px;font-weight:600">${icone} ${rotulo}</span>`;
+}
+
 function blocoFluxoCaixa() {
   const filtroOrigem = (S.ui && S.ui.filtroOrigemMov) || 'todos';
   const todosMovs = (S.movimentos || []).slice().reverse();
@@ -935,6 +970,9 @@ function blocoFluxoCaixa() {
       <div class="mini">Saldo Atual: <b style="color:var(--verde)">${brl(saldoCaixa())}</b></div>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-secundario" onclick="abrirBoletimFechamentoModal()" style="font-size:13px;padding:6px 14px">
+        📜 Boletim de Fechamento
+      </button>
       <button class="btn btn-primario" data-act="novo-mov" style="font-size:13px;padding:6px 14px">
         ${ico('mais', 14)} Lançar Movimento Avulso
       </button>
@@ -962,7 +1000,7 @@ function blocoFluxoCaixa() {
             <th>Descrição do Lançamento</th>
             <th style="width:135px">Origem / Canal</th>
             <th>Categoria</th>
-            <th>Forma</th>
+            <th>Meio de Pgto</th>
             <th style="width:125px;text-align:right">Valor</th>
             <th style="width:120px;text-align:center">Status / Ação</th>
           </tr>
@@ -987,6 +1025,12 @@ function blocoFluxoCaixa() {
                 <div style="${isEstornado ? 'text-decoration:line-through;color:var(--aco-600)' : 'font-weight:700'}">
                   ${esc(m.desc || m.descricao || 'Movimento')}
                 </div>
+                ${(m.osId || m.placa) ? `
+                  <div style="display:flex;gap:6px;margin-top:3px;align-items:center;flex-wrap:wrap">
+                    ${m.osId ? `<span class="selo" style="background:#e0e7ff;color:#3730a3;font-size:10px;padding:1px 6px">OS #${esc(m.osId)}</span>` : ''}
+                    ${m.placa ? `<span class="selo mono" style="background:#fef3c7;color:#92400e;font-size:10px;padding:1px 6px">🚗 ${esc(m.placa)}</span>` : ''}
+                  </div>
+                ` : ''}
                 ${isEstornado ? `
                   <div class="mini" style="color:var(--tijolo);font-weight:700;margin-top:2px">
                     ⚠️ ESTORNADO: ${esc(m.motivoEstorno || 'Estornado')} ${m.estornadoPor ? `· por ${esc(m.estornadoPor)}` : ''}
@@ -1024,7 +1068,7 @@ function blocoFluxoCaixa() {
                 `}
               </td>
               <td><span class="selo">${esc(m.cat || m.categoria || 'Geral')}</span></td>
-              <td class="mini">${esc(m.forma || m.formaPagamento || 'Pix/Conta')}</td>
+              <td>${renderBadgeMeioPagamento(m.forma || m.formaPagamento)}</td>
               <td style="text-align:right;font-weight:700;color:${isEstornado ? 'var(--aco-500)' : isEntrada ? 'var(--verde)' : 'var(--tijolo)'}" class="num">
                 <span style="${isEstornado ? 'text-decoration:line-through' : ''}">
                   ${isEntrada ? '+' : '−'} ${brl(m.valor)}
@@ -1484,6 +1528,81 @@ async function executarEstornoMovimento(id, motivo) {
   }
 }
 
+function folhaBoletimFechamento() {
+  const caixaAberto = (Array.isArray(S.caixas) ? S.caixas : []).find(c => c.status === 'aberto');
+  const ultimoCaixaFechado = (Array.isArray(S.caixas) ? S.caixas : []).find(c => c.status === 'fechado');
+  const caixaRef = caixaAberto || ultimoCaixaFechado;
+
+  let textoBoletim = '';
+  if (caixaRef && caixaRef.fechamento && caixaRef.fechamento.resumoTextoWhatsapp) {
+    textoBoletim = caixaRef.fechamento.resumoTextoWhatsapp;
+  } else if (caixaAberto) {
+    const movsCaixa = (S.movimentos || []).filter(m => (m.caixaId === caixaAberto.id) || (Array.isArray(caixaAberto.movimentacoesIds) && caixaAberto.movimentacoesIds.includes(m.id)));
+    const totalEnt = movsCaixa.filter(m => m.tipo === 'entrada').reduce((a, b) => a + (Number(b.valor) || 0), 0);
+    const totalSai = movsCaixa.filter(m => m.tipo === 'saida').reduce((a, b) => a + (Number(b.valor) || 0), 0);
+    const saldoAtual = (Number(caixaAberto.saldoInicial) || 0) + totalEnt - totalSai;
+    const qtdWpp = movsCaixa.filter(m => m.origem === 'whatsapp').length;
+    const qtdWeb = movsCaixa.filter(m => (m.origem || 'web') !== 'whatsapp').length;
+
+    textoBoletim = `⏳ *FECHAMENTO PARCIAL DE CAIXA* ⏳\n\n` +
+      `• Turno: #${caixaAberto.id}\n` +
+      `• Operador: ${caixaAberto.operador || 'Operador'}\n\n` +
+      `💰 MOVIMENTAÇÃO:\n` +
+      `• Fundo Inicial: ${brl(caixaAberto.saldoInicial || 0)}\n` +
+      `• (+) Entradas: ${brl(totalEnt)}\n` +
+      `• (-) Saídas: ${brl(totalSai)}\n` +
+      `• (=) Saldo Atual: ${brl(saldoAtual)}\n\n` +
+      `📊 QUEBRA POR ORIGEM:\n` +
+      `• 📱 WhatsApp: ${qtdWpp} lançamentos\n` +
+      `• 💻 Web / Balcão: ${qtdWeb} lançamentos\n\n` +
+      `_Status: Turno em andamento._`;
+  } else {
+    textoBoletim = `Nenhum turno de caixa registrado ou encerrado no sistema.`;
+  }
+
+  return `
+  <div style="max-width:540px;margin:0 auto">
+    <div style="font-weight:700;font-size:16px;color:var(--aco-900);margin-bottom:8px;display:flex;align-items:center;gap:8px">
+      📜 Boletim de Fechamento de Caixa Auditado
+    </div>
+    <div class="mini" style="margin-bottom:14px;color:var(--aco-600)">
+      Boletim consolidado com quebra por canais (WhatsApp vs Web), meios de pagamento e estornos.
+    </div>
+
+    <div style="margin-bottom:16px">
+      <textarea id="boletim-fechamento-textarea" class="campo-texto mono" readonly style="width:100%;height:220px;font-size:12px;line-height:1.5;padding:10px;background:var(--aco-050)">${esc(textoBoletim)}</textarea>
+    </div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--aco-150);padding-top:12px;gap:8px">
+      <button class="btn btn-secundario" onclick="fecharFolha()">Fechar</button>
+      <button class="btn btn-primario" onclick="copiarBoletimFechamento()" style="font-weight:700">
+        📋 Copiar para WhatsApp
+      </button>
+    </div>
+  </div>`;
+}
+
+function abrirBoletimFechamentoModal() {
+  if (typeof abrirFolha === 'function') {
+    abrirFolha(folhaBoletimFechamento);
+  } else {
+    alert('Boletim de fechamento disponível no painel.');
+  }
+}
+
+function copiarBoletimFechamento() {
+  const el = document.getElementById('boletim-fechamento-textarea');
+  if (el) {
+    if (typeof copiar === 'function') {
+      copiar(el.value);
+    } else if (navigator.clipboard) {
+      navigator.clipboard.writeText(el.value);
+    }
+    if (typeof torrar === 'function') torrar('Boletim copiado com sucesso para a área de transferência!');
+    else alert('Boletim copiado!');
+  }
+}
+
 // Exportações explícitas no escopo global window
 if (typeof window !== 'undefined') {
   window.viewFinanceiro = viewFinanceiro;
@@ -1506,4 +1625,8 @@ if (typeof window !== 'undefined') {
   window.solicitarEstornoMovimento = solicitarEstornoMovimento;
   window.confirmarEstornoMovimento = confirmarEstornoMovimento;
   window.executarEstornoMovimento = executarEstornoMovimento;
+  window.renderBadgeMeioPagamento = renderBadgeMeioPagamento;
+  window.folhaBoletimFechamento = folhaBoletimFechamento;
+  window.abrirBoletimFechamentoModal = abrirBoletimFechamentoModal;
+  window.copiarBoletimFechamento = copiarBoletimFechamento;
 }

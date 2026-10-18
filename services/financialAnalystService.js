@@ -188,6 +188,7 @@ function registrarMovimentacao(state = {}, payload = {}) {
     data: payload.data || agoraInfo.dataISO,
     dataHora: agoraInfo.dataObj.toISOString(),
     osId: payload.osId || null,
+    placa: payload.placa || null,
     clienteId: payload.clienteId || null,
     fornecedorId: payload.fornecedorId || null,
     operador: String(payload.operador || payload.actorId || 'operador'),
@@ -625,11 +626,24 @@ function listarMovimentacoes(state = {}, filtros = {}) {
     }
   }
 
+  // Consolidação por meio de pagamento no escopo filtrado
+  const resumoMeiosPagamento = {};
+  for (const m of lista) {
+    const v = Number(m.valor) || 0;
+    const f = normalizarFormaPagamento(m.forma || m.formaPagamento);
+    if (!resumoMeiosPagamento[f]) {
+      resumoMeiosPagamento[f] = { total: 0, qtd: 0 };
+    }
+    resumoMeiosPagamento[f].qtd++;
+    resumoMeiosPagamento[f].total = arredondar(resumoMeiosPagamento[f].total + v);
+  }
+
   const max = Number(limit) > 0 ? Number(limit) : 200;
   return {
     total: lista.length,
     movimentacoes: lista.slice(0, max),
-    resumoOrigem
+    resumoOrigem,
+    resumoMeiosPagamento
   };
 }
 

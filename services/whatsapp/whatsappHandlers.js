@@ -225,6 +225,42 @@ function extrairValorMonetario(texto) {
 }
 
 /**
+ * Extrai meio de pagamento a partir do texto do comando via WhatsApp
+ */
+function extrairFormaPagamentoHeuristica(texto) {
+  const t = String(texto || '').toLowerCase();
+  if (t.includes('pix')) return 'pix';
+  if (t.includes('cartao de debito') || t.includes('cartão de débito') || t.includes('debito') || t.includes('débito')) return 'cartao_debito';
+  if (t.includes('cartao de credito') || t.includes('cartão de crédito') || t.includes('credito') || t.includes('crédito')) return 'cartao_credito';
+  if (t.includes('cartao') || t.includes('cartão')) return 'cartao_credito';
+  if (t.includes('boleto')) return 'boleto';
+  if (t.includes('transferencia') || t.includes('transferência') || t.includes('ted') || t.includes('doc')) return 'transferencia';
+  if (t.includes('dinheiro') || t.includes('especie') || t.includes('espécie')) return 'dinheiro';
+  return 'dinheiro';
+}
+
+/**
+ * Extrai OS e Placa a partir do texto do comando via WhatsApp
+ */
+function extrairOsEPlacaHeuristica(texto) {
+  const t = String(texto || '');
+  let osId = null;
+  let placa = null;
+
+  const matchOs = t.match(/\b(?:os|o\.s\.|ordem|ordem\s+de\s+serviço|ordem\s+de\s+servico)\s*#?\s*([a-zA-Z0-9_\-]+)\b/i);
+  if (matchOs) {
+    osId = matchOs[1].trim();
+  }
+
+  const matchPlaca = t.match(/\b([a-zA-Z]{3}[0-9][0-9a-zA-Z][0-9]{2}|[a-zA-Z]{3}[- ]?[0-9]{4})\b/i);
+  if (matchPlaca) {
+    placa = matchPlaca[1].toUpperCase().replace(/[- ]/g, '');
+  }
+
+  return { osId, placa };
+}
+
+/**
  * Obtém o perfil de acesso do remetente do WhatsApp
  */
 async function obterPerfilNumeroWhatsApp({ tenantKey = 'default', numero, tenantState = {} }) {
@@ -772,6 +808,10 @@ async function processarMensagemTexto(msg, {
             tipo: 'entrada',
             valor: pendente.valor,
             descricao: pendente.descricao,
+            formaPagamento: pendente.formaPagamento,
+            forma: pendente.formaPagamento,
+            osId: pendente.osId,
+            placa: pendente.placa,
             operador: senderNorm,
             origem: 'whatsapp',
             canal: 'whatsapp',
@@ -789,6 +829,10 @@ async function processarMensagemTexto(msg, {
             tipo: 'saida',
             valor: pendente.valor,
             descricao: pendente.descricao,
+            formaPagamento: pendente.formaPagamento,
+            forma: pendente.formaPagamento,
+            osId: pendente.osId,
+            placa: pendente.placa,
             operador: senderNorm,
             origem: 'whatsapp',
             canal: 'whatsapp',
@@ -1103,17 +1147,26 @@ async function processarMensagemTexto(msg, {
 
       const matchDesc = textoMensagem.match(/(?:referente\s+a|motivo|para|com|descrição|descricao)\s+(.+)$/i);
       const descricaoFinal = matchDesc ? matchDesc[1].trim() : 'Entrada avulsa no caixa';
+      const formaPagamentoFinal = extrairFormaPagamentoHeuristica(textoMensagem);
+      const { osId: osFinal, placa: placaFinal } = extrairOsEPlacaHeuristica(textoMensagem);
 
       confirmacoesPendentes.set(chavePendente, {
         acao: 'lancar_entrada',
         descricaoAcao: 'Lançar Entrada',
         valor: valorFinal,
         descricao: descricaoFinal,
+        formaPagamento: formaPagamentoFinal,
+        osId: osFinal,
+        placa: placaFinal,
         expiraEm: Date.now() + CONFIRMACAO_TTL_MS,
         tenantKey,
         fromNumber: senderNorm,
         perfil
       });
+
+      let detalhesExtras = `• *Meio de Pgto:* ${formaPagamentoFinal.toUpperCase()}\n`;
+      if (osFinal) detalhesExtras += `• *OS Vinculada:* #${osFinal}\n`;
+      if (placaFinal) detalhesExtras += `• *Veículo / Placa:* ${placaFinal}\n`;
 
       const msgConfirm =
         prefixoSubstituicao +
@@ -1121,12 +1174,13 @@ async function processarMensagemTexto(msg, {
         `Por favor, confira os dados da operação:\n` +
         `• *Ação:* Lançar Entrada\n` +
         `• *Valor:* ${financialEngine.formatarMoeda(valorFinal)}\n` +
+        detalhesExtras +
         `• *Descrição:* ${descricaoFinal}\n\n` +
         `Para executar, responda exatamente *CONFIRMAR* ou *SIM* em até 2 minutos.\n` +
         `Qualquer outra resposta cancelará esta operação.`;
 
       await msg.reply(msgConfirm);
-      await auditarComandoWhatsApp({ tenantId: tenantKey, numero: senderNorm, comando: textoMensagem, resultado: 'aguardando_confirmacao', detalhes: { acao: 'lancar_entrada', valor: valorFinal, descricao: descricaoFinal } });
+      await auditarComandoWhatsApp({ tenantId: tenantKey, numero: senderNorm, comando: textoMensagem, resultado: 'aguardando_confirmacao', detalhes: { acao: 'lancar_entrada', valor: valorFinal, descricao: descricaoFinal, formaPagamento: formaPagamentoFinal, osId: osFinal, placa: placaFinal } });
       return true;
     }
 
@@ -1172,17 +1226,26 @@ async function processarMensagemTexto(msg, {
 
       const matchDesc = textoMensagem.match(/(?:referente\s+a|motivo|para|com|descrição|descricao)\s+(.+)$/i);
       const descricaoFinal = matchDesc ? matchDesc[1].trim() : 'Saída avulsa do caixa';
+      const formaPagamentoFinal = extrairFormaPagamentoHeuristica(textoMensagem);
+      const { osId: osFinal, placa: placaFinal } = extrairOsEPlacaHeuristica(textoMensagem);
 
       confirmacoesPendentes.set(chavePendente, {
         acao: 'lancar_saida',
         descricaoAcao: 'Lançar Saída',
         valor: valorFinal,
         descricao: descricaoFinal,
+        formaPagamento: formaPagamentoFinal,
+        osId: osFinal,
+        placa: placaFinal,
         expiraEm: Date.now() + CONFIRMACAO_TTL_MS,
         tenantKey,
         fromNumber: senderNorm,
         perfil
       });
+
+      let detalhesExtras = `• *Meio de Pgto:* ${formaPagamentoFinal.toUpperCase()}\n`;
+      if (osFinal) detalhesExtras += `• *OS Vinculada:* #${osFinal}\n`;
+      if (placaFinal) detalhesExtras += `• *Veículo / Placa:* ${placaFinal}\n`;
 
       const msgConfirm =
         prefixoSubstituicao +
@@ -1190,12 +1253,13 @@ async function processarMensagemTexto(msg, {
         `Por favor, confira os dados da operação:\n` +
         `• *Ação:* Lançar Saída\n` +
         `• *Valor:* ${financialEngine.formatarMoeda(resValor.valor)}\n` +
+        detalhesExtras +
         `• *Descrição:* ${descricaoFinal}\n\n` +
         `Para executar, responda exatamente *CONFIRMAR* ou *SIM* em até 2 minutos.\n` +
         `Qualquer outra resposta cancelará esta operação.`;
 
       await msg.reply(msgConfirm);
-      await auditarComandoWhatsApp({ tenantId: tenantKey, numero: senderNorm, comando: textoMensagem, resultado: 'aguardando_confirmacao', detalhes: { acao: 'lancar_saida', valor: resValor.valor, descricao: descricaoFinal } });
+      await auditarComandoWhatsApp({ tenantId: tenantKey, numero: senderNorm, comando: textoMensagem, resultado: 'aguardando_confirmacao', detalhes: { acao: 'lancar_saida', valor: resValor.valor, descricao: descricaoFinal, formaPagamento: formaPagamentoFinal, osId: osFinal, placa: placaFinal } });
       return true;
     }
 
