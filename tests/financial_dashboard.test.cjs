@@ -224,3 +224,236 @@ test('7. Filtro por Origem (WhatsApp vs Web) e Consolidação de Resumo no Dashb
   assert.equal(dash.resumoOrigem.qtdWhatsapp, 2, 'Deve expor resumoOrigem na raiz do dashboard');
 });
 
+test('8. Rotina de Estorno Contábil: Reversão Matemática de Saldo, Imutabilidade e Metadados', () => {
+  const financialAnalystService = require('../services/financialAnalystService.js');
+
+  const state = {
+    cfg: { saldoInicial: 500 },
+    caixas: [
+      {
+        id: 'cx_1',
+        status: 'aberto',
+        aberto: true,
+        saldoInicial: 500,
+        saldoAtual: 500,
+        totalEntradas: 0,
+        totalSaidas: 0,
+        movimentacoesIds: []
+      }
+    ],
+    movimentos: []
+  };
+
+  // 1. Lança uma entrada via WhatsApp de R$ 200
+  const lancRes = financialAnalystService.registrarMovimentacao(state, {
+    tipo: 'entrada',
+    valor: 200,
+    descricao: 'Adiantamento via WhatsApp',
+    origem: 'whatsapp',
+    canal: 'whatsapp',
+    autorNumero: '5511999998888',
+    confirmadoEm: '2026-10-18T10:00:00.000Z'
+  });
+
+  assert.equal(lancRes.ok, true);
+  assert.equal(state.caixas[0].saldoAtual, 700);
+  assert.equal(state.movimentos.length, 1);
+  const movId = lancRes.movimento.id;
+
+  // 2. Executa o estorno pelo Dono
+  const estornoRes = financialAnalystService.estornarMovimentacao(state, {
+    movimentoId: movId,
+    motivo: 'Lançamento indevido no WhatsApp',
+    operador: 'dono_1',
+    operadorNome: 'Carlos Dono'
+  });
+
+  assert.equal(estornoRes.ok, true);
+  assert.equal(estornoRes.status, 200);
+
+  // 3. Saldo do caixa deve retornar para 500 (efeito revertido com precisão)
+  assert.equal(state.caixas[0].saldoAtual, 500, 'Saldo deve retornar exatamente a R$ 500');
+  assert.equal(state.caixas[0].totalEntradas, 200);
+  assert.equal(state.caixas[0].totalSaidas, 200);
+
+  // 4. Imutabilidade: registro original marcado como estornado (sem deleção física)
+  const movOrig = state.movimentos.find(m => m.id === movId);
+  assert.ok(movOrig);
+  assert.equal(movOrig.estornado, true);
+  assert.equal(movOrig.estornadoPor, 'dono_1');
+  assert.equal(movOrig.motivoEstorno, 'Lançamento indevido no WhatsApp');
+  assert.ok(movOrig.estornadoEm);
+
+  // 5. Movimento compensatório inserido
+  const movComp = state.movimentos.find(m => m.estornoDeId === movId);
+  assert.ok(movComp);
+  assert.equal(movComp.tipo, 'saida', 'Compensatório de entrada deve ser saída');
+  assert.equal(movComp.valor, 200);
+  assert.equal(movComp.subtipo, 'estorno');
+  assert.equal(movComp.cat, 'Estorno Contábil');
+});
+
+test('9. Travas de Idempotência e Validação do Estorno: Duplo Estorno e Estorno de Estorno', () => {
+  const financialAnalystService = require('../services/financialAnalystService.js');
+
+  const state = {
+    cfg: { saldoInicial: 1000 },
+    caixas: [
+      { id: 'cx_2', status: 'aberto', aberto: true, saldoInicial: 1000, saldoAtual: 1000, totalEntradas: 0, totalSaidas: 0, movimentacoesIds: [] }
+    ],
+    movimentos: []
+  };
+
+  const lanc = financialAnalystService.registrarMovimentacao(state, {
+    tipo: 'saida',
+    valor: 100,
+    descricao: 'Combustível teste'
+  });
+  const movId = lanc.movimento.id;
+
+  // Primeiro estorno: sucesso
+  const res1 = financialAnalystService.estornarMovimentacao(state, {
+    movimentoId: movId,
+    motivo: 'Comprovante cancelado',
+    operador: 'dono_1'
+  });
+  assert.equal(res1.ok, true);
+
+  // Segundo estorno (duplicado/idempotente): deve falhar com 409
+  const res2 = financialAnalystService.estornarMovimentacao(state, {
+    movimentoId: movId,
+    motivo: 'Tentativa duplicada',
+    operador: 'dono_1'
+  });
+  assert.equal(res2.ok, false);
+  assert.equal(res2.status, 409);
+  assert.equal(res2.code, 'MOVIMENTO_JA_ESTORNADO');
+
+  // Tentativa de estornar o próprio lançamento compensatório de estorno: deve falhar com 400
+  const idComp = res1.movimentoCompensatorio.id;
+  const res3 = financialAnalystService.estornarMovimentacao(state, {
+    movimentoId: idComp,
+    motivo: 'Estornar o estorno',
+    operador: 'dono_1'
+  });
+  assert.equal(res3.ok, false);
+  assert.equal(res3.status, 400);
+  assert.equal(res3.code, 'OPERACAO_INVALIDA_ESTORNO');
+
+  // Tentativa com motivo curto (< 3 chars): deve falhar com 400
+  const lanc2 = financialAnalystService.registrarMovimentacao(state, { tipo: 'saida', valor: 50, descricao: 'Fita' });
+  const res4 = financialAnalystService.estornarMovimentacao(state, {
+    movimentoId: lanc2.movimento.id,
+    motivo: 'ok', // 2 chars
+    operador: 'dono_1'
+  });
+  assert.equal(res4.ok, false);
+  assert.equal(res4.status, 400);
+  assert.equal(res4.code, 'MOTIVO_INVALIDO');
+
+  // Tentativa com id inexistente: 404
+  const res5 = financialAnalystService.estornarMovimentacao(state, {
+    movimentoId: 'mov_inexistente_999',
+    motivo: 'Teste inexistente',
+    operador: 'dono_1'
+  });
+  assert.equal(res5.ok, false);
+  assert.equal(res5.status, 404);
+  assert.equal(res5.code, 'MOVIMENTO_NAO_ENCONTRADO');
+});
+
+test('10. RBAC e Trilha de Auditoria na Rota de Estorno: Dono autoriza (200), Mecânico recebe 403', async () => {
+  const fs = require('fs');
+  const os = require('os');
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'patio_test_audit_'));
+  const testDb = path.join(tempDir, 'test_audit.db');
+  process.env.DB_PATH = testDb;
+
+  const { initDB, closeDB, all } = require('../db');
+  await initDB();
+
+  try {
+    const express = require('express');
+    const financialRoutes = require('../routes/financial.routes');
+    const { salvarEstado } = require('../lib/serverContext');
+
+    const app = express();
+    app.use(express.json());
+
+    // Middleware de contexto de autenticação injetável para testes
+    let mockContext = { role: 'dono', actorId: 'dono_audit_1', tenantId: 'tenant_audit_fin' };
+    app.use((req, res, next) => {
+      req.securityContext = mockContext;
+      req.headers['x-tenant-id'] = mockContext.tenantId;
+      next();
+    });
+    app.use(financialRoutes);
+
+    const { getDefaultState } = require('../lib/repository/stateRepository');
+    const tenantId = 'tenant_audit_fin';
+    const base = getDefaultState(tenantId);
+    const testState = {
+      ...base,
+      tenantId,
+      cfg: { ...base.cfg, saldoInicial: 1000 },
+      caixas: [{ id: 'cx_aud_1', status: 'aberto', aberto: true, saldoInicial: 1000, saldoAtual: 1000, totalEntradas: 0, totalSaidas: 0, movimentacoesIds: [] }],
+      movimentos: [
+        { id: 'mov_aud_1', tenantId, tipo: 'entrada', valor: 250, desc: 'Entrada para estorno teste', origem: 'whatsapp' }
+      ]
+    };
+    await salvarEstado(tenantId, testState);
+
+    const http = require('http');
+    const server = http.createServer(app);
+    await new Promise(r => server.listen(0, '127.0.0.1', r));
+    const port = server.address().port;
+    const baseUrl = `http://127.0.0.1:${port}`;
+
+    try {
+      // 10.1 Mecânico tenta estornar -> Deve receber 403 Forbidden
+      mockContext = { role: 'mecanico', actorId: 'mec_joao', tenantId, permissions: ['financial:write'] };
+      const resMec = await fetch(`${baseUrl}/api/financeiro/movimentacoes/mov_aud_1/estornar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ motivo: 'Tentativa mecânico' })
+      });
+
+      assert.equal(resMec.status, 403);
+      const jsonMec = await resMec.json();
+      assert.match(jsonMec.error, /restrito a administradores superiores/i);
+
+      // 10.2 Dono executa o estorno -> 200 OK
+      mockContext = { role: 'dono', actorId: 'dono_audit_1', tenantId, permissions: ['*'] };
+      const resDono = await fetch(`${baseUrl}/api/financeiro/movimentacoes/mov_aud_1/estornar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ motivo: 'Estorno autorizado pelo dono' })
+      });
+
+      assert.equal(resDono.status, 200);
+      const jsonDono = await resDono.json();
+      assert.equal(jsonDono.success, true);
+      assert.equal(jsonDono.movimentoOriginal.estornado, true);
+      assert.equal(jsonDono.movimentoCompensatorio.tipo, 'saida');
+
+      // 10.3 Auditoria no SQLite security_audit_log
+      const auditRows = await all("SELECT action, details_json FROM security_audit_log WHERE tenant_id = ? ORDER BY id ASC", [tenantId]);
+      assert.ok(auditRows.length >= 2, 'Deve ter registrado tentativa negada e estorno efetuado');
+
+      const negadoLog = auditRows.find(r => r.action === 'financeiro:movimento:estorno_negado');
+      assert.ok(negadoLog, 'Deve conter log de estorno negado');
+      assert.match(negadoLog.details_json, /perfil_sem_permissao/);
+
+      const estornoLog = auditRows.find(r => r.action === 'financeiro:movimento:estornar');
+      assert.ok(estornoLog, 'Deve conter log de estorno bem-sucedido');
+      assert.match(estornoLog.details_json, /mov_aud_1/);
+      assert.match(estornoLog.details_json, /whatsapp/);
+    } finally {
+      await new Promise(r => server.close(r));
+    }
+  } finally {
+    await closeDB().catch(() => {});
+    try { fs.rmSync(tempDir, { recursive: true, force: true }); } catch (_) {}
+  }
+});
+

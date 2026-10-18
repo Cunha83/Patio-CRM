@@ -6,7 +6,8 @@ const {
   getOrLoadState,
   mutateTenantState,
   extractTenantId,
-  requirePermission
+  requirePermission,
+  recordSecurityAudit
 } = require('../lib/serverContext');
 const financialAnalystService = require('../services/financialAnalystService');
 const financialEngine = require('../services/financialEngine');
@@ -268,6 +269,112 @@ router.post('/api/financeiro/movimentacoes', requirePermission('financial:write'
     res.status(500).json({ success: false, error: err.message });
   }
 });
+
+/**
+ * 5.1 POST /api/financeiro/movimentacoes/:id/estornar & /api/financeiro/movimentos/:id/estornar
+ * Executa estorno contábil compensatório auditado com trava de perfil Dono/Owner
+ */
+const estornarMovimentacaoHandler = async (req, res) => {
+  try {
+    const tenantId = extractTenantId(req);
+    const { id } = req.params;
+    const { motivo } = req.body || {};
+    const role = (req.securityContext?.role || '').toLowerCase();
+    const isDono = ['dono', 'tenant_admin', 'owner', 'platform_admin', 'admin'].includes(role);
+
+    // RBAC Estrito: Restrito a administradores superiores (Dono / Owner)
+    if (!isDono) {
+      await recordSecurityAudit({
+        tenantId,
+        actorId: req.securityContext?.actorId || 'operador',
+        action: 'financeiro:movimento:estorno_negado',
+        entity: 'financeiro_movimento',
+        entityId: id,
+        details: {
+          motivo: 'perfil_sem_permissao',
+          role,
+          movimentoId: id
+        }
+      });
+      return res.status(403).json({
+        success: false,
+        code: 'ACESSO_NEGADO',
+        error: 'Acesso negado: o estorno de movimentações financeiras é restrito a administradores superiores (Dono/Owner).'
+      });
+    }
+
+    const operador = req.securityContext?.actorId || 'operador';
+    const operadorNome = req.securityContext?.fullName || req.securityContext?.actorId || 'Operador';
+
+    let resultado = null;
+    const saveRes = await mutateTenantState(req, (draft) => {
+      resultado = financialAnalystService.estornarMovimentacao(draft, {
+        movimentoId: id,
+        motivo,
+        operador,
+        operadorNome,
+        tenantId
+      });
+
+      if (!resultado.ok) {
+        return {
+          abort: true,
+          status: resultado.status || 400,
+          code: resultado.code,
+          error: resultado.error
+        };
+      }
+    });
+
+    if (saveRes?.aborted) {
+      return res.status(saveRes.status || 400).json({
+        success: false,
+        code: saveRes.mutatorResult?.code || saveRes.code,
+        error: saveRes.error
+      });
+    }
+
+    if (!saveRes || !saveRes.ok) {
+      return res.status(saveRes?.status || 500).json({
+        success: false,
+        error: saveRes?.error || 'Falha ao persistir estorno de movimentação.'
+      });
+    }
+
+    // Trilha de Auditoria de Segurança
+    await recordSecurityAudit({
+      tenantId,
+      actorId: operador,
+      action: 'financeiro:movimento:estornar',
+      entity: 'financeiro_movimento',
+      entityId: resultado.movimentoOriginal?.id,
+      details: {
+        movimentoId: resultado.movimentoOriginal?.id,
+        valor: resultado.movimentoOriginal?.valor,
+        origem: resultado.movimentoOriginal?.origem,
+        motivo,
+        idEstorno: resultado.movimentoCompensatorio?.id,
+        saldoCaixaAtual: resultado.saldoCaixaAtual,
+        role
+      }
+    });
+
+    res.json({
+      success: true,
+      mensagem: resultado.mensagem,
+      movimentoOriginal: resultado.movimentoOriginal,
+      movimentoCompensatorio: resultado.movimentoCompensatorio,
+      caixa: resultado.caixa,
+      saldoCaixaAtual: resultado.saldoCaixaAtual
+    });
+  } catch (err) {
+    console.error('[API estorno POST] Erro:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+router.post('/api/financeiro/movimentacoes/:id/estornar', requirePermission('financial:write', 'financial:manage'), estornarMovimentacaoHandler);
+router.post('/api/financeiro/movimentos/:id/estornar', requirePermission('financial:write', 'financial:manage'), estornarMovimentacaoHandler);
 
 /**
  * 6. GET /api/financeiro/fluxo-caixa
