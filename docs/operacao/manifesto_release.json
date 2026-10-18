@@ -54,7 +54,7 @@
     "lib/auth/context.js": "0cfc750278b615be471bf99da6a5fcb22fd4a4a4f2c3d69c83c033d2e009710c",
     "lib/auth/identity.js": "202b9268e5ae15a5e7ac583497c053d48422092ed81d9290b8b8fedffe1e8828",
     "lib/auth/userRepository.js": "5867cba59944ac74b5e59b6e932ff6360734a210624a3287815f5e64400db55a",
-    "lib/core.js": "4a9f23e2073baf1ca9bfa89fa237bfdd67ebde7875c959180e03696175ebc31c",
+    "lib/core.js": "e629b2fee33b8278e6cdfe8d8f16c87650b5f942803c96360f70a3eaa322eb34",
     "lib/file-storage.js": "4b29b7ccd7628ff0b787d9192142d4ebd5c947251ff5adf1803e779d07170a1e",
     "lib/image-cache.js": "41e2f61fe97dfd269fa412b98d79e07d311afb1ada369a6982af8bd416c4dfcf",
     "lib/metrics.js": "fdb51b8677ddaa4b4b2ab1f39fdd90f786b1d3ff3604fd65e4309430109f9a9d",
@@ -192,7 +192,7 @@
     "services/voiceActionEngine.js": "963bc5843cc26320598e5f96c36f70bbb29ac4433035ebfccaf34d27bdbaff8c",
     "services/warrantyService.js": "e2772f7e3d8987ebba0d4e6a97e2dfad10f3210e490616902629c68d68ebb14b",
     "services/whatsapp/whatsappClient.js": "42a50ddf76c999477b7ce373bfc5bfec5511b4ae2929ca4ce0c8a047bec88654",
-    "services/whatsapp/whatsappHandlers.js": "0abd4b1c2adf9c13febd958654314f5de09f24648a389b4754deae1ad08903c7",
+    "services/whatsapp/whatsappHandlers.js": "99954ec29ab118d0a84689afe6a10c940a945797e3f40eaaafc8692cef41bd29",
     "services/whatsapp/whatsappScheduler.js": "01a1ba654ab5f872d14a1ff5957083d496d979b7c0a1b5601dde2b3289e7d3a8",
     "services/whatsapp/whatsappState.js": "06aad441cc77f1e5adc508fea0b1a17f0ff59cbbc4862fb0ce3ac761a51e936b",
     "style.css": "ea8a3021eebbd6b45d3d56dd88958139734a39599dd9c2300be46714ec0d8297"

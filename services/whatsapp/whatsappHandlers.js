@@ -500,6 +500,53 @@ Retorne APENAS um JSON estrito no formato:
 }
 
 /**
+ * Extrai e normaliza o identificador numérico de telefone a partir de JID e mensagens WhatsApp.
+ * Suporta formatos @c.us, @s.whatsapp.net, :device e rejeita estritamente @lid não resolvível (fail-closed).
+ */
+function extrairTelefoneDeJid(msg, explicitNumber = null) {
+  if (explicitNumber !== null && explicitNumber !== undefined) {
+    const str = String(explicitNumber).trim();
+    if (str.includes('@lid')) return '';
+    const clean = str.replace(/[@:].*$/, '').replace(/\D/g, '');
+    if (clean) return clean;
+  }
+
+  if (!msg || typeof msg !== 'object') return '';
+
+  const candidates = [
+    msg.author,
+    msg.from,
+    msg._data?.author,
+    msg._data?.from,
+    msg.sender?.id?._serialized,
+    msg.sender?.id?.user,
+    msg.sender?.number,
+    msg._data?.senderNumber,
+    msg._data?.participant
+  ];
+
+  for (const cand of candidates) {
+    if (!cand || typeof cand !== 'string') continue;
+    if (cand.includes('@lid')) continue;
+    const clean = cand.split('@')[0].split(':')[0].replace(/\D/g, '');
+    if (clean && clean.length >= 8 && clean.length <= 15) {
+      return clean;
+    }
+  }
+
+  const isLid = Boolean(
+    (typeof msg.from === 'string' && msg.from.includes('@lid')) ||
+    (typeof msg.author === 'string' && msg.author.includes('@lid'))
+  );
+  if (isLid) {
+    return ''; // Fail-closed para LID não resolvível
+  }
+
+  const fallback = msg.author || msg.from || '';
+  return fallback.split('@')[0].split(':')[0].replace(/\D/g, '');
+}
+
+/**
  * Processa comandos executivos e de administração do WhatsApp
  */
 async function processarMensagemTexto(msg, {
@@ -517,16 +564,84 @@ async function processarMensagemTexto(msg, {
   const textoLower = textoMensagem.toLowerCase().trim();
 
   const isGroupMsg = isGroup !== undefined ? isGroup : Boolean(msg.from && msg.from.includes('@g.us'));
-  const rawSender = fromNumber || ((msg.author || msg.from || '').split('@')[0]).replace(/\D/g, '');
+  const rawSender = extrairTelefoneDeJid(msg, fromNumber);
   const senderNorm = normalizePhone(rawSender) || rawSender;
   const chavePendente = `${tenantKey}:${senderNorm}`;
 
-  // ── DETECÇÃO PRÉVIA DE COMANDOS DE ESCRITA FINANCEIRA ──
+  // ── DETECÇÃO PRÉVIA DE COMANDOS DE ESCRITA E LEITURA FINANCEIRA ──
   const isComandoAbrirCaixa = /(?:abrir|iniciar|abertura\s+de)\s*(?:o\s+)?caixa/i.test(textoLower);
   const isComandoFecharCaixa = /(?:fechar|encerrar|fechamento\s+de)\s*(?:o\s+)?caixa/i.test(textoLower);
   const isComandoEntrada = /(?:lançar|lancar|registrar)\s*(?:uma\s+)?(?:entrada|receita|suprimento)/i.test(textoLower) || /(?:suprimento|entrada)\s+de\s+caixa/i.test(textoLower);
   const isComandoSaida = /(?:lançar|lancar|registrar)\s*(?:uma\s+)?(?:saída|saida|despesa|sangria)/i.test(textoLower) || /(?:sangria|saída|saida)\s+de\s+caixa/i.test(textoLower);
   const isComandoEscrita = isComandoAbrirCaixa || isComandoFecharCaixa || isComandoEntrada || isComandoSaida;
+
+  const isComandoLeituraFinanceira = (
+    textoLower === '!caixa' || textoLower === 'caixa' ||
+    textoLower === '!saldo' || textoLower === 'saldo' ||
+    textoLower === 'saldo do caixa' || textoLower === 'saldo de caixa' ||
+    textoLower === '!financeiro' || textoLower === 'financeiro' ||
+    textoLower.includes('entradas e saídas') || textoLower.includes('entradas e saidas') ||
+    textoLower.includes('movimentações do dia') || textoLower.includes('movimentacoes do dia') ||
+    textoLower.includes('movimentação do dia') || textoLower.includes('movimentacao do dia') ||
+    textoLower.includes('entradas do dia') || textoLower.includes('saídas do dia') || textoLower.includes('saidas do dia') ||
+    textoLower === '!movimentacoes' || textoLower === '!movimentos' ||
+    (textoLower.includes('entradas') && textoLower.includes('saídas')) ||
+    (textoLower.includes('entradas') && textoLower.includes('saidas')) ||
+    textoLower.includes('contas a pagar e a receber') ||
+    textoLower.includes('pagar e receber do dia') ||
+    textoLower.includes('contas do dia') ||
+    textoLower.includes('títulos do dia') || textoLower.includes('titulos do dia') ||
+    textoLower.includes('vencimentos do dia') || textoLower.includes('vencimentos de hoje') ||
+    textoLower.includes('contas a pagar do dia') || textoLower.includes('contas a receber do dia') ||
+    textoLower.includes('contas a pagar') || textoLower.includes('contas a receber') ||
+    textoLower === '!contas' || textoLower === '!vencimentos' ||
+    textoLower === '!relatorio' || textoLower === 'relatorio' || textoLower === '!relatório' || textoLower === 'relatório' ||
+    textoLower.includes('relatório executivo') || textoLower.includes('relatorio executivo') ||
+    textoLower.includes('relatório diário') || textoLower.includes('relatorio diario')
+  );
+
+  // Resolução de administradores autorizados
+  const adminList = (process.env.WHATSAPP_ADMIN_NUMBERS || '')
+    .split(',')
+    .map(s => s.trim().replace(/\D/g, ''))
+    .filter(Boolean);
+  if (tenantState?.cfg?.adminFones && Array.isArray(tenantState.cfg.adminFones)) {
+    tenantState.cfg.adminFones.forEach(f => {
+      const clean = String(f).replace(/\D/g, '');
+      if (clean && !adminList.includes(clean)) adminList.push(clean);
+    });
+  }
+  const remetenteEAdmin = isSenderAdmin !== undefined ? Boolean(isSenderAdmin) : isAdminPhone(senderNorm, adminList);
+
+  // Fail-closed para JID @lid não resolvível ou número desconhecido tentando comando restrito
+  if (!isGroupMsg && (isComandoEscrita || isComandoLeituraFinanceira)) {
+    if (!rawSender) {
+      await msg.reply('Olá! Sou o assistente do Pátio CRM. No momento, o atendimento automatizado está disponível apenas para motoristas e clientes com veículos em serviço ou administradores autorizados. Para mais informações, entre em contato diretamente com a nossa recepção.');
+      await auditarComandoWhatsApp({
+        tenantId: tenantKey,
+        numero: 'desconhecido',
+        comando: textoMensagem,
+        resultado: 'recusado_nao_autorizado',
+        detalhes: { motivo: 'lid_nao_resolvivel' }
+      });
+      return true;
+    }
+
+    if (!remetenteEAdmin) {
+      const perfilRemetente = await obterPerfilNumeroWhatsApp({ tenantKey, numero: senderNorm, tenantState });
+      if (isComandoLeituraFinanceira || perfilRemetente.role === 'desconhecido') {
+        await msg.reply('Olá! Sou o assistente do Pátio CRM. No momento, o atendimento automatizado está disponível apenas para motoristas e clientes com veículos em serviço ou administradores autorizados. Para mais informações, entre em contato diretamente com a nossa recepção.');
+        await auditarComandoWhatsApp({
+          tenantId: tenantKey,
+          numero: senderNorm,
+          comando: textoMensagem,
+          resultado: 'recusado_nao_autorizado',
+          detalhes: { motivo: 'numero_desconhecido' }
+        });
+        return true;
+      }
+    }
+  }
 
   // Sobrescrita de pendência se o mesmo administrador enviar um novo comando de escrita
   let prefixoSubstituicao = '';
@@ -1009,6 +1124,7 @@ async function processarMensagemTexto(msg, {
     textoLower.includes('entradas e saídas') || textoLower.includes('entradas e saidas') ||
     textoLower.includes('movimentações do dia') || textoLower.includes('movimentacoes do dia') ||
     textoLower.includes('movimentação do dia') || textoLower.includes('movimentacao do dia') ||
+    textoLower.includes('entradas do dia') || textoLower.includes('saídas do dia') || textoLower.includes('saidas do dia') ||
     textoLower === '!movimentacoes' || textoLower === '!movimentos' ||
     (textoLower.includes('entradas') && textoLower.includes('saídas')) ||
     (textoLower.includes('entradas') && textoLower.includes('saidas'))
@@ -1343,9 +1459,8 @@ async function tratarMensagemWhatsApp(msg, wppClient) {
     return;
   }
 
-  const isGroup = msg.from.includes('@g.us');
-  const rawAuthor = isGroup ? (msg.author || msg.from) : msg.from;
-  const fromNumber = (rawAuthor || '').split('@')[0].replace(/\D/g, '');
+  const isGroup = msg.from && msg.from.includes('@g.us');
+  const fromNumber = extrairTelefoneDeJid(msg);
 
   const { tenantKey, state: tenantState } = await resolverTenantPorChatId(msg.from, fromNumber);
   const msgId = (msg.id && (msg.id._serialized || msg.id.id)) || msg.id || null;
@@ -1853,6 +1968,7 @@ module.exports = {
   verificarIdempotencia,
   registrarIdempotencia,
   extrairValorMonetario,
+  extrairTelefoneDeJid,
   obterPerfilNumeroWhatsApp,
   podeExecutarEscritaFinanceira
 };

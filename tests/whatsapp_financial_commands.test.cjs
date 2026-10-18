@@ -830,5 +830,91 @@ test('WhatsApp Agente Financeiro - Suíte Completa de Leitura e Escrita Controla
     assert.equal(ultimaMov.autorNumero, numeroAdmin, 'Metadado de autorNumero deve ser o telefone normalizado');
     assert.ok(ultimaMov.confirmadoEm, 'Deve registrar timestamp de confirmação');
   });
+
+  // ── 16. NORMALIZAÇÃO CANÔNICA DE TELEFONE BR (9º DÍGITO E JID) - TAREFA 2 ──
+  await t.test('16. Normalização canônica de telefone BR: 9º dígito, formatos de JID e fail-closed de @lid', async () => {
+    const { isAdminPhone, isSameBrazilianPhone, parseBrazilianPhone } = require('../lib/core');
+    const { extrairTelefoneDeJid } = require('../services/whatsapp/whatsappHandlers');
+
+    // Testes unitários das funções puras de telefone
+    assert.equal(isSameBrazilianPhone('5562999998888', '6299998888'), true, 'Com 9º dígito vs sem 9º dígito deve dar match');
+    assert.equal(isSameBrazilianPhone('556299998888@c.us', '5562999998888'), true, 'JID @c.us sem 9º dígito vs cadastrado com 9º dígito deve dar match');
+    assert.equal(isSameBrazilianPhone('5562999998888:2@s.whatsapp.net', '6299998888'), true, 'Multi-device @s.whatsapp.net com 9º dígito vs cadastrado sem 9º dígito deve dar match');
+    assert.equal(isSameBrazilianPhone('5562999998888', '5562999998887'), false, 'Números com último dígito diferente NÃO devem dar match');
+    assert.equal(isSameBrazilianPhone('5561999998888', '5562999998888'), false, 'Números com DDD diferente NÃO devem dar match');
+    assert.equal(isSameBrazilianPhone('123456789@lid', '5562999998888'), false, 'JID @lid não resolvível NÃO deve dar match');
+
+    // 16.1 Admin cadastrado com 9º dígito (5562999998888) enviando a partir de JID sem 9º dígito (556299998888@c.us)
+    const mockStateA = criarEstadoMock();
+    mockStateA.cfg.adminFones = ['5562999998888'];
+    const repliesA = [];
+    await processarMensagemTexto({
+      from: '556299998888@c.us',
+      author: '556299998888@c.us',
+      body: 'saldo',
+      reply: async (txt) => { repliesA.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockStateA });
+
+    assert.equal(repliesA.length, 1);
+    assert.match(repliesA[0], /POSIÇÃO FINANCEIRA|Saldo em Caixa/i, 'Admin sem 9º dígito no JID deve ser reconhecido');
+    assert.match(repliesA[0], /R\$/);
+
+    // 16.2 Admin cadastrado sem 9º dígito (6299998888) enviando a partir de JID com 9º dígito (5562999998888@s.whatsapp.net)
+    const mockStateB = criarEstadoMock();
+    mockStateB.cfg.adminFones = ['6299998888'];
+    const repliesB = [];
+    await processarMensagemTexto({
+      from: '5562999998888@s.whatsapp.net',
+      author: '5562999998888@s.whatsapp.net',
+      body: 'entradas do dia',
+      reply: async (txt) => { repliesB.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockStateB });
+
+    assert.equal(repliesB.length, 1);
+    assert.match(repliesB[0], /ENTRADAS E SAÍDAS|Total de Entradas/i, 'Admin com 9º dígito no JID deve ser reconhecido quando cadastrado sem');
+
+    // 16.3 Rejeição estrita (fail-closed) de número parecido mas distinto
+    const mockStateC = criarEstadoMock();
+    mockStateC.cfg.adminFones = ['5562999998888'];
+    const repliesC = [];
+    await processarMensagemTexto({
+      from: '5562999998887@c.us', // final 8887 em vez de 8888
+      author: '5562999998887@c.us',
+      body: 'saldo',
+      reply: async (txt) => { repliesC.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockStateC });
+
+    assert.equal(repliesC.length, 1);
+    assert.match(repliesC[0], /atendimento automatizado está disponível apenas/i, 'Número distinto deve ser rejeitado');
+    assert.doesNotMatch(repliesC[0], /POSIÇÃO FINANCEIRA|Saldo em Caixa/i);
+
+    // 16.4 JID @lid não resolvível -> Fail-closed imediato
+    const mockStateD = criarEstadoMock();
+    mockStateD.cfg.adminFones = ['5562999998888'];
+    const repliesD = [];
+    await processarMensagemTexto({
+      from: '987654321098765@lid',
+      author: '987654321098765@lid',
+      body: 'abrir caixa com R$ 100,00',
+      reply: async (txt) => { repliesD.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockStateD });
+
+    assert.equal(repliesD.length, 1);
+    assert.match(repliesD[0], /atendimento automatizado está disponível apenas/i, 'JID @lid não resolvível deve sofrer fail-closed');
+    assert.equal(confirmacoesPendentes.size, 0, 'Nenhuma pendência financeira deve ser criada para LID não resolvível');
+
+    // 16.5 JID @lid com propriedade alternativa contendo telefone real do admin
+    const repliesE = [];
+    await processarMensagemTexto({
+      from: '987654321098765@lid',
+      author: '987654321098765@lid',
+      sender: { number: '5562999998888' },
+      body: 'saldo',
+      reply: async (txt) => { repliesE.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockStateD });
+
+    assert.equal(repliesE.length, 1);
+    assert.match(repliesE[0], /POSIÇÃO FINANCEIRA|Saldo em Caixa/i, 'JID @lid resolvido via propriedade de telefone real deve ser aceito');
+  });
 });
 
