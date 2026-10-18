@@ -98,7 +98,7 @@
     "routes/static.routes.js": "3afda329580645f9ecc20f0da6ce5543dc18f716d83bef32235bb4da3d5d745b",
     "routes/team.routes.js": "931fa9d7a283857006bc75b8db4bbbfb8dcee8b0e032006dfbd63c76e088d2ff",
     "routes/voice.routes.js": "e443f6cb150e6562c3400dc136547979aa5a7f93ab163ab11e03932f716d72cf",
-    "routes/whatsapp.routes.js": "1a68fb2a2e1fe217b78372f4b0e366d0861c3310f7d6ab6ab5bd1f547026b364",
+    "routes/whatsapp.routes.js": "90fbfcf45bba219d7e7c58d8c54d0d08d39d4820528efbb5907fc42f58a326a8",
     "scripts/auditar_execucao_tarefa_agendada.cjs": "47a5d3e281bfcdb4737c23f159baab0dad00520d69feb82a3a6c482f27c46d69",
     "scripts/build_windows_pilot.cjs": "ace15201cd79925808194e4876ec2bb67bf1f4c968f32b8a525249aea15182de",
     "scripts/comprovar_restauracao_remota_host.cjs": "23e0abf8271406e22fa0c3f65edad977a3ebdf7fcf2057ea1474d4fe3e775fb5",

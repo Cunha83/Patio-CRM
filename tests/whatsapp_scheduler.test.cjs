@@ -6,7 +6,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const { initDB, run, closeDB, get } = require('../db');
+const { initDB, run, closeDB, get, all } = require('../db');
 const {
   executarCicloDisparoRelatorioDiario,
   jaEnviouHoje,
@@ -426,6 +426,68 @@ test('Agendador de Relatório Diário do WhatsApp: Horário, Idempotência, Flag
     assert.equal(msgsEnviadas.length, 1);
     assert.equal(msgsEnviadas[0].chatId, '120363000000000001@g.us');
     assert.ok(msgsEnviadas[0].msg.includes('Aviso de Fechamento de Caixa'));
+  });
+
+  // 8. Teste de RBAC e Auditoria: Apenas Dono altera configurações sensíveis do WhatsApp
+  await t.test('8. RBAC e Auditoria: Dono altera campos sensíveis com 200 e auditoria; financeiro, atendente e mecânico recebem 403', async () => {
+    const whatsappRoutes = require('../routes/whatsapp.routes');
+    const routePostConfig = whatsappRoutes.stack.find(
+      layer => layer.route && layer.route.path === '/api/whatsapp/config-relatorio' && layer.route.methods.post
+    );
+    assert.ok(routePostConfig, 'Rota POST /api/whatsapp/config-relatorio deve existir');
+    const handler = routePostConfig.route.stack[routePostConfig.route.stack.length - 1].handle;
+
+    const payloadSensivel = {
+      comandosFinanceirosEscrita: true,
+      limiteValorLancamentoWhatsapp: 2500.00,
+      adminFones: ['5511999990001', '5511999990002'],
+      avisarCaixaWhatsapp: true
+    };
+
+    // A. Não-Donos (financeiro, atendente, mecanico) devem receber 403
+    for (const nonOwnerRole of ['financeiro', 'atendente', 'mecanico']) {
+      let statusCode = null;
+      let jsonResponse = null;
+      const req = {
+        securityContext: { role: nonOwnerRole, actorId: `user_${nonOwnerRole}`, tenantId: tenantAlfa },
+        headers: { 'x-tenant-id': tenantAlfa },
+        body: payloadSensivel
+      };
+      const res = {
+        status(c) { statusCode = c; return this; },
+        json(j) { jsonResponse = j; return this; }
+      };
+
+      await handler(req, res);
+      assert.equal(statusCode, 403, `Perfil ${nonOwnerRole} deve receber HTTP 403 ao tentar alterar campos sensíveis`);
+      assert.match(jsonResponse.error, /restrita ao perfil dono/i);
+    }
+
+    // B. Dono (dono / tenant_admin) deve receber 200 OK e persistir com auditoria
+    let statusDono = null;
+    let jsonDono = null;
+    const reqDono = {
+      securityContext: { role: 'dono', actorId: 'dono_alfa', tenantId: tenantAlfa },
+      headers: { 'x-tenant-id': tenantAlfa },
+      body: payloadSensivel
+    };
+    const resDono = {
+      status(c) { statusDono = c; return this; },
+      json(j) { jsonDono = j; return this; }
+    };
+
+    await handler(reqDono, resDono);
+    assert.equal(statusDono || 200, 200, 'Dono deve receber HTTP 200 ao alterar campos sensíveis');
+    assert.equal(jsonDono?.success, true);
+    assert.equal(jsonDono?.cfg?.comandosFinanceirosEscrita, true);
+    assert.equal(jsonDono?.cfg?.limiteValorLancamentoWhatsapp, 2500);
+
+    // C. Verifica que registrou auditoria de segurança no banco
+    const auditRows = await all("SELECT * FROM security_audit_log WHERE action = 'whatsapp:config_update' AND entity_id = 'config-relatorio'");
+    assert.ok(auditRows.length >= 1, 'Deve registrar log de auditoria ao atualizar configurações pelo Dono');
+    const auditDetails = JSON.parse(auditRows[0].details_json || '{}');
+    assert.equal(auditDetails.role, 'dono');
+    assert.equal(auditDetails.changes?.limiteValorLancamentoWhatsapp, 2500);
   });
 
   // Limpeza
