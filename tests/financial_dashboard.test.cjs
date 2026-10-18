@@ -955,6 +955,150 @@ test('16. Rota POST /api/financeiro/os/:osId/faturar: RBAC, geração de título
   }
 });
 
+test('17. Rota POST /api/financeiro/titulos/:id/liquidar com RBAC, baixa no caixa aberto e auditoria', async () => {
+  const fs = require('fs');
+  const os = require('os');
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'patio_test_liq_'));
+  const testDbPath = path.join(tempDir, 'test.db');
+  process.env.DB_PATH = testDbPath;
+
+  const { initDB, closeDB, all } = require('../db');
+  try {
+    await initDB();
+    const tenantId = 't_liq_route';
+
+    const express = require('express');
+    const http = require('http');
+    const financialRoutes = require('../routes/financial.routes');
+    const { salvarEstado } = require('../lib/serverContext');
+    const { getDefaultState } = require('../lib/repository/stateRepository');
+
+    const app = express();
+    app.use(express.json());
+
+    let mockContext = { role: 'dono', actorId: 'dono_1', tenantId, permissions: ['financial:write', 'financial:manage'] };
+    app.use((req, res, next) => {
+      req.securityContext = mockContext;
+      req.headers['x-tenant-id'] = tenantId;
+      next();
+    });
+    app.use(financialRoutes);
+
+    const base = getDefaultState(tenantId);
+    const testState = {
+      ...base,
+      tenantId,
+      cfg: { saldoInicial: 500 },
+      caixas: [
+        {
+          id: 'cx_liq_1',
+          status: 'aberto',
+          aberto: true,
+          saldoInicial: 500,
+          saldoAtual: 500,
+          totalEntradas: 0,
+          totalSaidas: 0,
+          movimentacoesIds: []
+        }
+      ],
+      movimentos: [],
+      contas: [
+        {
+          id: 'tit_rec_101',
+          tipo: 'receber',
+          desc: 'Serviço de Freios OS 701',
+          parte: 'Cliente Frota',
+          valor: 350,
+          venc: '2026-10-18',
+          pago: false,
+          status: 'aberto'
+        },
+        {
+          id: 'tit_pag_102',
+          tipo: 'pagar',
+          desc: 'Peças Distribuidora',
+          parte: 'Distribuidora Auto',
+          valor: 120,
+          venc: '2026-10-18',
+          pago: false,
+          status: 'aberto'
+        }
+      ]
+    };
+    await salvarEstado(tenantId, testState);
+
+    const server = http.createServer(app);
+    await new Promise(r => server.listen(0, '127.0.0.1', r));
+    const port = server.address().port;
+    const baseUrl = `http://127.0.0.1:${port}`;
+
+    try {
+      // 17.1 Mecânico tenta liquidar -> 403 Forbidden
+      mockContext = { role: 'mecanico', actorId: 'mec_1', tenantId, permissions: ['financial:read'] };
+      const resMec = await fetch(`${baseUrl}/api/financeiro/titulos/tit_rec_101/liquidar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ meioPagamento: 'pix' })
+      });
+      assert.equal(resMec.status, 403);
+
+      // 17.2 Financeiro liquida título a receber -> 200 OK
+      mockContext = { role: 'financeiro', actorId: 'fin_ana', tenantId, permissions: ['financial:write'] };
+      const resFin = await fetch(`${baseUrl}/api/financeiro/titulos/tit_rec_101/liquidar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ meioPagamento: 'pix' })
+      });
+
+      assert.equal(resFin.status, 200);
+      const jsonFin = await resFin.json();
+      assert.equal(jsonFin.success, true);
+      assert.equal(jsonFin.titulo.pago, true);
+      assert.equal(jsonFin.titulo.status, 'liquidado');
+      assert.equal(jsonFin.saldoCaixaAtual, 850); // 500 + 350
+      assert.equal(jsonFin.movimentacao.tipo, 'entrada');
+
+      // 17.3 Tentar liquidar título já baixado -> 409 Conflict
+      const resDuplo = await fetch(`${baseUrl}/api/financeiro/titulos/tit_rec_101/liquidar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ meioPagamento: 'dinheiro' })
+      });
+      assert.equal(resDuplo.status, 409);
+
+      // 17.4 Dono liquida conta a pagar -> 200 OK e reduz caixa
+      mockContext = { role: 'dono', actorId: 'dono_1', tenantId, permissions: ['financial:write', 'financial:manage'] };
+      const resPag = await fetch(`${baseUrl}/api/financeiro/titulos/tit_pag_102/liquidar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ meioPagamento: 'dinheiro' })
+      });
+      assert.equal(resPag.status, 200);
+      const jsonPag = await resPag.json();
+      assert.equal(jsonPag.success, true);
+      assert.equal(jsonPag.titulo.pago, true);
+      assert.equal(jsonPag.saldoCaixaAtual, 730); // 850 - 120
+      assert.equal(jsonPag.movimentacao.tipo, 'saida');
+
+      // 17.5 Verifica auditoria no SQLite
+      const auditRows = await all(`
+        SELECT action, entity_id, details_json FROM security_audit_log
+        WHERE tenant_id = ? AND action = 'financeiro:titulo:liquidar'
+        ORDER BY id ASC
+      `, [tenantId]);
+      assert.equal(auditRows.length, 2, 'Devem existir 2 auditorias de liquidação');
+      assert.equal(auditRows[0].entity_id, 'tit_rec_101');
+      assert.equal(auditRows[1].entity_id, 'tit_pag_102');
+    } finally {
+      await new Promise(r => server.close(r));
+    }
+  } finally {
+    await closeDB().catch(() => {});
+    try { fs.rmSync(tempDir, { recursive: true, force: true }); } catch (_) {}
+  }
+});
+
+
 
 
 

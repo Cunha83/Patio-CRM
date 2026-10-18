@@ -1464,6 +1464,169 @@ test('WhatsApp Agente Financeiro - Suíte Completa de Leitura e Escrita Controla
     assert.equal(repliesMecSang.length, 1);
     assert.match(repliesMecSang[0], /Acesso Negado|Olá! Sou o assistente/i);
   });
+
+  // ── 25. CONSULTA DE VENCIMENTOS E TÍTULOS DO DIA COM IDS E DICA DE BAIXA ──
+  await t.test('25. Consulta de títulos e vencimentos do dia no WhatsApp com IDs e instrução de baixa', async () => {
+    const mockState = criarEstadoMock();
+    const adminNum = '5511999998888';
+    mockState.cfg.adminFones = [adminNum];
+
+    const hoje = new Date().toISOString().slice(0, 10);
+    mockState.contas = [
+      { id: 'tit_rec_venc1', tipo: 'receber', valor: 250, desc: 'Revisão Básica', parte: 'Frota A', venc: hoje, pago: false },
+      { id: 'tit_pag_venc2', tipo: 'pagar', valor: 180, desc: 'Óleo e Filtros', parte: 'Distribuidora X', venc: hoje, pago: false }
+    ];
+
+    const repliesVenc = [];
+    await processarMensagemTexto({
+      from: `${adminNum}@c.us`,
+      author: `${adminNum}@c.us`,
+      body: 'vencimentos',
+      reply: async (txt) => { repliesVenc.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: adminNum });
+
+    assert.equal(repliesVenc.length, 1);
+    const msgVenc = repliesVenc[0];
+    assert.match(msgVenc, /TÍTULOS E VENCIMENTOS DE HOJE/i);
+    assert.match(msgVenc, /tit_rec_venc1/);
+    assert.match(msgVenc, /tit_pag_venc2/);
+    assert.match(msgVenc, /250,00/);
+    assert.match(msgVenc, /180,00/);
+    assert.match(msgVenc, /Para liquidar pelo WhatsApp/i);
+  });
+
+  // ── 26. BAIXA INTEGRADA DE TÍTULOS VIA WHATSAPP COM CONFIRMAÇÃO EM 2 ETAPAS E RBAC ──
+  await t.test('26. Fluxo completo de baixa de títulos a receber e pagar via WhatsApp com auditoria e limites', async () => {
+    const mockState = criarEstadoMock();
+    const adminNum = '5511999998888';
+    mockState.cfg.adminFones = [adminNum];
+    mockState.cfg.comandosFinanceirosEscrita = true;
+    mockState.cfg.limiteValorLancamentoWhatsapp = 1000.00;
+
+    mockState.caixas = [
+      {
+        id: 'cx-wpp-liq-1',
+        status: 'aberto',
+        aberto: true,
+        saldoInicial: 400,
+        saldoAtual: 400,
+        totalEntradas: 0,
+        totalSaidas: 0,
+        movimentacoesIds: []
+      }
+    ];
+
+    mockState.contas = [
+      { id: 'tit_wpp_rec_1', tipo: 'receber', valor: 300, desc: 'Manutenção Preventiva', parte: 'Transportes Sol', pago: false, status: 'aberto' },
+      { id: 'tit_wpp_pag_1', tipo: 'pagar', valor: 150, desc: 'Ferramental Oficina', parte: 'Casa do Mecânico', pago: false, status: 'aberto' },
+      { id: 'tit_wpp_alto', tipo: 'receber', valor: 1500, desc: 'Motor Completo', parte: 'Transportes Sol', pago: false, status: 'aberto' }
+    ];
+
+    // 26.1 Mecânico tenta executar comando de baixa -> Bloqueado
+    const mecNum = '5511955554444';
+    const repliesMec = [];
+    await processarMensagemTexto({
+      from: `${mecNum}@c.us`,
+      author: `${mecNum}@c.us`,
+      body: 'baixar tit_wpp_rec_1 pix',
+      reply: async (txt) => { repliesMec.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: mecNum, isContextAdmin: false });
+
+    assert.equal(repliesMec.length, 1);
+    assert.match(repliesMec[0], /Acesso Negado|Olá! Sou o assistente/i);
+
+    // 26.2 Dono executa comando de baixa de título a receber -> Confirmação 2 etapas
+    const repliesBaixa1 = [];
+    await processarMensagemTexto({
+      from: `${adminNum}@c.us`,
+      author: `${adminNum}@c.us`,
+      body: 'baixar tit_wpp_rec_1 pix',
+      reply: async (txt) => { repliesBaixa1.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: adminNum });
+
+    assert.equal(repliesBaixa1.length, 1);
+    assert.match(repliesBaixa1[0], /CONFIRMAÇÃO DE LIQUIDAÇÃO FINANCEIRA/i);
+    assert.match(repliesBaixa1[0], /tit_wpp_rec_1/);
+    assert.match(repliesBaixa1[0], /300,00/);
+    assert.match(repliesBaixa1[0], /PIX/);
+    assert.match(repliesBaixa1[0], /entrada no caixa/i);
+
+    // 26.3 Dono confirma a baixa com CONFIRMAR
+    const repliesConf1 = [];
+    await processarMensagemTexto({
+      from: `${adminNum}@c.us`,
+      author: `${adminNum}@c.us`,
+      body: 'CONFIRMAR',
+      reply: async (txt) => { repliesConf1.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: adminNum });
+
+    assert.equal(repliesConf1.length, 1);
+    assert.match(repliesConf1[0], /Título Liquidado com Sucesso/i);
+    assert.match(repliesConf1[0], /700,00/); // Saldo atual 400 + 300
+    assert.equal(mockState.caixas[0].saldoAtual, 700);
+    assert.equal(mockState.contas[0].pago, true);
+    assert.equal(mockState.contas[0].status, 'liquidado');
+
+    // 26.4 Dono executa baixa de conta a pagar
+    const repliesBaixaPag = [];
+    await processarMensagemTexto({
+      from: `${adminNum}@c.us`,
+      author: `${adminNum}@c.us`,
+      body: 'pagar conta tit_wpp_pag_1 dinheiro',
+      reply: async (txt) => { repliesBaixaPag.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: adminNum });
+
+    assert.equal(repliesBaixaPag.length, 1);
+    assert.match(repliesBaixaPag[0], /CONFIRMAÇÃO DE LIQUIDAÇÃO FINANCEIRA/i);
+    assert.match(repliesBaixaPag[0], /saída do caixa/i);
+
+    // Confirma com SIM
+    const repliesConfPag = [];
+    await processarMensagemTexto({
+      from: `${adminNum}@c.us`,
+      author: `${adminNum}@c.us`,
+      body: 'SIM',
+      reply: async (txt) => { repliesConfPag.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: adminNum });
+
+    assert.equal(repliesConfPag.length, 1);
+    assert.match(repliesConfPag[0], /Título Liquidado com Sucesso/i);
+    assert.equal(mockState.caixas[0].saldoAtual, 550); // 700 - 150
+    assert.equal(mockState.contas[1].pago, true);
+
+    // 26.5 Tentativa de baixar título já liquidado
+    const repliesJaLiq = [];
+    await processarMensagemTexto({
+      from: `${adminNum}@c.us`,
+      author: `${adminNum}@c.us`,
+      body: 'baixar tit_wpp_rec_1 pix',
+      reply: async (txt) => { repliesJaLiq.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: adminNum });
+
+    assert.equal(repliesJaLiq.length, 1);
+    assert.match(repliesJaLiq[0], /já foi liquidado anteriormente/i);
+
+    // 26.6 Tentativa de baixar título com valor acima do limite (1500 > 1000)
+    const repliesLimite = [];
+    await processarMensagemTexto({
+      from: `${adminNum}@c.us`,
+      author: `${adminNum}@c.us`,
+      body: 'baixar tit_wpp_alto pix',
+      reply: async (txt) => { repliesLimite.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: adminNum });
+
+    assert.equal(repliesLimite.length, 1);
+    assert.match(repliesLimite[0], /Limite Excedido/i);
+    assert.match(repliesLimite[0], /1\.000,00/);
+
+    // 26.7 Verifica auditoria de liquidação via WhatsApp no SQLite
+    const auditRows = await all(`
+      SELECT action, entity_id FROM security_audit_log
+      WHERE action = 'financeiro:titulo:liquidar'
+      ORDER BY id ASC
+    `);
+    assert.ok(auditRows.length >= 2, 'Deve registrar auditorias no security_audit_log');
+  });
 });
 
 

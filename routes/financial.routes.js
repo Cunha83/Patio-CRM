@@ -334,6 +334,76 @@ router.post('/api/financeiro/os/:osId/faturar', requirePermission('financial:wri
 });
 
 /**
+ * 4.1.2 POST /api/financeiro/titulos/:id/liquidar
+ * Realiza a liquidação (baixa) de um título a receber ou conta a pagar com geração de movimento no caixa e auditoria
+ */
+router.post('/api/financeiro/titulos/:id/liquidar', requirePermission('financial:write', 'financial:manage'), async (req, res) => {
+  try {
+    const tenantId = extractTenantId(req);
+    const tituloId = req.params.id;
+    const operador = req.securityContext?.actorId || req.user?.username || 'operador_financeiro';
+
+    let resultado = null;
+    const saveRes = await mutateTenantState(req, (draft) => {
+      resultado = financialAnalystService.liquidarTituloFinanceiro(draft, {
+        ...req.body,
+        id: tituloId,
+        operador,
+        origem: 'web'
+      });
+
+      if (!resultado.ok) {
+        return { abort: true, status: resultado.status || 400, error: resultado.error, code: resultado.code };
+      }
+    });
+
+    if (saveRes?.aborted) {
+      return res.status(saveRes.status || 400).json({
+        success: false,
+        code: saveRes.code,
+        error: saveRes.error
+      });
+    }
+
+    if (!saveRes || !saveRes.ok) {
+      return res.status(saveRes?.status || 500).json({
+        success: false,
+        error: saveRes?.error || 'Falha ao persistir liquidação de título.'
+      });
+    }
+
+    // Auditoria de liquidação de título
+    try {
+      await recordSecurityAudit({
+        tenantId,
+        actorId: operador,
+        action: 'financeiro:titulo:liquidar',
+        entity: 'titulo_financeiro',
+        entityId: tituloId,
+        details: {
+          tituloId,
+          tipo: resultado.titulo?.tipo,
+          valor: resultado.titulo?.valor,
+          meioLiquidacao: resultado.titulo?.meioLiquidacao,
+          movimentoId: resultado.movimentacao?.id,
+          saldoCaixaAtual: resultado.saldoCaixaAtual
+        }
+      });
+    } catch (auditErr) {
+      console.warn('[Financeiro Liquidar Titulo Audit] Falha não-bloqueante:', auditErr.message);
+    }
+
+    res.status(200).json({
+      success: true,
+      ...resultado
+    });
+  } catch (err) {
+    console.error('[API /api/financeiro/titulos/:id/liquidar POST] Erro:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+/**
  * 4.2 GET /api/financeiro/exportar
  * Exporta lote de movimentações contábeis em formato CSV ou JSON com assinatura SHA-256 e auditoria
  */

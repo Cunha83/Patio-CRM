@@ -630,7 +630,8 @@ async function processarMensagemTexto(msg, {
   const isComandoSangria = /^!?sangria\b/i.test(textoLower);
   const isComandoSuprimento = /^!?suprimento\b/i.test(textoLower);
   const isComandoEstorno = /^(?:!estornar|estornar)\b/i.test(textoLower);
-  const isComandoEscrita = isComandoAbrirCaixa || isComandoFecharCaixa || isComandoEntrada || isComandoSaida || isComandoSangria || isComandoSuprimento || isComandoEstorno;
+  const isComandoBaixa = /^(?:!baixar|baixar|pagar\s+conta|receber\s+titulo|receber\s+título)\b/i.test(textoLower);
+  const isComandoEscrita = isComandoAbrirCaixa || isComandoFecharCaixa || isComandoEntrada || isComandoSaida || isComandoSangria || isComandoSuprimento || isComandoEstorno || isComandoBaixa;
 
   const matchComandoOS = textoLower.match(/(?:extrato|financeiro|saldo)\s+(?:da\s+|de\s+)?(?:os|o\.s\.)\s*#?\s*([a-zA-Z0-9_\-]+)/i) ||
                          textoLower.match(/(?:os|o\.s\.)\s*#?\s*([a-zA-Z0-9_\-]+)\s+(?:financeiro|extrato|saldo)/i) ||
@@ -678,7 +679,9 @@ async function processarMensagemTexto(msg, {
     textoLower.includes('vencimentos do dia') || textoLower.includes('vencimentos de hoje') ||
     textoLower.includes('contas a pagar do dia') || textoLower.includes('contas a receber do dia') ||
     textoLower.includes('contas a pagar') || textoLower.includes('contas a receber') ||
-    textoLower === '!contas' || textoLower === '!vencimentos' ||
+    textoLower === '!contas' || textoLower === '!vencimentos' || textoLower === 'vencimentos' ||
+    textoLower === 'contas hoje' || textoLower === '!contas hoje' ||
+    textoLower === 'agenda financeira' || textoLower === 'compromissos hoje' ||
     textoLower === '!relatorio' || textoLower === 'relatorio' || textoLower === '!relatório' || textoLower === 'relatório' ||
     textoLower.includes('relatório executivo') || textoLower.includes('relatorio executivo') ||
     textoLower.includes('relatório diário') || textoLower.includes('relatorio diario')
@@ -969,6 +972,46 @@ async function processarMensagemTexto(msg, {
             }
           } else {
             msgSucesso = `⚠️ Não foi possível registrar o suprimento: ${resOp.error}`;
+          }
+        } else if (pendente.acao === 'liquidar_titulo') {
+          resOp = financialAnalystService.liquidarTituloFinanceiro(tenantState, {
+            tenantId: tenantKey,
+            id: pendente.tituloId,
+            meioPagamento: pendente.formaPagamento,
+            operador: senderNorm,
+            origem: 'whatsapp',
+            canal: 'whatsapp',
+            autorNumero: senderNorm,
+            confirmadoEm: agoraIso
+          });
+          if (resOp.ok) {
+            const tit = resOp.titulo;
+            const isReceber = tit.tipo === 'receber';
+            msgSucesso = `✅ *Título Liquidado com Sucesso!*\n\n• Título: #${tit.id} (${isReceber ? 'Recebimento' : 'Pagamento'})\n• Descrição: ${tit.desc || tit.descricao || '-'}\n• Valor: ${financialEngine.formatarMoeda(tit.valor)}\n• Forma: ${String(tit.meioLiquidacao || pendente.formaPagamento).toUpperCase()}\n• Saldo Atual do Caixa: ${financialEngine.formatarMoeda(resOp.saldoCaixaAtual || 0)}`;
+            try {
+              await recordSecurityAudit({
+                tenantId: tenantKey,
+                actorId: `whatsapp:${senderNorm}`,
+                actorType: 'whatsapp_sender',
+                action: 'financeiro:titulo:liquidar',
+                entity: 'contas_financeiras',
+                entityId: tit.id,
+                details: {
+                  tituloId: tit.id,
+                  tipo: tit.tipo,
+                  valor: tit.valor,
+                  meioPagamento: tit.meioLiquidacao,
+                  movimentoId: resOp.movimentacao?.id,
+                  saldoCaixaAtual: resOp.saldoCaixaAtual,
+                  operador: senderNorm,
+                  origem: 'whatsapp'
+                }
+              });
+            } catch (auditErr) {
+              console.warn('[WhatsApp Liquidar Titulo Audit] Falha não-bloqueante:', auditErr.message);
+            }
+          } else {
+            msgSucesso = `⚠️ Não foi possível liquidar o título: ${resOp.error}`;
           }
         }
 
@@ -1630,6 +1673,109 @@ async function processarMensagemTexto(msg, {
         detalhes: { acao: 'estornar_movimento', movimentoId: movAlvo.id, valor: movAlvo.valor, motivo: motivoEstorno }
       });
       return true;
+    } else if (isComandoBaixa) {
+      const matchBaixa = textoMensagem.match(/^(?:!baixar|baixar|pagar\s+conta|receber\s+t[ií]tulo)\s+([a-zA-Z0-9_\-]+)(?:\s+([a-zA-Z0-9_\-]+))?/i);
+      if (!matchBaixa || !matchBaixa[1]) {
+        const respPedeId = '⚠️ Por favor, informe o identificador do título ou conta a ser baixado (ex: *baixar tit_123 pix* ou *baixar 101 dinheiro*).';
+        await msg.reply(respPedeId);
+        await auditarComandoWhatsApp({ tenantId: tenantKey, numero: senderNorm, comando: textoMensagem, resultado: 'solicitado_esclarecimento_id', detalhes: { motivo: 'id_ausente' } });
+        return true;
+      }
+
+      const idAlvo = matchBaixa[1].trim();
+      const formaInformada = matchBaixa[2] ? matchBaixa[2].trim() : '';
+      const contas = Array.isArray(tenantState.contas) ? tenantState.contas : [];
+      const idNorm = idAlvo.toLowerCase();
+      const idSemPrefixo = idNorm.replace(/^(?:tit_|cnt_|mov_|cta_)/, '');
+
+      const tituloAlvo = contas.find(c => {
+        const cId = String(c.id || '').toLowerCase();
+        if (cId === idNorm) return true;
+        if (cId.replace(/^(?:tit_|cnt_|mov_|cta_)/, '') === idSemPrefixo) return true;
+        return false;
+      });
+
+      if (!tituloAlvo) {
+        const respNaoEnc = `⚠️ Título ou conta #${idAlvo} não foi encontrado(a).`;
+        await msg.reply(respNaoEnc);
+        await auditarComandoWhatsApp({ tenantId: tenantKey, numero: senderNorm, comando: textoMensagem, resultado: 'recusado_titulo_nao_encontrado', detalhes: { idAlvo } });
+        return true;
+      }
+
+      if (tituloAlvo.pago || tituloAlvo.status === 'liquidado' || tituloAlvo.status === 'pago') {
+        const respJaLiq = `⚠️ O título #${tituloAlvo.id} já foi liquidado anteriormente em ${tituloAlvo.dataPagamento || tituloAlvo.dataPgto || 'data anterior'}.`;
+        await msg.reply(respJaLiq);
+        await auditarComandoWhatsApp({ tenantId: tenantKey, numero: senderNorm, comando: textoMensagem, resultado: 'recusado_titulo_ja_liquidado', detalhes: { tituloId: tituloAlvo.id } });
+        return true;
+      }
+
+      const caixaAberto = financialAnalystService.obterCaixaAberto(tenantState, tenantKey);
+      if (!caixaAberto) {
+        const respSemCaixa = '⚠️ Não há caixa aberto no momento para registrar a liquidação deste título. Abra o caixa primeiro para poder realizar baixas integradas.';
+        await msg.reply(respSemCaixa);
+        await auditarComandoWhatsApp({ tenantId: tenantKey, numero: senderNorm, comando: textoMensagem, resultado: 'recusado_caixa_fechado', detalhes: { tituloId: tituloAlvo.id } });
+        return true;
+      }
+
+      const valorFinal = Number(tituloAlvo.valor) || 0;
+      const rawLimite = Number(tenantState?.cfg?.limiteValorLancamentoWhatsapp);
+      const limiteMax = (!isNaN(rawLimite) && rawLimite > 0) ? rawLimite : 1000.00;
+
+      if (valorFinal > limiteMax) {
+        const respLimite = `🚫 *Limite Excedido:* O valor do título #${tituloAlvo.id} (${financialEngine.formatarMoeda(valorFinal)}) excede o limite máximo permitido para operações via WhatsApp (${financialEngine.formatarMoeda(limiteMax)}). Por questões de segurança, realize esta baixa diretamente pelo painel do Pátio CRM Web.`;
+        await msg.reply(respLimite);
+        await auditarComandoWhatsApp({
+          tenantId: tenantKey,
+          numero: senderNorm,
+          comando: textoMensagem,
+          resultado: 'negado_limite',
+          detalhes: { acao: 'liquidar_titulo', tituloId: tituloAlvo.id, valor: valorFinal, limite: limiteMax }
+        });
+        return true;
+      }
+
+      const meioLiquidacao = formaInformada ? financialAnalystService.normalizarFormaPagamento(formaInformada) : (tituloAlvo.forma ? financialAnalystService.normalizarFormaPagamento(tituloAlvo.forma) : 'dinheiro');
+
+      confirmacoesPendentes.set(chavePendente, {
+        acao: 'liquidar_titulo',
+        descricaoAcao: 'Liquidação de Título',
+        tituloId: tituloAlvo.id,
+        tituloOriginal: tituloAlvo,
+        valor: valorFinal,
+        formaPagamento: meioLiquidacao,
+        descricao: tituloAlvo.desc || tituloAlvo.descricao || (tituloAlvo.tipo === 'receber' ? 'Recebimento' : 'Pagamento'),
+        expiraEm: Date.now() + CONFIRMACAO_TTL_MS,
+        tenantKey,
+        fromNumber: senderNorm,
+        perfil
+      });
+
+      const isReceber = tituloAlvo.tipo === 'receber';
+      const impactoCaixa = isReceber
+        ? `Crédito de ${financialEngine.formatarMoeda(valorFinal)} (entrada no caixa)`
+        : `Débito de ${financialEngine.formatarMoeda(valorFinal)} (saída do caixa)`;
+
+      const msgConfirm =
+        prefixoSubstituicao +
+        `⚠️ *CONFIRMAÇÃO DE LIQUIDAÇÃO FINANCEIRA* ⚠️\n\n` +
+        `Por favor, confira os dados da operação:\n` +
+        `• *Título / Conta:* #${tituloAlvo.id} (${isReceber ? 'Recebimento' : 'Pagamento'})\n` +
+        `• *Descrição / Parte:* ${tituloAlvo.desc || tituloAlvo.parte || 'Geral'}\n` +
+        `• *Valor:* ${financialEngine.formatarMoeda(valorFinal)}\n` +
+        `• *Meio de Pagamento:* ${meioLiquidacao.toUpperCase()}\n` +
+        `• *Impacto no Caixa:* ${impactoCaixa}\n\n` +
+        `Para executar, responda exatamente *CONFIRMAR* ou *SIM* em até 2 minutos.\n` +
+        `Qualquer outra resposta cancelará esta operação.`;
+
+      await msg.reply(msgConfirm);
+      await auditarComandoWhatsApp({
+        tenantId: tenantKey,
+        numero: senderNorm,
+        comando: textoMensagem,
+        resultado: 'aguardando_confirmacao',
+        detalhes: { acao: 'liquidar_titulo', tituloId: tituloAlvo.id, valor: valorFinal, meio: meioLiquidacao }
+      });
+      return true;
     }
   }
 
@@ -1876,7 +2022,9 @@ async function processarMensagemTexto(msg, {
     textoLower.includes('vencimentos do dia') || textoLower.includes('vencimentos de hoje') ||
     textoLower.includes('contas a pagar do dia') || textoLower.includes('contas a receber do dia') ||
     textoLower.includes('contas a pagar') || textoLower.includes('contas a receber') ||
-    textoLower === '!contas' || textoLower === '!vencimentos'
+    textoLower === '!contas' || textoLower === '!vencimentos' || textoLower === 'vencimentos' ||
+    textoLower === 'contas hoje' || textoLower === '!contas hoje' ||
+    textoLower === 'agenda financeira' || textoLower === 'compromissos hoje'
   ) {
     if (isContextOperacao || !isContextAdmin) {
       await msg.reply('🔒 *Acesso Restrito:* Contas a pagar e a receber são disponibilizadas exclusivamente para administradores autorizados.');
@@ -1902,7 +2050,7 @@ async function processarMensagemTexto(msg, {
     if (aPagarHoje.length > 0) {
       txtContas += `🔴 *Contas a Pagar Hoje:*\n`;
       aPagarHoje.slice(0, 4).forEach(c => {
-        txtContas += `• ${c.desc || c.parte || 'Fornecedor'}: ${financialEngine.formatarMoeda(c.valor)}\n`;
+        txtContas += `• #${c.id} - ${c.desc || c.parte || 'Fornecedor'}: ${financialEngine.formatarMoeda(c.valor)}\n`;
       });
       if (aPagarHoje.length > 4) txtContas += `_... e mais ${aPagarHoje.length - 4} conta(s)._\n`;
       txtContas += `\n`;
@@ -1911,13 +2059,16 @@ async function processarMensagemTexto(msg, {
     if (aReceberHoje.length > 0) {
       txtContas += `🟢 *Títulos a Receber Hoje:*\n`;
       aReceberHoje.slice(0, 4).forEach(c => {
-        txtContas += `• ${c.desc || c.parte || 'Cliente'}: ${financialEngine.formatarMoeda(c.valor)}\n`;
+        txtContas += `• #${c.id} - ${c.desc || c.parte || 'Cliente'}: ${financialEngine.formatarMoeda(c.valor)}\n`;
       });
       if (aReceberHoje.length > 4) txtContas += `_... e mais ${aReceberHoje.length - 4} título(s)._\n`;
+      txtContas += `\n`;
     }
 
     if (aPagarHoje.length === 0 && aReceberHoje.length === 0) {
       txtContas += `_Nenhum vencimento de contas a pagar ou a receber agendado para hoje._`;
+    } else {
+      txtContas += `💡 *Para liquidar pelo WhatsApp:* envie *baixar <id> [forma]* (ex: _baixar ${aReceberHoje[0]?.id || aPagarHoje[0]?.id || 'tit_1'} pix_)\n`;
     }
 
     await msg.reply(txtContas);
