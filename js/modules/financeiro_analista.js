@@ -495,6 +495,9 @@ function blocoVeronicaAnalista() {
       `}
     </div>
 
+    <!-- 4. RADAR DE PENDÊNCIAS DE OS & LIBERAÇÃO FINANCEIRA DE PÁTIO -->
+    ${typeof radarLiberacaoPatioHtml === 'function' ? radarLiberacaoPatioHtml() : ''}
+
   </div>`;
 }
 
@@ -794,6 +797,373 @@ function falarParecerVeronica(texto) {
   }
 }
 
+/* ---------------- Radar de Liberação Financeira de Pátio & Faturamento de OS ---------------- */
+
+function calcularStatusLiberacaoOSFrontend(o) {
+  if (!o) return { status: 'retido_pendente', label: '🟡 Retido (Saldo Pendente)', cor: '#854d0e', bg: '#fef9c3', borda: '#fef08a', total: 0, totalPago: 0, saldoRestante: 0, totalFaturadoPrazo: 0, titulosOS: [] };
+  const total = Number(o.total || o.valorTotal || (typeof totOS === 'function' ? totOS(o) : 0)) || 0;
+  const osId = String(o.id || o.num || '');
+  const osNumStr = String(o.num || o.id || '');
+
+  const movs = Array.isArray(S.movimentos) ? S.movimentos : [];
+  const movsOS = movs.filter(m => !m.estornado && (
+    String(m.osId) === osId || String(m.osNum) === osId || String(m.osId) === osNumStr || (m.desc && m.desc.includes(`OS #${osNumStr}`))
+  ));
+  const totalPago = movsOS.filter(m => m.tipo === 'entrada' || m.tipo === 'receita').reduce((a, b) => a + (Number(b.valor) || 0), 0);
+
+  const contas = Array.isArray(S.contas) ? S.contas : [];
+  const titulosOS = contas.filter(c => c.tipo === 'receber' && (
+    String(c.osId) === osId || String(c.osNum) === osId || String(c.osId) === osNumStr || (c.desc && c.desc.includes(`OS #${osNumStr}`))
+  ));
+  const totalFaturadoPrazo = titulosOS.reduce((a, b) => a + (Number(b.valor) || 0), 0);
+
+  const saldoRestante = Math.max(0, +(total - totalPago).toFixed(2));
+
+  if (total > 0 && saldoRestante <= 0.01) {
+    return { status: 'liberado_quitado', label: '🟢 Liberado (Quitado)', cor: '#166534', bg: '#dcfce7', borda: '#bbf7d0', total, totalPago, saldoRestante, totalFaturadoPrazo, titulosOS };
+  }
+  if (totalFaturadoPrazo > 0 && totalFaturadoPrazo >= (saldoRestante - 0.01)) {
+    return { status: 'liberado_faturado', label: '🔵 Liberado (Faturado)', cor: '#1e40af', bg: '#dbeafe', borda: '#bfdbfe', total, totalPago, saldoRestante, totalFaturadoPrazo, titulosOS };
+  }
+  return { status: 'retido_pendente', label: '🟡 Retido (Saldo Pendente)', cor: '#854d0e', bg: '#fef9c3', borda: '#fef08a', total, totalPago, saldoRestante, totalFaturadoPrazo, titulosOS };
+}
+
+function renderBadgeLiberacaoPatio(o) {
+  const lib = calcularStatusLiberacaoOSFrontend(o);
+  if (lib.total <= 0) return '';
+  return `<span class="selo" style="background:${lib.bg};color:${lib.cor};border:1px solid ${lib.borda};font-size:10px;font-weight:700" title="Total: ${typeof brl === 'function' ? brl(lib.total) : lib.total} | Pago: ${typeof brl === 'function' ? brl(lib.totalPago) : lib.totalPago} | Saldo: ${typeof brl === 'function' ? brl(lib.saldoRestante) : lib.saldoRestante}">${lib.label}</span>`;
+}
+
+function radarLiberacaoPatioHtml() {
+  const osList = Array.isArray(S.os) ? S.os : [];
+  if (!osList.length) {
+    return `
+      <div style="padding:16px;text-align:center;color:var(--aco-500);background:var(--aco-50);border-radius:8px;margin-top:16px">
+        Nenhuma Ordem de Serviço cadastrada no sistema.
+      </div>`;
+  }
+
+  const dadosOS = osList.map(o => ({
+    os: o,
+    lib: calcularStatusLiberacaoOSFrontend(o)
+  }));
+
+  const quitadas = dadosOS.filter(d => d.lib.status === 'liberado_quitado');
+  const faturadas = dadosOS.filter(d => d.lib.status === 'liberado_faturado');
+  const retidas = dadosOS.filter(d => d.lib.status === 'retido_pendente');
+  const totalRetido = retidas.reduce((a, b) => a + (b.lib.saldoRestante || 0), 0);
+
+  return `
+    <div class="card card-p" style="margin-top:16px">
+      <div class="entre" style="border-bottom:1px solid var(--aco-150);padding-bottom:10px;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+        <div>
+          <div style="font-weight:700;font-size:16px;color:var(--aco-900)">
+            🚗 Radar de Liberação Financeira de Pátio & Faturamento de OS
+          </div>
+          <div class="mini">Classifica as ordens de serviço quanto à quitação e faturamento formal para autorização de saída dos veículos da oficina.</div>
+        </div>
+        <div style="display:flex;gap:6px">
+          <span class="selo" style="background:#dcfce7;color:#166534;border:1px solid #bbf7d0;font-weight:700">🟢 ${quitadas.length} Quitado(s)</span>
+          <span class="selo" style="background:#dbeafe;color:#1e40af;border:1px solid #bfdbfe;font-weight:700">🔵 ${faturadas.length} Faturado(s)</span>
+          <span class="selo" style="background:#fef9c3;color:#854d0e;border:1px solid #fef08a;font-weight:700">🟡 ${retidas.length} Retido(s)</span>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:12px;margin-bottom:16px">
+        <div style="background:rgba(16, 185, 129, 0.06);border:1px solid rgba(16, 185, 129, 0.3);border-radius:8px;padding:12px">
+          <div class="mini" style="font-weight:600;color:var(--verde)">Liberados à Vista / Quitados</div>
+          <div style="font-size:18px;font-weight:800;color:var(--verde)" class="num">${quitadas.length} OS(s)</div>
+          <div class="mini">100% recebido no caixa</div>
+        </div>
+        <div style="background:rgba(37, 99, 235, 0.06);border:1px solid rgba(37, 99, 235, 0.3);border-radius:8px;padding:12px">
+          <div class="mini" style="font-weight:600;color:#1d4ed8">Liberados com Faturamento a Prazo</div>
+          <div style="font-size:18px;font-weight:800;color:#1d4ed8" class="num">${faturadas.length} OS(s)</div>
+          <div class="mini">Formalizado em títulos a receber</div>
+        </div>
+        <div style="background:rgba(234, 179, 8, 0.08);border:1px solid rgba(234, 179, 8, 0.4);border-radius:8px;padding:12px">
+          <div class="mini" style="font-weight:600;color:#a16207">Retidos com Saldo Devedor</div>
+          <div style="font-size:18px;font-weight:800;color:#a16207" class="num">${retidas.length} OS(s) (${typeof brl === 'function' ? brl(totalRetido) : totalRetido})</div>
+          <div class="mini">Exige quitação ou faturamento</div>
+        </div>
+      </div>
+
+      <div class="tabela-responsiva">
+        <table class="tabela">
+          <thead>
+            <tr>
+              <th>OS / Placa / Cliente</th>
+              <th style="text-align:right">Total Orçado</th>
+              <th style="text-align:right">Recebido (Caixa)</th>
+              <th style="text-align:right">Títulos (Prazo)</th>
+              <th style="text-align:right">Saldo Pendente</th>
+              <th style="text-align:center">Liberação de Pátio</th>
+              <th style="text-align:center">Ação</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${dadosOS.slice(0, 15).map(({ os, lib }) => {
+              const v = typeof V === 'function' ? V(os.vei) : (os.veiculo || {});
+              const c = typeof C === 'function' ? C(os.cli) : (os.cliente || {});
+              const podeFaturar = lib.saldoRestante > 0;
+
+              return `
+              <tr>
+                <td>
+                  <div style="font-weight:700;color:var(--aco-900)">OS #${esc(os.num || os.id)} · ${esc(v.placa || 'Sem Placa')}</div>
+                  <div class="mini">${esc(c.fantasia || c.nome || 'Cliente Geral')} · ${esc(v.modelo || '')}</div>
+                </td>
+                <td style="text-align:right;font-weight:700" class="num">${typeof brl === 'function' ? brl(lib.total) : lib.total}</td>
+                <td style="text-align:right;color:var(--verde);font-weight:700" class="num">${typeof brl === 'function' ? brl(lib.totalPago) : lib.totalPago}</td>
+                <td style="text-align:right;color:#1e40af;font-weight:700" class="num">${typeof brl === 'function' ? brl(lib.totalFaturadoPrazo) : lib.totalFaturadoPrazo}</td>
+                <td style="text-align:right;font-weight:800;color:${lib.saldoRestante > 0 ? 'var(--tijolo)' : 'var(--aco-400)'}" class="num">
+                  ${typeof brl === 'function' ? brl(lib.saldoRestante) : lib.saldoRestante}
+                </td>
+                <td style="text-align:center">
+                  <span class="selo" style="background:${lib.bg};color:${lib.cor};border:1px solid ${lib.borda};font-size:10px;font-weight:700">
+                    ${lib.label}
+                  </span>
+                </td>
+                <td style="text-align:center">
+                  ${podeFaturar ? `
+                    <button class="btn btn-primario btn-pequeno"
+                            onclick="abrirFolha(() => folhaFaturarOS('${os.id || os.num}'))"
+                            style="font-size:11px;padding:3px 10px;white-space:nowrap">
+                      📄 Faturar a Prazo
+                    </button>
+                  ` : `
+                    <span class="mini" style="color:var(--verde);font-weight:600">✓ Liberada</span>
+                  `}
+                </td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+function folhaFaturarOS(osId) {
+  const osList = Array.isArray(S.os) ? S.os : [];
+  const o = osList.find(x => String(x.id) === String(osId) || String(x.num) === String(osId));
+  if (!o) {
+    return `<div class="card card-p"><p>OS #${esc(osId)} não encontrada.</p><button class="btn btn-secundario" onclick="fecharFolha()">Voltar</button></div>`;
+  }
+
+  const v = typeof V === 'function' ? V(o.vei) : (o.veiculo || {});
+  const c = typeof C === 'function' ? C(o.cli) : (o.cliente || {});
+  const lib = calcularStatusLiberacaoOSFrontend(o);
+  const hojeStr = typeof hoje === 'function' ? hoje() : new Date().toISOString().slice(0, 10);
+  const dataVencPadrao = typeof addDias === 'function' ? addDias(hojeStr, 30) : hojeStr;
+
+  return `
+  <div class="card card-p" style="max-width:540px;margin:0 auto">
+    <div class="entre" style="border-bottom:1px solid var(--aco-150);padding-bottom:10px;margin-bottom:14px">
+      <h3 style="font-size:17px;font-weight:700;color:var(--aco-900)">📄 Faturar a Prazo — OS #${esc(o.num || o.id)}</h3>
+      <button class="btn-fechar" onclick="fecharFolha()">${ico('x', 18)}</button>
+    </div>
+
+    <div style="background:var(--aco-50);border:1px solid var(--aco-200);border-radius:8px;padding:12px;margin-bottom:14px;font-size:13px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+        <span><b>Cliente:</b> ${esc(c.fantasia || c.nome || 'Geral')}</span>
+        <span><b>Veículo / Placa:</b> ${esc(v.placa || '—')}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+        <span>Total Orçado: <b>${typeof brl === 'function' ? brl(lib.total) : lib.total}</b></span>
+        <span style="color:var(--verde)">Total Pago: <b>${typeof brl === 'function' ? brl(lib.totalPago) : lib.totalPago}</b></span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:14px;border-top:1px dashed var(--aco-200);padding-top:6px;margin-top:6px">
+        <span style="font-weight:700;color:var(--tijolo)">Saldo a Faturar:</span>
+        <span style="font-weight:800;color:var(--tijolo)" class="num">${typeof brl === 'function' ? brl(lib.saldoRestante) : lib.saldoRestante}</span>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:12px;font-size:13px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div>
+          <label style="font-weight:600;display:block;margin-bottom:4px">Parcelas:</label>
+          <select id="fat-parcelas" class="campo-select" style="width:100%;height:36px;font-weight:700">
+            <option value="1">1x (Parcela Única)</option>
+            <option value="2">2x Quinzenal / Mensal</option>
+            <option value="3">3x Mensal</option>
+            <option value="4">4x Mensal</option>
+            <option value="6">6x Mensal</option>
+            <option value="12">12x Mensal</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-weight:600;display:block;margin-bottom:4px">Meio de Pagamento:</label>
+          <select id="fat-meio" class="campo-select" style="width:100%;height:36px;font-weight:700">
+            <option value="boleto">Boleto Bancário</option>
+            <option value="pix">PIX Parcelado</option>
+            <option value="promissoria">Nota Promissória</option>
+            <option value="cheque">Cheque Pré-datado</option>
+            <option value="cartao_credito">Cartão de Crédito</option>
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <label style="font-weight:600;display:block;margin-bottom:4px">Data do Primeiro Vencimento:</label>
+        <input type="date" id="fat-venc-inicial" class="campo-texto" value="${dataVencPadrao}" style="width:100%;height:36px">
+      </div>
+
+      <div>
+        <label style="font-weight:600;display:block;margin-bottom:4px">Observações / Condições Comerciais:</label>
+        <textarea id="fat-obs" class="campo-texto" placeholder="Ex: Faturado para 30/60 dias conforme aprovação da diretoria" style="width:100%;height:54px;resize:vertical"></textarea>
+      </div>
+    </div>
+
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:18px;border-top:1px solid var(--aco-150);padding-top:12px">
+      <button class="btn btn-secundario" onclick="fecharFolha()">Cancelar</button>
+      <button class="btn btn-sucesso" onclick="
+        const parc = document.getElementById('fat-parcelas').value;
+        const meio = document.getElementById('fat-meio').value;
+        const venc = document.getElementById('fat-venc-inicial').value;
+        const obs = document.getElementById('fat-obs').value;
+        faturarOSApi('${o.id || o.num}', parc, meio, venc, obs);
+      " style="font-weight:700;padding:0 20px">
+        ${ico('check', 14)} Confirmar Faturamento a Prazo
+      </button>
+    </div>
+  </div>`;
+}
+
+async function faturarOSApi(osId, parcelas, meioPagamento, vencimentoInicial, observacao) {
+  try {
+    const headers = typeof obterHeadersRequisicao === 'function' ? obterHeadersRequisicao({ 'Content-Type': 'application/json' }) : { 'Content-Type': 'application/json' };
+    const res = await fetch(`/api/financeiro/os/${encodeURIComponent(osId)}/faturar`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        parcelas: Number(parcelas) || 1,
+        meioPagamento: meioPagamento || 'boleto',
+        vencimentoInicial,
+        observacao
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Erro ao faturar OS a prazo');
+
+    if (Array.isArray(data.titulos)) {
+      S.contas = S.contas || [];
+      data.titulos.forEach(tit => {
+        const jaExiste = S.contas.some(c => c.id === tit.id);
+        if (!jaExiste) S.contas.push(tit);
+      });
+    }
+
+    if (typeof fecharFolha === 'function') fecharFolha();
+    if (typeof salvar === 'function') salvar();
+    if (typeof render === 'function') render();
+    alert(data.mensagem || 'Faturamento a prazo concluído com sucesso!');
+  } catch (err) {
+    alert(`Falha no faturamento: ${err.message}`);
+  }
+}
+
+function folhaBaixarTituloVeronica(contaId) {
+  const contas = Array.isArray(S.contas) ? S.contas : [];
+  const c = contas.find(x => String(x.id) === String(contaId));
+  if (!c) {
+    return `<div class="card card-p"><p>Título #${esc(contaId)} não encontrado.</p><button class="btn btn-secundario" onclick="fecharFolha()">Voltar</button></div>`;
+  }
+
+  const isReceber = c.tipo === 'receber';
+  const hojeStr = typeof hoje === 'function' ? hoje() : new Date().toISOString().slice(0, 10);
+
+  return `
+  <div class="card card-p" style="max-width:480px;margin:0 auto">
+    <div class="entre" style="border-bottom:1px solid var(--aco-150);padding-bottom:10px;margin-bottom:14px">
+      <h3 style="font-size:17px;font-weight:700;color:var(--aco-900)">
+        ${isReceber ? '🟢 Baixa de Título a Receber' : '🔴 Liquidação de Conta a Pagar'}
+      </h3>
+      <button class="btn-fechar" onclick="fecharFolha()">${ico('x', 18)}</button>
+    </div>
+
+    <div style="background:var(--aco-50);border:1px solid var(--aco-200);border-radius:8px;padding:12px;margin-bottom:14px;font-size:13px">
+      <div style="font-weight:700;color:var(--aco-900);font-size:14px;margin-bottom:4px">
+        ${esc(c.desc || c.descricao || 'Título Financeiro')}
+      </div>
+      <div style="display:flex;justify-content:space-between;color:var(--aco-700);margin-bottom:4px">
+        <span>Parte: <b>${esc(c.parte || '—')}</b></span>
+        <span>Vencimento: <b>${typeof dataBR === 'function' ? dataBR(c.venc) : c.venc}</b></span>
+      </div>
+      <div style="display:flex;justify-content:space-between;border-top:1px dashed var(--aco-200);padding-top:6px;margin-top:6px;font-size:15px">
+        <span style="font-weight:700">Valor a Liquidar:</span>
+        <span style="font-weight:800;color:${isReceber ? 'var(--verde)' : 'var(--tijolo)'}" class="num">
+          ${typeof brl === 'function' ? brl(c.valor) : c.valor}
+        </span>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:12px;font-size:13px">
+      <div>
+        <label style="font-weight:600;display:block;margin-bottom:4px">Meio de Pagamento Utilizado:</label>
+        <select id="liq-meio" class="campo-select" style="width:100%;height:36px;font-weight:700">
+          <option value="dinheiro">Dinheiro Físico (Caixa)</option>
+          <option value="pix" selected>PIX</option>
+          <option value="cartao_debito">Cartão de Débito</option>
+          <option value="cartao_credito">Cartão de Crédito</option>
+          <option value="transferencia">Transferência Bancária (TED/DOC)</option>
+          <option value="boleto">Boleto Liquidado</option>
+        </select>
+      </div>
+
+      <div>
+        <label style="font-weight:600;display:block;margin-bottom:4px">Data da Liquidação:</label>
+        <input type="date" id="liq-data" class="campo-texto" value="${hojeStr}" style="width:100%;height:36px">
+      </div>
+    </div>
+
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:18px;border-top:1px solid var(--aco-150);padding-top:12px">
+      <button class="btn btn-secundario" onclick="fecharFolha()">Cancelar</button>
+      <button class="btn btn-sucesso" onclick="
+        const meio = document.getElementById('liq-meio').value;
+        const dt = document.getElementById('liq-data').value;
+        liquidarTituloApi('${c.id}', meio, dt);
+      " style="font-weight:700;padding:0 20px">
+        ${ico('check', 14)} Confirmar Liquidação no Caixa
+      </button>
+    </div>
+  </div>`;
+}
+
+async function liquidarTituloApi(tituloId, meioPagamento, dataPagamento) {
+  try {
+    const headers = typeof obterHeadersRequisicao === 'function' ? obterHeadersRequisicao({ 'Content-Type': 'application/json' }) : { 'Content-Type': 'application/json' };
+    const res = await fetch(`/api/financeiro/titulos/${encodeURIComponent(tituloId)}/liquidar`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        meioPagamento: meioPagamento || 'dinheiro',
+        dataPagamento: dataPagamento || (typeof hoje === 'function' ? hoje() : new Date().toISOString().slice(0, 10))
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Erro ao liquidar título');
+
+    if (data.titulo) {
+      const idx = (S.contas || []).findIndex(c => String(c.id) === String(data.titulo.id));
+      if (idx !== -1) S.contas[idx] = data.titulo;
+    }
+    if (data.movimentacao) {
+      S.movimentos = S.movimentos || [];
+      S.movimentos.push(data.movimentacao);
+    }
+    if (data.saldoCaixaAtual != null && Array.isArray(S.caixas)) {
+      const cx = S.caixas.find(c => c.status === 'aberto');
+      if (cx) cx.saldoAtual = data.saldoCaixaAtual;
+    }
+
+    if (typeof fecharFolha === 'function') fecharFolha();
+    if (typeof salvar === 'function') salvar();
+    if (typeof render === 'function') render();
+    alert(data.mensagem || 'Título liquidado com sucesso!');
+  } catch (err) {
+    alert(`Falha na liquidação: ${err.message}`);
+  }
+}
+
 // Exportações explícitas no escopo global window
 if (typeof window !== 'undefined') {
   window.obterCaixaAbertoFrontend = obterCaixaAbertoFrontend;
@@ -808,4 +1178,11 @@ if (typeof window !== 'undefined') {
   window.fecharCaixaApi = fecharCaixaApi;
   window.estornarMovimentoApi = estornarMovimentoApi;
   window.falarParecerVeronica = falarParecerVeronica;
+  window.calcularStatusLiberacaoOSFrontend = calcularStatusLiberacaoOSFrontend;
+  window.renderBadgeLiberacaoPatio = renderBadgeLiberacaoPatio;
+  window.radarLiberacaoPatioHtml = radarLiberacaoPatioHtml;
+  window.folhaFaturarOS = folhaFaturarOS;
+  window.faturarOSApi = faturarOSApi;
+  window.folhaBaixarTituloVeronica = folhaBaixarTituloVeronica;
+  window.liquidarTituloApi = liquidarTituloApi;
 }

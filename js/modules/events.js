@@ -442,8 +442,20 @@ document.addEventListener('click', e => {
       break;
     }
     case 'baixar': {
-      const c = S.contas.find(x => x.id === b.dataset.id);
-      baixarConta(c); render(); torrar(`${c.tipo === 'receber' ? 'Recebimento' : 'Pagamento'} efetuado · ${brl(c.valor)}`); break;
+      if (typeof folhaBaixarTituloVeronica === 'function') {
+        abrirFolha(() => folhaBaixarTituloVeronica(b.dataset.id));
+      } else {
+        const c = S.contas.find(x => x.id === b.dataset.id);
+        baixarConta(c); render(); torrar(`${c.tipo === 'receber' ? 'Recebimento' : 'Pagamento'} efetuado · ${brl(c.valor)}`);
+      }
+      break;
+    }
+    case 'faturar-os-prazo': {
+      const osId = b.dataset.id || (S.ui && S.ui.osAberta);
+      if (osId && typeof folhaFaturarOS === 'function') {
+        abrirFolha(() => folhaFaturarOS(osId));
+      }
+      break;
     }
     case 'imprimir-recibo': imprimirRecibo(b.dataset.id); break;
     case 'nova-conta': S.ui.contaTipo = b.dataset.t; S.ui.rascConta = null; abrirFolha(folhaConta); break;

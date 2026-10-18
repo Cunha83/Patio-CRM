@@ -137,11 +137,15 @@ function folhaOS() {
       </select>
 
       ${!isPerfilMecanico() ? (o.st !== 'finalizada' ? `
+        <button class="btn btn-primario" data-act="faturar-os-prazo" data-id="${o.id || o.num}" style="height:34px;padding:0 14px;font-weight:600" title="Faturar saldo a prazo com geração de títulos a receber">
+          📄 Faturar a Prazo
+        </button>
         <button class="btn btn-sucesso" data-act="faturar-os-modal" style="height:34px;padding:0 16px;font-weight:600">
           ${ico('check', 14)} Faturar & Entregar
         </button>
       ` : `
         <span class="selo selo-finalizada" style="font-size:13px;padding:6px 12px">OS Faturada / Finalizada</span>
+        ${typeof renderBadgeLiberacaoPatio === 'function' ? renderBadgeLiberacaoPatio(o) : ''}
       `) : ''}
     </div>
   </div>`;

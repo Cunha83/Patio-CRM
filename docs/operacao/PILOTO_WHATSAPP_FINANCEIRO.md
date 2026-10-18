@@ -332,3 +332,50 @@ Para elevar o rigor operacional e atender a auditorias financeiras e contábeis 
 3. **Filtros Combinados no Painel Web**:
    - No menu **Fluxo de Caixa**, o usuário pode filtrar simultaneamente por **Canal/Origem** (Todos, WhatsApp, Web, Estornados) e **Meio de Pagamento** (Todos, PIX, Dinheiro, Cartão, Boleto).
    - O botão **📥 Exportar CSV Auditado** aciona o download automático respeitando os filtros ativos e confirmando o hash SHA-256 na notificação em tela.
+
+---
+
+## 10. Faturamento a Prazo de OS, Liberação Financeira de Pátio e Agenda de Vencimentos no WhatsApp
+
+Para resolver a fricção operacional entre a finalização mecânica de serviços e a liberação de veículos para entrega, o Pátio-CRM implementa o fluxo integrado de faturamento a prazo, indicadores visuais de liberação de pátio e liquidação de títulos tanto pelo painel web quanto pelo WhatsApp.
+
+### A. Faturamento a Prazo de Saldo de OS e Geração Automática de Títulos
+1. **Regra de Faturamento do Saldo Devedor**:
+   - Quando um veículo é concluído mas o cliente opta por pagar a prazo (ou quando há adiantamento e saldo restante), o saldo devedor (`saldoRestante = totalOrcado - totalPago`) pode ser faturado em parcelas (1x a 12x).
+   - O sistema gera automaticamente os títulos a receber em `contas` com vencimentos escalonados (padrão 30/60/90 dias), arredondamento centesimal exato na primeira parcela e vinculação estrita à OS e cliente.
+2. **Endpoint HTTP de Faturamento**:
+   - `POST /api/financeiro/os/:osId/faturar` (requer `financial:write` / `financial:manage`).
+   - Recebe `parcelas`, `meioPagamento` (`boleto`, `pix`, `promissoria`, `cheque`, `cartao_credito`), `vencimentoInicial` e `observacao`.
+   - Grava auditoria contábil `financeiro:os:faturar` na tabela `security_audit_log`.
+
+### B. Badges e Regras de Liberação Física vs Financeira de Pátio
+Para evitar liberação indevida de veículos sem quitação ou faturamento formal, a interface visual classifica cada OS em três estados canônicos:
+- `🟢 Liberado (Quitado)`: OS com 100% do valor recebido no caixa ativo (`saldoRestante <= 0.01`).
+- `🔵 Liberado (Faturado)`: OS cujo saldo pendente está 100% coberto por títulos a receber a prazo (`totalFaturadoPrazo >= saldoRestante`).
+- `🟡 Retido (Saldo Pendente)`: OS com saldo pendente não coberto por títulos ou recebimentos (`saldoRestante > 0`).
+
+O badge é renderizado no card de box do Pátio, no modal da Ordem de Serviço e no **Radar de Liberação Financeira de Pátio** (aba Verônica Analista).
+
+### C. Consulta de Vencimentos e Agenda Financeira via WhatsApp
+1. **Comandos de Leitura Aceitos**:
+   - `vencimentos`, `contas hoje`, `agenda financeira`, `compromissos hoje`, `!vencimentos`, `!contas`.
+2. **Detalhamento do Boletim de Vencimentos**:
+   - Total e quantidade de títulos a receber hoje.
+   - Total e quantidade de contas a pagar hoje.
+   - Resultado líquido previsto do dia.
+   - Lista detalhada de títulos com seus respectivos identificadores (`#tit_101`, `#cnt_202`) e instruções para baixa direta pelo aplicativo.
+
+### D. Baixa Integrada de Títulos a Pagar e Receber via WhatsApp
+1. **Comandos de Baixa Suportados**:
+   - `baixar <id> [meio]` (ex.: `baixar tit_101 pix`, `baixar 101 dinheiro`).
+   - `pagar conta <id> [meio]` (ex.: `pagar conta cnt_202 dinheiro`).
+   - `receber titulo <id> [meio]` (ex.: `receber titulo tit_101 pix`).
+2. **Trava de Segurança e Fluxo de Confirmação em 2 Etapas**:
+   - O bot localiza o título e confere se não foi liquidado previamente (evitando duplicidade).
+   - Valida a existência de um **caixa aberto** no turno atual.
+   - Valida o valor contra o teto monetário do WhatsApp (`limiteValorLancamentoWhatsapp`, padrão R$ 1.000,00). Valores superiores exigem liquidação pelo sistema web.
+   - Solicita confirmação explícita (`CONFIRMAR` ou `SIM`) com validade de 2 minutos.
+3. **Efetivação Contábil e Auditoria**:
+   - Ao confirmar, o título é marcado como `pago: true` e `status: 'liquidado'`.
+   - Gera a movimentação de caixa integrada (entrada para recebimento, saída para pagamento).
+   - Grava auditoria permanente `financeiro:titulo:liquidar` no banco de dados SQLite.

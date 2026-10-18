@@ -145,6 +145,7 @@ function cardOS(o, b) {
           <span class="placa" style="color:#000000;font-weight:bold">${esc(v.placa)}</span>
           <span class="selo" data-st="${o.st}">${stInfo.r}</span>
           ${(o.pendenciaCadastral || v.pendenciaCadastral || v.placa === 'SEM-PLACA') ? '<span class="selo" style="background:#fff3cd;color:#856404;border:1px solid #ffeeba;font-size:10px" title="Pendência Cadastral: Placa não confirmada">⚠️ Placa Pendente</span>' : ''}
+          ${!isPerfilMecanico() && typeof renderBadgeLiberacaoPatio === 'function' ? renderBadgeLiberacaoPatio(o) : ''}
         </div>
         <div class="modelo">${esc(v.marca ? v.marca + ' ' : '')}${esc(v.modelo)}</div>
         <div class="cliente" title="${esc(c.nome)}">${esc(c.fantasia || c.nome)}</div>
