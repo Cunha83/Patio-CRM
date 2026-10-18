@@ -342,6 +342,123 @@ function fecharCaixa(state = {}, payload = {}) {
   };
 }
 
+/**
+ * Normaliza e projeta uma movimentação preservando e expondo explicitamente os campos de auditoria
+ */
+function projetarMovimentacao(m = {}) {
+  if (!m || typeof m !== 'object') return {};
+  const origem = m.origem || 'web';
+  return {
+    ...m,
+    origem,
+    canal: m.canal || (origem === 'whatsapp' ? 'whatsapp' : 'web'),
+    autorNumero: m.autorNumero || null,
+    confirmadoEm: m.confirmadoEm || null,
+    estornado: Boolean(m.estornado),
+    estornadoEm: m.estornadoEm || null,
+    estornadoPor: m.estornadoPor || null,
+    motivoEstorno: m.motivoEstorno || null,
+    estornoDeId: m.estornoDeId || null
+  };
+}
+
+/**
+ * Normaliza e projeta um turno de caixa com metadados de auditoria
+ */
+function projetarCaixa(c = {}) {
+  if (!c || typeof c !== 'object') return null;
+  const origem = c.origem || 'sistema';
+  return {
+    ...c,
+    origem,
+    canal: c.canal || (origem === 'whatsapp' ? 'whatsapp' : 'web'),
+    autorNumero: c.autorNumero || null,
+    confirmadoEm: c.confirmadoEm || null
+  };
+}
+
+/**
+ * Lista movimentações financeiras com filtros de origem, estorno e paginação
+ */
+function listarMovimentacoes(state = {}, filtros = {}) {
+  const movsRaw = Array.isArray(state.movimentos) ? state.movimentos : [];
+  let lista = movsRaw.map(projetarMovimentacao);
+
+  const {
+    tipo,
+    subtipo,
+    de,
+    ate,
+    forma,
+    caixaId,
+    origem,
+    estornado,
+    apenasAtivos,
+    limit
+  } = filtros;
+
+  if (tipo) {
+    lista = lista.filter(m => m.tipo === tipo);
+  }
+  if (subtipo) {
+    lista = lista.filter(m => m.subtipo === subtipo);
+  }
+  if (caixaId) {
+    lista = lista.filter(m => m.caixaId === caixaId);
+  }
+  if (forma) {
+    lista = lista.filter(m => (m.forma || m.formaPagamento) === forma);
+  }
+  if (de) {
+    lista = lista.filter(m => (m.data || '').slice(0, 10) >= de);
+  }
+  if (ate) {
+    lista = lista.filter(m => (m.data || '').slice(0, 10) <= ate);
+  }
+  if (origem) {
+    const origNorm = String(origem).toLowerCase().trim();
+    lista = lista.filter(m => String(m.origem || '').toLowerCase() === origNorm);
+  }
+  if (estornado !== undefined && estornado !== null && estornado !== '') {
+    const estBool = String(estornado) === 'true' || estornado === true;
+    lista = lista.filter(m => Boolean(m.estornado) === estBool);
+  } else if (apenasAtivos) {
+    lista = lista.filter(m => !m.estornado);
+  }
+
+  // Resumo de contagem e volume por origem no escopo filtrado
+  const resumoOrigem = {
+    totalWhatsapp: 0,
+    qtdWhatsapp: 0,
+    totalWeb: 0,
+    qtdWeb: 0,
+    totalEstornados: 0,
+    qtdEstornados: 0
+  };
+
+  for (const m of lista) {
+    const v = Number(m.valor) || 0;
+    if (m.estornado) {
+      resumoOrigem.qtdEstornados++;
+      resumoOrigem.totalEstornados = arredondar(resumoOrigem.totalEstornados + v);
+    }
+    if (m.origem === 'whatsapp') {
+      resumoOrigem.qtdWhatsapp++;
+      resumoOrigem.totalWhatsapp = arredondar(resumoOrigem.totalWhatsapp + v);
+    } else {
+      resumoOrigem.qtdWeb++;
+      resumoOrigem.totalWeb = arredondar(resumoOrigem.totalWeb + v);
+    }
+  }
+
+  const max = Number(limit) > 0 ? Number(limit) : 200;
+  return {
+    total: lista.length,
+    movimentacoes: lista.slice(0, max),
+    resumoOrigem
+  };
+}
+
 /* ─────────────────────────────────────────────────────────────────
  * 2. FLUXO DE CAIXA REALIZADO E PREVISÃO (FORECAST 7/15/30 DIAS)
  * ───────────────────────────────────────────────────────────────── */
@@ -754,5 +871,8 @@ module.exports = {
   avaliarControlesInternos,
   formatarParecerExecutivoVerônica,
   normalizarFormaPagamento,
-  normalizarTipoMovimentacao
+  normalizarTipoMovimentacao,
+  projetarMovimentacao,
+  projetarCaixa,
+  listarMovimentacoes
 };

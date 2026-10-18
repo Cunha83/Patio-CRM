@@ -149,3 +149,78 @@ test('5. Geração de Infográfico JPG 1080x1350 via Puppeteer com SVGs Embutido
   assert.ok(svgProj.includes('<path'));
   assert.ok(svgProj.includes('circle'));
 });
+
+test('6. Projeção de Metadados de Auditoria: Lançamentos WhatsApp vs Web e Registros Legados', () => {
+  const financialAnalystService = require('../services/financialAnalystService.js');
+
+  const movLegado = {
+    id: 'm_legado_1',
+    tipo: 'entrada',
+    valor: 300,
+    desc: 'Recebimento balcão legado'
+  };
+
+  const movWpp = {
+    id: 'm_wpp_1',
+    tipo: 'entrada',
+    valor: 500,
+    desc: 'Lançamento via bot',
+    origem: 'whatsapp',
+    canal: 'whatsapp',
+    autorNumero: '5511999998888',
+    confirmadoEm: '2026-10-18T10:30:00.000Z'
+  };
+
+  const projLegado = financialAnalystService.projetarMovimentacao(movLegado);
+  assert.equal(projLegado.origem, 'web', 'Registro legado sem origem deve projetar origem: web por padrão');
+  assert.equal(projLegado.autorNumero, null);
+  assert.equal(projLegado.confirmadoEm, null);
+  assert.equal(projLegado.estornado, false);
+  assert.equal(projLegado.estornoDeId, null);
+
+  const projWpp = financialAnalystService.projetarMovimentacao(movWpp);
+  assert.equal(projWpp.origem, 'whatsapp');
+  assert.equal(projWpp.canal, 'whatsapp');
+  assert.equal(projWpp.autorNumero, '5511999998888');
+  assert.equal(projWpp.confirmadoEm, '2026-10-18T10:30:00.000Z');
+  assert.equal(projWpp.estornado, false);
+});
+
+test('7. Filtro por Origem (WhatsApp vs Web) e Consolidação de Resumo no Dashboard Financeiro', () => {
+  const financialAnalystService = require('../services/financialAnalystService.js');
+
+  const mockState = {
+    cfg: { saldoInicial: 5000 },
+    movimentos: [
+      { id: 'm1', data: '2026-10-18', tipo: 'entrada', valor: 1000, desc: 'Venda balcão', origem: 'web' },
+      { id: 'm2', data: '2026-10-18', tipo: 'saida', valor: 250, desc: 'Café e material', origem: 'web' },
+      { id: 'm3', data: '2026-10-18', tipo: 'entrada', valor: 400, desc: 'Adiantamento OS', origem: 'whatsapp', autorNumero: '5511999998888', confirmadoEm: '2026-10-18T09:00:00.000Z' },
+      { id: 'm4', data: '2026-10-18', tipo: 'saida', valor: 150, desc: 'Peça urgente', origem: 'whatsapp', autorNumero: '5511988887777', confirmadoEm: '2026-10-18T11:15:00.000Z' },
+      { id: 'm5', data: '2026-10-18', tipo: 'entrada', valor: 300, desc: 'Serviço legado sem tag' } // legado -> default web
+    ]
+  };
+
+  // 7.1 Filtro exclusivo por WhatsApp via listarMovimentacoes
+  const resWpp = financialAnalystService.listarMovimentacoes(mockState, { origem: 'whatsapp' });
+  assert.equal(resWpp.total, 2);
+  assert.equal(resWpp.movimentacoes.length, 2);
+  assert.ok(resWpp.movimentacoes.every(m => m.origem === 'whatsapp'));
+  assert.deepEqual(resWpp.movimentacoes.map(m => m.id), ['m3', 'm4']);
+  assert.equal(resWpp.movimentacoes[0].autorNumero, '5511999998888');
+
+  // 7.2 Filtro exclusivo por Web via listarMovimentacoes
+  const resWeb = financialAnalystService.listarMovimentacoes(mockState, { origem: 'web' });
+  assert.equal(resWeb.total, 3);
+  assert.ok(resWeb.movimentacoes.every(m => m.origem === 'web'));
+  assert.deepEqual(resWeb.movimentacoes.map(m => m.id), ['m1', 'm2', 'm5']);
+
+  // 7.3 Consolidação dos KPIs e Resumo de Origem no Dashboard
+  const dash = engine.obterDashboardFinanceiro(mockState, { dataRef: '2026-10-18', filtro: 'hoje' });
+  assert.ok(dash.kpis.resumoOrigem, 'Deve expor resumoOrigem dentro dos KPIs');
+  assert.equal(dash.kpis.resumoOrigem.qtdWhatsapp, 2);
+  assert.equal(dash.kpis.resumoOrigem.totalWhatsapp, 550); // 400 + 150
+  assert.equal(dash.kpis.resumoOrigem.qtdWeb, 3);
+  assert.equal(dash.kpis.resumoOrigem.totalWeb, 1550); // 1000 + 250 + 300
+  assert.equal(dash.resumoOrigem.qtdWhatsapp, 2, 'Deve expor resumoOrigem na raiz do dashboard');
+});
+

@@ -284,6 +284,24 @@ function calcularKPIsFinanceiros(state = {}, options = {}) {
       atrasado: (c.venc || '') < ref
     }));
 
+  // 7. Resumo por Origem (WhatsApp vs Web / Sistema e Estornos)
+  const movsWhatsappPeriodo = movsPeriodo.filter(m => m.origem === 'whatsapp');
+  const movsWebPeriodo = movsPeriodo.filter(m => (m.origem || 'web') !== 'whatsapp');
+  const movsEstornadosPeriodo = movsPeriodo.filter(m => Boolean(m.estornado));
+
+  const totalWhatsappPeriodo = +movsWhatsappPeriodo.reduce((acc, m) => acc + (Number(m.valor) || 0), 0).toFixed(2);
+  const totalWebPeriodo = +movsWebPeriodo.reduce((acc, m) => acc + (Number(m.valor) || 0), 0).toFixed(2);
+  const totalEstornadosPeriodo = +movsEstornadosPeriodo.reduce((acc, m) => acc + (Number(m.valor) || 0), 0).toFixed(2);
+
+  const resumoOrigem = {
+    totalWhatsapp: totalWhatsappPeriodo,
+    qtdWhatsapp: movsWhatsappPeriodo.length,
+    totalWeb: totalWebPeriodo,
+    qtdWeb: movsWebPeriodo.length,
+    totalEstornados: totalEstornadosPeriodo,
+    qtdEstornados: movsEstornadosPeriodo.length
+  };
+
   return {
     filtro,
     de,
@@ -333,7 +351,10 @@ function calcularKPIsFinanceiros(state = {}, options = {}) {
     taxaInadimplencia,
 
     // Agenda
-    agendaProximos
+    agendaProximos,
+
+    // Resumo de Origem e Auditoria
+    resumoOrigem
   };
 }
 
@@ -622,6 +643,7 @@ function obterDashboardFinanceiro(state = {}, options = {}) {
     empresa: cfg.empresa || 'Pátio Diesel & Hidráulica',
     cnpj: cfg.cnpj || '',
     kpis,
+    resumoOrigem: kpis.resumoOrigem,
     graficos,
     operacional,
     meta: {

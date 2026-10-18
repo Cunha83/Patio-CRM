@@ -31,9 +31,10 @@ router.get('/api/financeiro/resumo', requirePermission('financial:read'), async 
       statusCaixa: caixaAberto ? 'aberto' : 'fechado',
       caixa: {
         aberto: Boolean(caixaAberto),
-        dados: caixaAberto
+        dados: financialAnalystService.projetarCaixa(caixaAberto)
       },
       indicadores: kpis,
+      resumoOrigem: kpis.resumoOrigem || null,
       previsao: {
         saldoAtual: previsao30d.saldoAtual,
         em7Dias: previsao30d.marcos.em7Dias,
@@ -203,34 +204,13 @@ router.post('/api/financeiro/caixa/fechar', requirePermission('financial:write',
 router.get('/api/financeiro/movimentacoes', requirePermission('financial:read'), async (req, res) => {
   try {
     const state = await getOrLoadState(req);
-    const { tipo, subtipo, de, ate, forma, caixaId, limit } = req.query || {};
+    const resultado = financialAnalystService.listarMovimentacoes(state, req.query || {});
 
-    let movs = Array.isArray(state.movimentos) ? [...state.movimentos] : [];
-
-    if (tipo) {
-      movs = movs.filter(m => m.tipo === tipo);
-    }
-    if (subtipo) {
-      movs = movs.filter(m => m.subtipo === subtipo);
-    }
-    if (caixaId) {
-      movs = movs.filter(m => m.caixaId === caixaId);
-    }
-    if (forma) {
-      movs = movs.filter(m => (m.forma || m.formaPagamento) === forma);
-    }
-    if (de) {
-      movs = movs.filter(m => (m.data || '').slice(0, 10) >= de);
-    }
-    if (ate) {
-      movs = movs.filter(m => (m.data || '').slice(0, 10) <= ate);
-    }
-
-    const maxItems = Number(limit) > 0 ? Number(limit) : 200;
     res.json({
       success: true,
-      total: movs.length,
-      movimentacoes: movs.slice(0, maxItems)
+      total: resultado.total,
+      movimentacoes: resultado.movimentacoes,
+      resumoOrigem: resultado.resumoOrigem
     });
   } catch (err) {
     console.error('[API /api/financeiro/movimentacoes GET] Erro:', err);
