@@ -131,6 +131,24 @@ function calcularDashboardFin(filtro = '30d', customDe = null, customAte = null)
   const pagFut = soma(pag.filter(c => c.venc >= ref && c.venc <= d30), c => c.valor);
   const saldoProjetado30d = +(saldoConsolidado + recFut - pagFut).toFixed(2);
 
+  // Resumo de Origem (WhatsApp vs Web e Estornos)
+  const movsWhatsapp = movsPeriodo.filter(m => m.origem === 'whatsapp');
+  const movsWeb = movsPeriodo.filter(m => (m.origem || 'web') !== 'whatsapp');
+  const movsEstornados = movsPeriodo.filter(m => Boolean(m.estornado));
+
+  const totalWhatsapp = +soma(movsWhatsapp, m => m.valor).toFixed(2);
+  const totalWeb = +soma(movsWeb, m => m.valor).toFixed(2);
+  const totalEstornados = +soma(movsEstornados, m => m.valor).toFixed(2);
+
+  const resumoOrigem = {
+    totalWhatsapp,
+    qtdWhatsapp: movsWhatsapp.length,
+    totalWeb,
+    qtdWeb: movsWeb.length,
+    totalEstornados,
+    qtdEstornados: movsEstornados.length
+  };
+
   return {
     filtro, de, ate, ref,
     saldoConsolidado, saldoInicial: ini,
@@ -140,7 +158,8 @@ function calcularDashboardFin(filtro = '30d', customDe = null, customAte = null)
     qtdRecVenc: rec.filter(c => c.venc < ref).length,
     qtdPagVenc: pag.filter(c => c.venc < ref).length,
     taxaInad, saldoProjetado30d,
-    movsPeriodo
+    movsPeriodo,
+    resumoOrigem
   };
 }
 
@@ -260,6 +279,34 @@ function blocoDashboardFin() {
         ${fin.taxaInad}%
       </div>
       <div class="kpi-sub-desc">${fin.qtdRecVenc} títulos em cobrança</div>
+    </div>
+  </div>
+
+  <!-- Faixa de Auditoria de Origem (WhatsApp vs Web e Estornos) -->
+  <div class="card card-p" style="margin-bottom:14px;padding:10px 16px;background:var(--aco-050);border:1px solid var(--aco-200);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12.5px">
+      <span style="font-weight:700;color:var(--aco-800);display:inline-flex;align-items:center;gap:6px">
+        🔍 Auditoria de Origem:
+      </span>
+      <span class="selo" style="background:#dcfce7;color:#166534;border:1px solid #bbf7d0;font-size:11px;font-weight:700">
+        📱 WhatsApp: ${fin.resumoOrigem ? fin.resumoOrigem.qtdWhatsapp : 0} (${brl((fin.resumoOrigem && fin.resumoOrigem.totalWhatsapp) || 0)})
+      </span>
+      <span class="selo" style="background:var(--aco-100);color:var(--aco-700);border:1px solid var(--aco-200);font-size:11px">
+        💻 Painel Web: ${fin.resumoOrigem ? fin.resumoOrigem.qtdWeb : 0} (${brl((fin.resumoOrigem && fin.resumoOrigem.totalWeb) || 0)})
+      </span>
+      ${(fin.resumoOrigem && fin.resumoOrigem.qtdEstornados > 0) ? `
+        <span class="selo selo-alerta" style="font-size:11px;font-weight:700">
+          ⚠️ Estornos: ${fin.resumoOrigem.qtdEstornados} (${brl(fin.resumoOrigem.totalEstornados)})
+        </span>
+      ` : ''}
+    </div>
+    <div style="display:flex;gap:6px">
+      <button class="btn btn-secundario btn-pequeno" onclick="S.ui.abaFin='caixa';S.ui.filtroOrigemMov='whatsapp';if(typeof render==='function')render();" style="font-size:11px;padding:3px 10px">
+        📱 Ver Lançamentos WhatsApp
+      </button>
+      <button class="btn btn-secundario btn-pequeno" onclick="S.ui.abaFin='caixa';S.ui.filtroOrigemMov='todos';if(typeof render==='function')render();" style="font-size:11px;padding:3px 10px">
+        Ver Todo o Caixa
+      </button>
     </div>
   </div>
 
@@ -848,18 +895,62 @@ function blocoContasPagar() {
 }
 
 /* ===== FLUXO DE CAIXA ===== */
+function formatarHoraSimples(iso) {
+  if (!iso) return '';
+  try {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return String(iso).slice(11, 16);
+    return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  } catch (e) {
+    return String(iso).slice(11, 16);
+  }
+}
+
 function blocoFluxoCaixa() {
-  const movs = (S.movimentos || []).slice().reverse();
+  const filtroOrigem = (S.ui && S.ui.filtroOrigemMov) || 'todos';
+  const todosMovs = (S.movimentos || []).slice().reverse();
+
+  const movsFiltrados = todosMovs.filter(m => {
+    if (filtroOrigem === 'whatsapp') return m.origem === 'whatsapp';
+    if (filtroOrigem === 'web') return (m.origem || 'web') !== 'whatsapp';
+    if (filtroOrigem === 'estornados') return Boolean(m.estornado);
+    return true;
+  });
+
+  const qtdWhatsapp = todosMovs.filter(m => m.origem === 'whatsapp').length;
+  const qtdWeb = todosMovs.filter(m => (m.origem || 'web') !== 'whatsapp').length;
+  const qtdEstornados = todosMovs.filter(m => Boolean(m.estornado)).length;
+
+  const filtrosOrigem = [
+    ['todos', `Todas as Origens (${todosMovs.length})`],
+    ['whatsapp', `📱 WhatsApp (${qtdWhatsapp})`],
+    ['web', `💻 Painel Web (${qtdWeb})`],
+    ['estornados', `⚠️ Estornados (${qtdEstornados})`]
+  ];
 
   return `
-  <div class="entre" style="margin-bottom:12px">
+  <div class="entre" style="margin-bottom:12px;flex-wrap:wrap;gap:10px">
     <div>
       <div style="font-weight:700;font-size:15px">Extrato e Movimentação de Caixa</div>
       <div class="mini">Saldo Atual: <b style="color:var(--verde)">${brl(saldoCaixa())}</b></div>
     </div>
-    <button class="btn btn-primario" data-act="novo-mov" style="font-size:13px;padding:6px 14px">
-      ${ico('mais', 14)} Lançar Movimento Avulso
-    </button>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-primario" data-act="novo-mov" style="font-size:13px;padding:6px 14px">
+        ${ico('mais', 14)} Lançar Movimento Avulso
+      </button>
+    </div>
+  </div>
+
+  <!-- Barra de Filtro Rápido por Origem e Auditoria -->
+  <div class="card card-p" style="margin-bottom:12px;padding:8px 12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--aco-050);border:1px solid var(--aco-200)">
+    <span class="mini" style="font-weight:700;color:var(--aco-700)">Filtrar Origem:</span>
+    <div class="grupo-chips-filtro" style="display:inline-flex;gap:6px;flex-wrap:wrap">
+      ${filtrosOrigem.map(([k, label]) => `
+        <button class="chip-filtro ${filtroOrigem === k ? 'ativo' : ''}" data-act="filtro-origem-mov" data-o="${k}" style="font-size:11.5px;padding:4px 10px;cursor:pointer">
+          ${label}
+        </button>
+      `).join('')}
+    </div>
   </div>
 
   <div class="card">
@@ -867,34 +958,98 @@ function blocoFluxoCaixa() {
       <table class="tabela">
         <thead>
           <tr>
-            <th style="width:100px">Data</th>
+            <th style="width:95px">Data</th>
             <th>Descrição do Lançamento</th>
+            <th style="width:135px">Origem / Canal</th>
             <th>Categoria</th>
             <th>Forma</th>
-            <th style="width:130px;text-align:right">Valor</th>
-            <th style="width:80px;text-align:center">Status</th>
+            <th style="width:125px;text-align:right">Valor</th>
+            <th style="width:120px;text-align:center">Status / Ação</th>
           </tr>
         </thead>
         <tbody>
-          ${movs.length ? movs.map(m => {
-            const isEntrada = m.tipo === 'entrada';
+          ${movsFiltrados.length ? movsFiltrados.map(m => {
+            const isEntrada = m.tipo === 'entrada' || m.tipo === 'receita';
+            const isEstornado = Boolean(m.estornado);
+            const isCompensatorio = Boolean(m.estornoDeId || m.subtipo === 'estorno');
+            const podeEstornar = !isEstornado && !isCompensatorio;
+
+            const rowStyle = isEstornado
+              ? 'opacity:0.65;background:rgba(239, 68, 68, 0.04);'
+              : isCompensatorio
+                ? 'background:rgba(245, 158, 11, 0.04);'
+                : '';
+
             return `
-            <tr>
+            <tr style="${rowStyle}">
               <td class="mono">${dataBRfull(m.data)}</td>
-              <td><b>${esc(m.desc)}</b></td>
-              <td><span class="selo">${esc(m.cat || 'Geral')}</span></td>
-              <td class="mini">${esc(m.forma || 'Pix/Conta')}</td>
-              <td style="text-align:right;font-weight:700;color:${isEntrada ? 'var(--verde)' : 'var(--tijolo)'}" class="num">
-                ${isEntrada ? '+' : '−'} ${brl(m.valor)}
+              <td>
+                <div style="${isEstornado ? 'text-decoration:line-through;color:var(--aco-600)' : 'font-weight:700'}">
+                  ${esc(m.desc || m.descricao || 'Movimento')}
+                </div>
+                ${isEstornado ? `
+                  <div class="mini" style="color:var(--tijolo);font-weight:700;margin-top:2px">
+                    ⚠️ ESTORNADO: ${esc(m.motivoEstorno || 'Estornado')} ${m.estornadoPor ? `· por ${esc(m.estornadoPor)}` : ''}
+                  </div>
+                ` : ''}
+                ${isCompensatorio ? `
+                  <div class="mini" style="color:#d97706;font-weight:600;margin-top:2px">
+                    ↩️ Lançamento Compensatório de Estorno
+                  </div>
+                ` : ''}
+              </td>
+              <td>
+                ${m.origem === 'whatsapp' ? `
+                  <div>
+                    <span class="selo" style="background:#dcfce7;color:#166534;border:1px solid #bbf7d0;font-size:10.5px;font-weight:700">
+                      📱 WhatsApp
+                    </span>
+                    ${m.autorNumero ? `
+                      <div class="mini mono" style="font-size:10px;color:var(--aco-600);margin-top:2px" title="Número autor: ${esc(m.autorNumero)}">
+                        📞 ${esc(m.autorNumero)}
+                      </div>
+                    ` : ''}
+                    ${m.confirmadoEm ? `
+                      <div class="mini" style="font-size:9.5px;color:var(--aco-400)">
+                        ✓ ${formatarHoraSimples(m.confirmadoEm)}
+                      </div>
+                    ` : ''}
+                  </div>
+                ` : `
+                  <div>
+                    <span class="selo" style="background:var(--aco-100);color:var(--aco-700);font-size:10.5px">
+                      💻 Painel Web
+                    </span>
+                  </div>
+                `}
+              </td>
+              <td><span class="selo">${esc(m.cat || m.categoria || 'Geral')}</span></td>
+              <td class="mini">${esc(m.forma || m.formaPagamento || 'Pix/Conta')}</td>
+              <td style="text-align:right;font-weight:700;color:${isEstornado ? 'var(--aco-500)' : isEntrada ? 'var(--verde)' : 'var(--tijolo)'}" class="num">
+                <span style="${isEstornado ? 'text-decoration:line-through' : ''}">
+                  ${isEntrada ? '+' : '−'} ${brl(m.valor)}
+                </span>
               </td>
               <td style="text-align:center">
-                <span class="selo ${m.conc ? 'selo-finalizada' : 'selo-fila'}" style="font-size:10px">
-                  ${m.conc ? 'Conciliado' : 'Manual'}
-                </span>
+                <div>
+                  <span class="selo ${isEstornado ? 'selo-alerta' : isCompensatorio ? 'selo-aviso' : m.conc ? 'selo-finalizada' : 'selo-fila'}" style="font-size:10px">
+                    ${isEstornado ? 'Estornado' : isCompensatorio ? 'Compensação' : m.conc ? 'Conciliado' : 'Manual'}
+                  </span>
+                </div>
+                ${podeEstornar ? `
+                  <button class="btn btn-secundario btn-pequeno"
+                          data-act="estornar-mov"
+                          data-id="${m.id}"
+                          onclick="solicitarEstornoMovimento('${m.id}')"
+                          title="Estornar contabilmente esta movimentação"
+                          style="font-size:10.5px;padding:2px 8px;margin-top:4px;color:var(--tijolo);border-color:rgba(239, 68, 68, 0.4)">
+                    ↩️ Estornar
+                  </button>
+                ` : ''}
               </td>
             </tr>`;
           }).join('') : `
-            <tr><td colspan="6" style="text-align:center;padding:30px;color:var(--aco-400)">Nenhuma movimentação de caixa recente.</td></tr>
+            <tr><td colspan="7" style="text-align:center;padding:30px;color:var(--aco-400)">Nenhuma movimentação de caixa encontrada para o filtro selecionado.</td></tr>
           `}
         </tbody>
       </table>
@@ -1188,6 +1343,147 @@ function folhaMov() {
   </div>`;
 }
 
+/* ===== ROTINA DE ESTORNO CONTÁBIL AUDITADO ===== */
+function folhaEstornoMovimento() {
+  const mov = (S.ui && S.ui.movimentoEstorno) || null;
+  if (!mov) {
+    return `
+    <div class="card card-p" style="max-width:480px;margin:0 auto">
+      <div class="entre" style="margin-bottom:12px">
+        <h3 style="margin:0;font-size:16px;font-weight:700">↩️ Estorno Contábil</h3>
+        <button class="btn-fechar" onclick="fecharFolha()">${ico('x', 18)}</button>
+      </div>
+      <p style="color:var(--aco-600)">Nenhuma movimentação selecionada para estorno.</p>
+      <div style="text-align:right"><button class="btn btn-secundario" onclick="fecharFolha()">Fechar</button></div>
+    </div>`;
+  }
+
+  const isEntrada = mov.tipo === 'entrada' || mov.tipo === 'receita';
+  return `
+  <div class="card card-p" style="max-width:500px;margin:0 auto">
+    <div class="entre" style="border-bottom:1px solid var(--aco-150);padding-bottom:10px;margin-bottom:14px">
+      <h3 style="font-size:17px;font-weight:700;color:var(--tijolo)">↩️ Estorno Contábil Auditado</h3>
+      <button class="btn-fechar" onclick="fecharFolha()">${ico('x', 18)}</button>
+    </div>
+
+    <div style="background:rgba(239, 68, 68, 0.06);border:1px solid rgba(239, 68, 68, 0.2);border-radius:8px;padding:12px;margin-bottom:14px;font-size:12.5px;color:var(--aco-800);line-height:1.4">
+      ⚠️ <b>Atenção:</b> Esta operação mantém a imutabilidade contábil. O lançamento original será mantido e marcado como estornado, e uma movimentação compensatória inversa (${isEntrada ? 'Saída' : 'Entrada'} de ${brl(mov.valor)}) será lançada imediatamente para reverter o saldo do caixa. Apenas perfis autorizados (Dono/Admin) podem executar o estorno.
+    </div>
+
+    <div style="font-size:13px;display:flex;flex-direction:column;gap:8px;margin-bottom:14px;background:var(--aco-050);padding:12px;border-radius:6px;border:1px solid var(--aco-200)">
+      <div><b>Lançamento:</b> ${esc(mov.desc || mov.descricao || 'Movimento')}</div>
+      <div><b>Valor Original:</b> <span class="num" style="font-weight:700;color:${isEntrada ? 'var(--verde)' : 'var(--tijolo)'}">${isEntrada ? '+' : '−'} ${brl(mov.valor)}</span></div>
+      <div><b>Origem:</b> ${mov.origem === 'whatsapp' ? '📱 WhatsApp' : '💻 Painel Web'} ${mov.autorNumero ? `(📞 ${esc(mov.autorNumero)})` : ''}</div>
+      <div><b>Data:</b> ${dataBR(mov.data || hoje())}</div>
+    </div>
+
+    <div style="margin-bottom:16px">
+      <label style="font-weight:600;display:block;margin-bottom:4px;font-size:13px">
+        Motivo Obrigatório do Estorno <span style="color:var(--tijolo)">*</span>:
+      </label>
+      <input type="text" id="estorno-motivo-input" class="campo-texto" placeholder="Ex: Lançamento em duplicidade via WhatsApp, valor digitado incorreto" style="width:100%;height:36px;font-size:13px">
+      <div class="mini" style="color:var(--aco-500);margin-top:3px">Mínimo de 3 caracteres. Ficará registrado de forma perene no log de auditoria.</div>
+    </div>
+
+    <div style="display:flex;justify-content:flex-end;gap:8px;border-top:1px solid var(--aco-150);padding-top:12px">
+      <button class="btn btn-secundario" onclick="fecharFolha()">Cancelar</button>
+      <button class="btn btn-perigo" onclick="confirmarEstornoMovimento('${mov.id}')" style="font-weight:700;padding:0 18px">
+        ${ico('check', 14)} Confirmar Estorno
+      </button>
+    </div>
+  </div>`;
+}
+
+function solicitarEstornoMovimento(id) {
+  const mov = (S.movimentos || []).find(m => m.id === id);
+  if (!mov) {
+    if (typeof torrar === 'function') torrar('Movimentação não encontrada');
+    else alert('Movimentação não encontrada');
+    return;
+  }
+  if (mov.estornado) {
+    if (typeof torrar === 'function') torrar('Esta movimentação já foi estornada anteriormente');
+    else alert('Esta movimentação já foi estornada anteriormente');
+    return;
+  }
+  if (mov.estornoDeId || mov.subtipo === 'estorno') {
+    if (typeof torrar === 'function') torrar('Não é possível estornar um lançamento compensatório de estorno');
+    else alert('Não é possível estornar um lançamento compensatório de estorno');
+    return;
+  }
+
+  S.ui = S.ui || {};
+  S.ui.movimentoEstorno = mov;
+  if (typeof abrirFolha === 'function') {
+    abrirFolha(folhaEstornoMovimento);
+    setTimeout(() => {
+      const el = document.getElementById('estorno-motivo-input');
+      if (el) el.focus();
+    }, 100);
+  } else {
+    const motivo = prompt('Informe o motivo do estorno contábil (mínimo 3 caracteres):');
+    if (motivo) {
+      executarEstornoMovimento(id, motivo);
+    }
+  }
+}
+
+async function confirmarEstornoMovimento(id) {
+  const el = document.getElementById('estorno-motivo-input');
+  const motivo = el ? el.value.trim() : '';
+  if (!motivo || motivo.length < 3) {
+    if (typeof torrar === 'function') torrar('Informe o motivo do estorno (mínimo 3 caracteres)');
+    else alert('Informe o motivo do estorno (mínimo 3 caracteres)');
+    return;
+  }
+  await executarEstornoMovimento(id, motivo);
+}
+
+async function executarEstornoMovimento(id, motivo) {
+  try {
+    const headers = typeof obterHeadersRequisicao === 'function'
+      ? obterHeadersRequisicao({ 'Content-Type': 'application/json' })
+      : { 'Content-Type': 'application/json' };
+
+    const res = await fetch(`/api/financeiro/movimentacoes/${encodeURIComponent(id)}/estornar`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ motivo })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error || 'Erro ao realizar estorno contábil');
+    }
+
+    // Atualiza estado local de forma reativa
+    if (data.movimentoEstornado) {
+      const idx = (S.movimentos || []).findIndex(m => m.id === data.movimentoEstornado.id);
+      if (idx !== -1) {
+        S.movimentos[idx] = data.movimentoEstornado;
+      }
+    }
+    if (data.movimentoCompensatorio) {
+      S.movimentos = S.movimentos || [];
+      S.movimentos.push(data.movimentoCompensatorio);
+    }
+    if (data.caixa) {
+      const cIdx = (S.caixas || []).findIndex(c => c.id === data.caixa.id);
+      if (cIdx !== -1) {
+        S.caixas[cIdx] = data.caixa;
+      }
+    }
+
+    if (typeof fecharFolha === 'function') fecharFolha();
+    if (typeof salvar === 'function') salvar();
+    if (typeof render === 'function') render();
+    if (typeof torrar === 'function') torrar(data.mensagem || 'Estorno realizado com sucesso!');
+    else alert(data.mensagem || 'Estorno realizado com sucesso!');
+  } catch (err) {
+    if (typeof torrar === 'function') torrar(`Falha no estorno: ${err.message}`);
+    else alert(`Falha no estorno: ${err.message}`);
+  }
+}
+
 // Exportações explícitas no escopo global window
 if (typeof window !== 'undefined') {
   window.viewFinanceiro = viewFinanceiro;
@@ -1205,4 +1501,9 @@ if (typeof window !== 'undefined') {
   window.imprimirRecibo = imprimirRecibo;
   window.folhaConta = folhaConta;
   window.folhaMov = folhaMov;
+  window.formatarHoraSimples = formatarHoraSimples;
+  window.folhaEstornoMovimento = folhaEstornoMovimento;
+  window.solicitarEstornoMovimento = solicitarEstornoMovimento;
+  window.confirmarEstornoMovimento = confirmarEstornoMovimento;
+  window.executarEstornoMovimento = executarEstornoMovimento;
 }

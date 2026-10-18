@@ -182,3 +182,73 @@ Realize os 5 passos na ordem estrita abaixo antes de anunciar o Go-Live:
      -d '{"comandosFinanceirosEscrita": false}'
    ```
    *Efeito*: Movimentações de escrita respondem imediatamente que estão suspensas, sem necessidade de reiniciar o processo Node.js ou interromper o atendimento aos clientes.
+
+---
+
+## 7. Rastreabilidade de Origem e Rotina de Estorno Contábil Auditado
+
+Para garantir conformidade com boas práticas fiscais e auditoria interna na operação híbrida (WhatsApp + Painel Web), o sistema conta com rastreabilidade de ponta a ponta e rotina de estorno imutável.
+
+### A. Metadados de Origem e Visualização no Painel Web
+
+1. **Selo de Identificação de Canal**:
+   - Cada movimentação registrada via bot do WhatsApp recebe metadados gravados de forma permanente:
+     * `origem: 'whatsapp'`
+     * `canal: 'whatsapp'`
+     * `autorNumero`: Número telefônico normalizado do administrador que confirmou a operação.
+     * `confirmadoEm`: Carimbo de data/hora ISO da confirmação explícita.
+   - Na interface web (abas **Dashboard Executivo**, **Fluxo de Caixa** e **Verônica Analista**):
+     * Lançamentos do WhatsApp exibem o selo verde `📱 WhatsApp` acompanhado do telefone autorizador e horário.
+     * Lançamentos realizados diretamente pelo sistema web exibem o selo neutro `💻 Painel Web`.
+
+2. **Filtro Rápido por Origem**:
+   - No extrato da aba **Fluxo de Caixa**, o usuário pode filtrar instantaneamente por canal:
+     * `Todas as Origens`
+     * `📱 WhatsApp` (somente movimentações criadas via bot)
+     * `💻 Painel Web` (somente movimentações criadas via sistema web)
+     * `⚠️ Estornados` (apenas lançamentos cancelados contabilmente)
+
+3. **Consolidação nos KPIs e Dashboard Executivo**:
+   - A barra de auditoria de origem no Dashboard resume o volume financeiro e quantidade de lançamentos por canal no período selecionado (`resumoOrigem`), alertando sobre eventuais estornos ocorridos.
+
+---
+
+### B. Rotina de Estorno Contábil Auditado (Imutabilidade e Segurança)
+
+Caso um lançamento seja realizado por engano via WhatsApp ou Web (ex.: valor digitado errado ou duplicidade de rede), a operação deve ser revertida através da rotina de estorno contábil.
+
+1. **Princípio da Imutabilidade Contábil**:
+   - O registro original **nunca é apagado** do banco de dados ou do extrato.
+   - O lançamento original é marcado com:
+     * `estornado: true`
+     * `estornadoEm: <timestamp ISO>`
+     * `estornadoPor: <identificador do Dono>`
+     * `motivoEstorno: <justificativa obrigatória, mín. 3 caracteres>`
+   - O sistema gera automaticamente um **movimento compensatório inverso** de mesmo valor (se entrada -> saída; se saída -> entrada) vinculado pelo campo `estornoDeId`, recompondo o saldo do caixa ativo com exatidão matemática.
+
+2. **Regras de Acesso e RBAC**:
+   - **Exclusividade do Dono/Admin**: Somente usuários com perfil administrativo superior (`dono`, `tenant_admin`, `owner`, `platform_admin`, `admin`) têm permissão para estornar.
+   - Perfis operacionais (`mecanico`, `atendente`) recebem `403 Forbidden` ao tentar estornar.
+
+3. **Travas de Idempotência e Integridade**:
+   - **Bloqueio de Duplo Estorno**: Se o lançamento já estiver com `estornado: true`, novas tentativas retornam `409 Conflict`.
+   - **Bloqueio de Estorno Compensatório**: Lançamentos que já são compensações (`estornoDeId` presente) não podem ser estornados diretamente (`400 Bad Request`).
+
+4. **Trilha de Auditoria no SQLite (`security_audit_log`)**:
+   - Toda operação de estorno é gravada no banco:
+     * `financeiro:movimento:estornar`: Estorno autorizado, registrando operador, ID do lançamento original, valor e justificativa.
+     * `financeiro:movimento:estorno_negado`: Tentativas não autorizadas bloqueadas por perfil.
+
+5. **Como Executar o Estorno**:
+   - **Via Painel Web**:
+     1. Na aba **Fluxo de Caixa** ou **Verônica Analista**, localize o lançamento ativo e clique em `↩️ Estornar`.
+     2. No modal de confirmação, digite o motivo obrigatório (ex.: *"Lançamento digitado em duplicidade"*).
+     3. Clique em **Confirmar Estorno**. O saldo do caixa é recalculado na hora e a linha original passa a ser exibida como estornada (tachada com o motivo visível).
+   - **Via API HTTP**:
+     ```bash
+     curl -X POST http://localhost:3000/api/financeiro/movimentacoes/mv_123/estornar \
+       -H "Authorization: Bearer <TOKEN_JWT_DONO>" \
+       -H "Content-Type: application/json" \
+       -d '{"motivo": "Lançamento incorreto via WhatsApp"}'
+     ```
+

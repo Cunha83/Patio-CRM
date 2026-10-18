@@ -406,6 +406,17 @@ document.addEventListener('click', e => {
       render();
       break;
     }
+    case 'filtro-origem-mov': {
+      S.ui.filtroOrigemMov = b.dataset.o;
+      render();
+      break;
+    }
+    case 'estornar-mov': {
+      if (typeof solicitarEstornoMovimento === 'function') {
+        solicitarEstornoMovimento(b.dataset.id);
+      }
+      break;
+    }
     case 'aplicar-filtro-fin-custom': {
       const de = document.getElementById('fin_filtro_de')?.value;
       const ate = document.getElementById('fin_filtro_ate')?.value;

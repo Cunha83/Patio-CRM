@@ -253,33 +253,91 @@ function blocoVeronicaAnalista() {
             <tr>
               <th>Tipo</th>
               <th>Descrição</th>
+              <th style="width:130px">Origem</th>
               <th>Forma Pgto</th>
               <th style="text-align:right">Valor</th>
               <th style="text-align:center">Data</th>
+              <th style="text-align:center">Ação</th>
             </tr>
           </thead>
           <tbody>
             ${movimentosCaixa.length ? movimentosCaixa.map(m => {
               const isEnt = m.tipo === 'entrada' || m.tipo === 'receita' || m.tipo === 'suprimento';
+              const isEstornado = Boolean(m.estornado);
+              const isCompensatorio = Boolean(m.estornoDeId || m.subtipo === 'estorno');
+              const podeEstornar = !isEstornado && !isCompensatorio;
+
+              const rowStyle = isEstornado
+                ? 'opacity:0.65;background:rgba(239, 68, 68, 0.04);'
+                : isCompensatorio
+                  ? 'background:rgba(245, 158, 11, 0.04);'
+                  : '';
+
               return `
-              <tr>
+              <tr style="${rowStyle}">
                 <td>
-                  <span class="selo ${isEnt ? 'selo-bom' : 'selo-alerta'}" style="font-size:10px">
-                    ${isEnt ? '▲ Entrada' : '▼ Saída'}
+                  <span class="selo ${isEstornado ? 'selo-alerta' : isEnt ? 'selo-bom' : 'selo-alerta'}" style="font-size:10px">
+                    ${isEstornado ? '⚠️ Estornado' : isEnt ? '▲ Entrada' : '▼ Saída'}
                   </span>
                 </td>
                 <td>
-                  <b>${esc(m.desc || m.descricao || 'Movimentação')}</b>
+                  <div style="${isEstornado ? 'text-decoration:line-through;color:var(--aco-600)' : 'font-weight:700'}">
+                    ${esc(m.desc || m.descricao || 'Movimentação')}
+                  </div>
                   <div class="mini">${esc(m.cat || m.categoria || 'Geral')}</div>
+                  ${isEstornado ? `
+                    <div class="mini" style="color:var(--tijolo);font-weight:700;margin-top:2px">
+                      ⚠️ ESTORNADO: ${esc(m.motivoEstorno || 'Estornado')}
+                    </div>
+                  ` : ''}
+                  ${isCompensatorio ? `
+                    <div class="mini" style="color:#d97706;font-weight:600;margin-top:2px">
+                      ↩️ Compensatório de estorno
+                    </div>
+                  ` : ''}
+                </td>
+                <td>
+                  ${m.origem === 'whatsapp' ? `
+                    <div>
+                      <span class="selo" style="background:#dcfce7;color:#166534;border:1px solid #bbf7d0;font-size:10px;font-weight:700">
+                        📱 WhatsApp
+                      </span>
+                      ${m.autorNumero ? `
+                        <div class="mini mono" style="font-size:9.5px;color:var(--aco-600);margin-top:1px">
+                          ${esc(m.autorNumero)}
+                        </div>
+                      ` : ''}
+                    </div>
+                  ` : `
+                    <div>
+                      <span class="selo" style="background:var(--aco-100);color:var(--aco-700);font-size:10px">
+                        💻 Web
+                      </span>
+                    </div>
+                  `}
                 </td>
                 <td><span class="mono">${esc((m.forma || m.formaPagamento || 'dinheiro').toUpperCase())}</span></td>
-                <td style="text-align:right;font-weight:700;color:${isEnt ? 'var(--verde)' : 'var(--tijolo)'}" class="num">
-                  ${isEnt ? '+' : '-'}${brl(m.valor)}
+                <td style="text-align:right;font-weight:700;color:${isEstornado ? 'var(--aco-500)' : isEnt ? 'var(--verde)' : 'var(--tijolo)'}" class="num">
+                  <span style="${isEstornado ? 'text-decoration:line-through' : ''}">
+                    ${isEnt ? '+' : '-'}${brl(m.valor)}
+                  </span>
                 </td>
                 <td style="text-align:center" class="mono">${dataBR(m.data || hoje())}</td>
+                <td style="text-align:center">
+                  ${podeEstornar ? `
+                    <button class="btn btn-secundario btn-pequeno"
+                            onclick="solicitarEstornoMovimento('${m.id}')"
+                            title="Estornar movimentação"
+                            style="font-size:10.5px;padding:2px 8px;color:var(--tijolo);border-color:rgba(239, 68, 68, 0.4)">
+                      ↩️ Estornar
+                    </button>
+                  ` : `
+                    <span class="mini" style="color:var(--aco-400)">—</span>
+                  `}
+                </td>
               </tr>`;
             }).join('') : `
-              <tr><td colspan="5" style="text-align:center;padding:16px;color:var(--aco-400)">Nenhuma movimentação lançada recentemente.</td></tr>
+              <tr><td colspan="7" style="text-align:center;padding:16px;color:var(--aco-400)">Nenhuma movimentação lançada recentemente.</td></tr>
             `}
           </tbody>
         </table>
@@ -676,6 +734,39 @@ async function fecharCaixaApi(conferenciaCega, observacoes) {
   }
 }
 
+async function estornarMovimentoApi(movimentoId, motivo) {
+  try {
+    const headers = typeof obterHeadersRequisicao === 'function' ? obterHeadersRequisicao({ 'Content-Type': 'application/json' }) : { 'Content-Type': 'application/json' };
+    const res = await fetch(`/api/financeiro/movimentacoes/${encodeURIComponent(movimentoId)}/estornar`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ motivo })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Erro ao realizar estorno contábil');
+
+    if (data.movimentoEstornado) {
+      const idx = (S.movimentos || []).findIndex(m => m.id === data.movimentoEstornado.id);
+      if (idx !== -1) S.movimentos[idx] = data.movimentoEstornado;
+    }
+    if (data.movimentoCompensatorio) {
+      S.movimentos = S.movimentos || [];
+      S.movimentos.push(data.movimentoCompensatorio);
+    }
+    if (data.caixa) {
+      const cIdx = (S.caixas || []).findIndex(c => c.id === data.caixa.id);
+      if (cIdx !== -1) S.caixas[cIdx] = data.caixa;
+    }
+
+    if (typeof fecharFolha === 'function') fecharFolha();
+    if (typeof salvar === 'function') salvar();
+    if (typeof render === 'function') render();
+    alert(data.mensagem || 'Estorno contábil realizado com sucesso!');
+  } catch (err) {
+    alert(`Falha no estorno: ${err.message}`);
+  }
+}
+
 function falarParecerVeronica(texto) {
   if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
     window.speechSynthesis.cancel();
@@ -701,5 +792,6 @@ if (typeof window !== 'undefined') {
   window.abrirCaixaApi = abrirCaixaApi;
   window.lancarMovimentoApi = lancarMovimentoApi;
   window.fecharCaixaApi = fecharCaixaApi;
+  window.estornarMovimentoApi = estornarMovimentoApi;
   window.falarParecerVeronica = falarParecerVeronica;
 }
