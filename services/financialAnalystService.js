@@ -145,7 +145,9 @@ function registrarMovimentacao(state = {}, payload = {}) {
     return { ok: false, error: 'O valor da movimentação financeira deve ser maior que zero.' };
   }
 
-  const { tipoBase, subtipo } = normalizarTipoMovimentacao(payload.tipo);
+  const tipoNorm = normalizarTipoMovimentacao(payload.tipo || payload.subtipo || payload.naturezaOperacao);
+  const subtipo = payload.subtipo || payload.naturezaOperacao || tipoNorm.subtipo;
+  const tipoBase = (subtipo === 'sangria' ? 'saida' : (subtipo === 'suprimento' ? 'entrada' : tipoNorm.tipoBase));
   const formaPagamento = normalizarFormaPagamento(payload.formaPagamento || payload.forma);
   const agoraInfo = financialEngine.obterAgoraSP();
 
@@ -158,8 +160,16 @@ function registrarMovimentacao(state = {}, payload = {}) {
     };
   }
 
+  let naturezaOperacao = payload.naturezaOperacao;
+  if (!naturezaOperacao) {
+    if (subtipo === 'sangria') naturezaOperacao = 'sangria';
+    else if (subtipo === 'suprimento') naturezaOperacao = 'suprimento';
+    else if (subtipo === 'estorno' || payload.estornoDeId) naturezaOperacao = 'estorno';
+    else naturezaOperacao = 'operacional';
+  }
+
   // Validação de saldo em caso de sangria ou retirada
-  if (subtipo === 'sangria' && caixaAberto && formaPagamento === 'dinheiro') {
+  if ((subtipo === 'sangria' || naturezaOperacao === 'sangria') && caixaAberto && formaPagamento === 'dinheiro') {
     if (valor > caixaAberto.saldoAtual) {
       return {
         ok: false,
@@ -170,7 +180,7 @@ function registrarMovimentacao(state = {}, payload = {}) {
 
   const idMov = gerarId('mov');
   const descricao = String(payload.descricao || payload.desc || `${subtipo.toUpperCase()} avulsa`).trim();
-  const categoria = String(payload.categoria || payload.cat || (tipoBase === 'entrada' ? 'Receita Diversa' : 'Despesa Operacional')).trim();
+  const categoria = String(payload.categoria || payload.cat || (subtipo === 'sangria' ? 'Sangria de Caixa' : (subtipo === 'suprimento' ? 'Suprimento de Caixa' : (tipoBase === 'entrada' ? 'Receita Diversa' : 'Despesa Operacional')))).trim();
 
   const novaMov = {
     id: idMov,
@@ -178,6 +188,7 @@ function registrarMovimentacao(state = {}, payload = {}) {
     caixaId: caixaAberto ? caixaAberto.id : null,
     tipo: tipoBase,
     subtipo,
+    naturezaOperacao,
     valor,
     cat: categoria,
     categoria,
@@ -309,6 +320,7 @@ function estornarMovimentacao(state = {}, { movimentoId, motivo, operador, opera
     caixaId: caixaAberto ? caixaAberto.id : movOriginal.caixaId,
     tipo: tipoCompensatorio,
     subtipo: 'estorno',
+    naturezaOperacao: 'estorno',
     valor,
     cat: 'Estorno Contábil',
     categoria: 'Estorno Contábil',
@@ -388,10 +400,26 @@ function fecharCaixa(state = {}, payload = {}) {
 
   let totalEntradas = 0;
   let totalSaidas = 0;
+  let totalSangrias = 0;
+  let qtdSangrias = 0;
+  let totalSuprimentos = 0;
+  let qtdSuprimentos = 0;
 
   for (const m of movsCaixa) {
     const val = Number(m.valor) || 0;
     const f = normalizarFormaPagamento(m.forma || m.formaPagamento);
+    const nat = m.naturezaOperacao || (m.subtipo === 'sangria' ? 'sangria' : (m.subtipo === 'suprimento' ? 'suprimento' : (m.subtipo === 'estorno' || m.estornoDeId ? 'estorno' : 'operacional')));
+
+    if (!m.estornado) {
+      if (nat === 'sangria' || m.subtipo === 'sangria') {
+        qtdSangrias++;
+        totalSangrias = arredondar(totalSangrias + val);
+      } else if (nat === 'suprimento' || m.subtipo === 'suprimento') {
+        qtdSuprimentos++;
+        totalSuprimentos = arredondar(totalSuprimentos + val);
+      }
+    }
+
     if (m.tipo === 'entrada') {
       totalEntradas = arredondar(totalEntradas + val);
       totaisPorForma[f] = arredondar((totaisPorForma[f] || 0) + val);
@@ -468,6 +496,10 @@ function fecharCaixa(state = {}, payload = {}) {
     saldoInicial,
     totalEntradas,
     totalSaidas,
+    totalSangrias,
+    qtdSangrias,
+    totalSuprimentos,
+    qtdSuprimentos,
     saldoEsperado,
     diferenca,
     statusConferencia,
@@ -482,6 +514,10 @@ function fecharCaixa(state = {}, payload = {}) {
     saldoInicial,
     totalEntradas,
     totalSaidas,
+    totalSangrias,
+    qtdSangrias,
+    totalSuprimentos,
+    qtdSuprimentos,
     saldoEsperado,
     saldoFinal: saldoEsperado,
     saldoFinalSistema: saldoEsperado,
@@ -523,8 +559,10 @@ function fecharCaixa(state = {}, payload = {}) {
 function projetarMovimentacao(m = {}) {
   if (!m || typeof m !== 'object') return {};
   const origem = m.origem || 'web';
+  const nat = m.naturezaOperacao || (m.subtipo === 'sangria' ? 'sangria' : (m.subtipo === 'suprimento' ? 'suprimento' : (m.subtipo === 'estorno' || m.estornoDeId ? 'estorno' : 'operacional')));
   return {
     ...m,
+    naturezaOperacao: nat,
     origem,
     canal: m.canal || (origem === 'whatsapp' ? 'whatsapp' : 'web'),
     autorNumero: m.autorNumero || null,
@@ -837,6 +875,10 @@ function formatarBoletimFechamentoWhatsapp({
   saldoInicial = 0,
   totalEntradas = 0,
   totalSaidas = 0,
+  totalSangrias = 0,
+  qtdSangrias = 0,
+  totalSuprimentos = 0,
+  qtdSuprimentos = 0,
   saldoEsperado = 0,
   diferenca = 0,
   statusConferencia = 'sem_conferencia_cega',
@@ -863,6 +905,17 @@ function formatarBoletimFechamentoWhatsapp({
   txt += `• (+) Entradas: ${financialEngine.formatarMoeda(totalEntradas)}\n`;
   txt += `• (-) Saídas: ${financialEngine.formatarMoeda(totalSaidas)}\n`;
   txt += `• (=) Saldo Final: *${financialEngine.formatarMoeda(saldoEsperado)}*\n\n`;
+
+  if (totalSuprimentos > 0 || totalSangrias > 0) {
+    txt += `🏦 *TESOURARIA & MOVIMENTAÇÃO DE CAIXA:*\n`;
+    if (totalSuprimentos > 0) {
+      txt += `• 🪙 Suprimentos / Aportes: ${financialEngine.formatarMoeda(totalSuprimentos)} (${qtdSuprimentos || 1}x)\n`;
+    }
+    if (totalSangrias > 0) {
+      txt += `• 🏦 Sangrias / Retiradas: ${financialEngine.formatarMoeda(totalSangrias)} (${qtdSangrias || 1}x)\n`;
+    }
+    txt += `\n`;
+  }
 
   if (statusConferencia === 'quebra') {
     txt += `⚠️ *Conferência Cega:* Quebra de ${financialEngine.formatarMoeda(Math.abs(diferenca))}\n\n`;
@@ -936,6 +989,10 @@ function obterResumoFechamentoParcial(state = {}, tenantId = 'default') {
 
   let totalEntradas = 0;
   let totalSaidas = 0;
+  let totalSangrias = 0;
+  let qtdSangrias = 0;
+  let totalSuprimentos = 0;
+  let qtdSuprimentos = 0;
   const resumoOrigem = {
     totalWhatsapp: 0,
     qtdWhatsapp: 0,
@@ -948,6 +1005,18 @@ function obterResumoFechamentoParcial(state = {}, tenantId = 'default') {
   for (const m of movsCaixa) {
     const val = Number(m.valor) || 0;
     const f = normalizarFormaPagamento(m.forma || m.formaPagamento);
+    const nat = m.naturezaOperacao || (m.subtipo === 'sangria' ? 'sangria' : (m.subtipo === 'suprimento' ? 'suprimento' : (m.subtipo === 'estorno' || m.estornoDeId ? 'estorno' : 'operacional')));
+
+    if (!m.estornado) {
+      if (nat === 'sangria' || m.subtipo === 'sangria') {
+        qtdSangrias++;
+        totalSangrias = arredondar(totalSangrias + val);
+      } else if (nat === 'suprimento' || m.subtipo === 'suprimento') {
+        qtdSuprimentos++;
+        totalSuprimentos = arredondar(totalSuprimentos + val);
+      }
+    }
+
     if (m.tipo === 'entrada') {
       totalEntradas = arredondar(totalEntradas + val);
       totaisPorForma[f] = arredondar((totaisPorForma[f] || 0) + val);
@@ -979,6 +1048,10 @@ function obterResumoFechamentoParcial(state = {}, tenantId = 'default') {
     saldoInicial,
     totalEntradas,
     totalSaidas,
+    totalSangrias,
+    qtdSangrias,
+    totalSuprimentos,
+    qtdSuprimentos,
     saldoEsperado,
     diferenca: 0,
     statusConferencia: 'parcial',
@@ -995,6 +1068,10 @@ function obterResumoFechamentoParcial(state = {}, tenantId = 'default') {
     saldoInicial,
     totalEntradas,
     totalSaidas,
+    totalSangrias,
+    qtdSangrias,
+    totalSuprimentos,
+    qtdSuprimentos,
     saldoAtual: saldoEsperado,
     resumoOrigem,
     totaisPorForma,

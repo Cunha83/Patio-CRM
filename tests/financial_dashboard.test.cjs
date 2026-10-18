@@ -581,4 +581,87 @@ test('11. Conciliação de Saldo por Ordem de Serviço (OS): múltiplos recebime
   assert.equal(listaAposEstorno.resumoPorOS['401'].saldoLiquidoOS, 200);
 });
 
+test('12. Operações de Tesouraria (Sangria e Suprimento): reflexo no saldo, fechamento e auditoria', async () => {
+  const financialAnalystService = require('../services/financialAnalystService.js');
+  const engine = require('../services/financialEngine.js');
+
+  const state = {
+    tenantId: 'default',
+    caixas: [
+      {
+        id: 'cx_tes_1',
+        status: 'aberto',
+        aberto: true,
+        saldoInicial: 1000,
+        saldoAtual: 1000,
+        totalEntradas: 0,
+        totalSaidas: 0,
+        movimentacoesIds: []
+      }
+    ],
+    movimentos: []
+  };
+
+  // 12.1 Suprimento de R$ 300 para troco
+  const supRes = financialAnalystService.registrarMovimentacao(state, {
+    tipo: 'entrada',
+    subtipo: 'suprimento',
+    naturezaOperacao: 'suprimento',
+    valor: 300,
+    descricao: 'Aporte troco matinal',
+    forma: 'dinheiro'
+  });
+  assert.equal(supRes.ok, true);
+  assert.equal(state.caixas[0].saldoAtual, 1300);
+  assert.equal(supRes.movimentacao.naturezaOperacao, 'suprimento');
+
+  // 12.2 Sangria de R$ 500 para cofre
+  const sangRes = financialAnalystService.registrarMovimentacao(state, {
+    tipo: 'saida',
+    subtipo: 'sangria',
+    naturezaOperacao: 'sangria',
+    valor: 500,
+    descricao: 'Sangria de segurança para cofre',
+    forma: 'dinheiro'
+  });
+  assert.equal(sangRes.ok, true);
+  assert.equal(state.caixas[0].saldoAtual, 800);
+  assert.equal(sangRes.movimentacao.naturezaOperacao, 'sangria');
+
+  // 12.3 Recusa de sangria por saldo insuficiente (tentativa de retirar 900 com saldo de 800)
+  const sangInsuf = financialAnalystService.registrarMovimentacao(state, {
+    tipo: 'saida',
+    subtipo: 'sangria',
+    naturezaOperacao: 'sangria',
+    valor: 900,
+    descricao: 'Tentativa além do saldo',
+    forma: 'dinheiro'
+  });
+  assert.equal(sangInsuf.ok, false);
+  assert.match(sangInsuf.error, /excede o saldo em dinheiro disponível/i);
+  assert.equal(state.caixas[0].saldoAtual, 800);
+
+  // 12.4 Fechamento com apuração exata de sangria e suprimento
+  const fechamentoRes = financialAnalystService.fecharCaixa(state, {
+    tenantId: 'default',
+    operador: 'dono_tesouraria'
+  });
+  assert.equal(fechamentoRes.ok, true);
+  assert.equal(fechamentoRes.caixaFechado.status, 'fechado');
+  assert.equal(fechamentoRes.fechamento.totalSuprimentos, 300);
+  assert.equal(fechamentoRes.fechamento.qtdSuprimentos, 1);
+  assert.equal(fechamentoRes.fechamento.totalSangrias, 500);
+  assert.equal(fechamentoRes.fechamento.qtdSangrias, 1);
+  assert.equal(fechamentoRes.fechamento.saldoEsperado, 800);
+  assert.match(fechamentoRes.fechamento.resumoTextoWhatsapp, /TESOURARIA & MOVIMENTAÇÃO DE CAIXA/);
+  assert.match(fechamentoRes.fechamento.resumoTextoWhatsapp, /Suprimentos \/ Aportes/);
+  assert.match(fechamentoRes.fechamento.resumoTextoWhatsapp, /Sangrias \/ Retiradas/);
+
+  // 12.5 KPIs no motor financeiro
+  const kpis = engine.calcularKPIsFinanceiros(state, { filtro: 'hoje' });
+  assert.equal(kpis.totalSuprimentos, 300);
+  assert.equal(kpis.totalSangrias, 500);
+});
+
+
 

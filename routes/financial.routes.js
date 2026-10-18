@@ -301,6 +301,26 @@ router.post('/api/financeiro/movimentacoes', requirePermission('financial:write'
       });
     }
 
+    if (resultado.movimentacao?.subtipo === 'sangria' || resultado.movimentacao?.naturezaOperacao === 'sangria') {
+      try {
+        await recordSecurityAudit(req, 'financeiro:caixa:sangria', 'caixa_diario', resultado.movimentacao?.caixaId, {
+          movimentoId: resultado.movimentacao?.id,
+          valor: resultado.movimentacao?.valor,
+          motivo: resultado.movimentacao?.descricao,
+          saldoAtual: resultado.saldoCaixaAtual
+        });
+      } catch (_) {}
+    } else if (resultado.movimentacao?.subtipo === 'suprimento' || resultado.movimentacao?.naturezaOperacao === 'suprimento') {
+      try {
+        await recordSecurityAudit(req, 'financeiro:caixa:suprimento', 'caixa_diario', resultado.movimentacao?.caixaId, {
+          movimentoId: resultado.movimentacao?.id,
+          valor: resultado.movimentacao?.valor,
+          motivo: resultado.movimentacao?.descricao,
+          saldoAtual: resultado.saldoCaixaAtual
+        });
+      } catch (_) {}
+    }
+
     res.status(201).json({
       success: true,
       mensagem: resultado.mensagem,
@@ -311,6 +331,126 @@ router.post('/api/financeiro/movimentacoes', requirePermission('financial:write'
     });
   } catch (err) {
     console.error('[API /api/financeiro/movimentacoes POST] Erro:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+/**
+ * 5.0.1 POST /api/financeiro/caixa/sangria
+ * Realiza sangria (retirada de numerário) no caixa ativo com RBAC e auditoria
+ */
+router.post('/api/financeiro/caixa/sangria', requirePermission('financial:write', 'financial:manage'), async (req, res) => {
+  try {
+    const tenantId = extractTenantId(req);
+    const { valor, motivo, descricao } = req.body || {};
+    const operador = req.securityContext?.actorId || 'operador';
+
+    let resultado = null;
+    const saveRes = await mutateTenantState(req, (draft) => {
+      resultado = financialAnalystService.registrarMovimentacao(draft, {
+        tenantId,
+        tipo: 'saida',
+        subtipo: 'sangria',
+        naturezaOperacao: 'sangria',
+        formaPagamento: 'dinheiro',
+        forma: 'dinheiro',
+        valor: Number(valor),
+        descricao: motivo || descricao || 'Sangria de Caixa',
+        categoria: 'Sangria de Caixa',
+        operador,
+        origem: 'web'
+      });
+
+      if (!resultado.ok) {
+        return { abort: true, status: 400, error: resultado.error };
+      }
+    });
+
+    if (saveRes?.aborted) {
+      return res.status(saveRes.status || 400).json({ success: false, error: saveRes.error });
+    }
+
+    if (!saveRes || !saveRes.ok) {
+      return res.status(saveRes?.status || 500).json({ success: false, error: saveRes?.error || 'Falha ao realizar sangria.' });
+    }
+
+    try {
+      await recordSecurityAudit(req, 'financeiro:caixa:sangria', 'caixa_diario', resultado.movimentacao?.caixaId, {
+        movimentoId: resultado.movimentacao?.id,
+        valor: resultado.movimentacao?.valor,
+        motivo: resultado.movimentacao?.descricao,
+        saldoAtual: resultado.saldoCaixaAtual
+      });
+    } catch (_) {}
+
+    res.status(201).json({
+      success: true,
+      mensagem: 'Sangria de caixa realizada com sucesso.',
+      movimentacao: resultado.movimentacao,
+      saldoCaixaAtual: resultado.saldoCaixaAtual
+    });
+  } catch (err) {
+    console.error('[API /api/financeiro/caixa/sangria POST] Erro:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+/**
+ * 5.0.2 POST /api/financeiro/caixa/suprimento
+ * Realiza suprimento (aporte de troco) no caixa ativo com RBAC e auditoria
+ */
+router.post('/api/financeiro/caixa/suprimento', requirePermission('financial:write', 'financial:manage'), async (req, res) => {
+  try {
+    const tenantId = extractTenantId(req);
+    const { valor, motivo, descricao } = req.body || {};
+    const operador = req.securityContext?.actorId || 'operador';
+
+    let resultado = null;
+    const saveRes = await mutateTenantState(req, (draft) => {
+      resultado = financialAnalystService.registrarMovimentacao(draft, {
+        tenantId,
+        tipo: 'entrada',
+        subtipo: 'suprimento',
+        naturezaOperacao: 'suprimento',
+        formaPagamento: 'dinheiro',
+        forma: 'dinheiro',
+        valor: Number(valor),
+        descricao: motivo || descricao || 'Suprimento de Caixa',
+        categoria: 'Suprimento de Caixa',
+        operador,
+        origem: 'web'
+      });
+
+      if (!resultado.ok) {
+        return { abort: true, status: 400, error: resultado.error };
+      }
+    });
+
+    if (saveRes?.aborted) {
+      return res.status(saveRes.status || 400).json({ success: false, error: saveRes.error });
+    }
+
+    if (!saveRes || !saveRes.ok) {
+      return res.status(saveRes?.status || 500).json({ success: false, error: saveRes?.error || 'Falha ao registrar suprimento.' });
+    }
+
+    try {
+      await recordSecurityAudit(req, 'financeiro:caixa:suprimento', 'caixa_diario', resultado.movimentacao?.caixaId, {
+        movimentoId: resultado.movimentacao?.id,
+        valor: resultado.movimentacao?.valor,
+        motivo: resultado.movimentacao?.descricao,
+        saldoAtual: resultado.saldoCaixaAtual
+      });
+    } catch (_) {}
+
+    res.status(201).json({
+      success: true,
+      mensagem: 'Suprimento de caixa registrado com sucesso.',
+      movimentacao: resultado.movimentacao,
+      saldoCaixaAtual: resultado.saldoCaixaAtual
+    });
+  } catch (err) {
+    console.error('[API /api/financeiro/caixa/suprimento POST] Erro:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });

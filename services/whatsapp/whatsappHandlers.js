@@ -623,13 +623,14 @@ async function processarMensagemTexto(msg, {
   const senderNorm = normalizePhone(rawSender) || rawSender;
   const chavePendente = `${tenantKey}:${senderNorm}`;
 
-  // ── DETECÇÃO PRÉVIA DE COMANDOS DE ESCRITA E LEITURA FINANCEIRA ──
   const isComandoAbrirCaixa = /(?:abrir|iniciar|abertura\s+de)\s*(?:o\s+)?caixa/i.test(textoLower);
   const isComandoFecharCaixa = /(?:fechar|encerrar|fechamento\s+de)\s*(?:o\s+)?caixa/i.test(textoLower);
-  const isComandoEntrada = /(?:lançar|lancar|registrar)\s*(?:uma\s+)?(?:entrada|receita|suprimento)/i.test(textoLower) || /(?:suprimento|entrada)\s+de\s+caixa/i.test(textoLower);
-  const isComandoSaida = /(?:lançar|lancar|registrar)\s*(?:uma\s+)?(?:saída|saida|despesa|sangria)/i.test(textoLower) || /(?:sangria|saída|saida)\s+de\s+caixa/i.test(textoLower);
+  const isComandoEntrada = /(?:lançar|lancar|registrar)\s*(?:uma\s+)?(?:entrada|receita)/i.test(textoLower) || /(?:entrada)\s+de\s+caixa/i.test(textoLower);
+  const isComandoSaida = /(?:lançar|lancar|registrar)\s*(?:uma\s+)?(?:saída|saida|despesa)/i.test(textoLower) || /(?:saída|saida)\s+de\s+caixa/i.test(textoLower);
+  const isComandoSangria = /^!?sangria\b/i.test(textoLower);
+  const isComandoSuprimento = /^!?suprimento\b/i.test(textoLower);
   const isComandoEstorno = /^(?:!estornar|estornar)\b/i.test(textoLower);
-  const isComandoEscrita = isComandoAbrirCaixa || isComandoFecharCaixa || isComandoEntrada || isComandoSaida || isComandoEstorno;
+  const isComandoEscrita = isComandoAbrirCaixa || isComandoFecharCaixa || isComandoEntrada || isComandoSaida || isComandoSangria || isComandoSuprimento || isComandoEstorno;
 
   const matchComandoOS = textoLower.match(/(?:extrato|financeiro|saldo)\s+(?:da\s+|de\s+)?(?:os|o\.s\.)\s*#?\s*([a-zA-Z0-9_\-]+)/i) ||
                          textoLower.match(/(?:os|o\.s\.)\s*#?\s*([a-zA-Z0-9_\-]+)\s+(?:financeiro|extrato|saldo)/i) ||
@@ -886,6 +887,88 @@ async function processarMensagemTexto(msg, {
             }
           } else {
             msgSucesso = `⚠️ Não foi possível realizar o estorno: ${resOp.error}`;
+          }
+        } else if (pendente.acao === 'sangria_caixa') {
+          resOp = financialAnalystService.registrarMovimentacao(tenantState, {
+            tenantId: tenantKey,
+            tipo: 'saida',
+            subtipo: 'sangria',
+            naturezaOperacao: 'sangria',
+            valor: pendente.valor,
+            descricao: pendente.descricao,
+            formaPagamento: 'dinheiro',
+            forma: 'dinheiro',
+            categoria: 'Sangria de Caixa',
+            operador: senderNorm,
+            origem: 'whatsapp',
+            canal: 'whatsapp',
+            autorNumero: senderNorm,
+            confirmadoEm: agoraIso
+          });
+          if (resOp.ok) {
+            msgSucesso = `🏦 *Sangria de Caixa Realizada com Sucesso!*\n\n• Valor Retirado: ${financialEngine.formatarMoeda(pendente.valor)}\n• Motivo: ${pendente.descricao}\n• Saldo Atual do Caixa: ${financialEngine.formatarMoeda(resOp.saldoCaixaAtual || 0)}`;
+            try {
+              await recordSecurityAudit({
+                tenantId: tenantKey,
+                actorId: `whatsapp:${senderNorm}`,
+                actorType: 'whatsapp_sender',
+                action: 'financeiro:caixa:sangria',
+                entity: 'caixa_diario',
+                entityId: resOp.caixa?.id || null,
+                details: {
+                  movimentoId: resOp.movimentacao?.id,
+                  valor: pendente.valor,
+                  motivo: pendente.descricao,
+                  saldoRestante: resOp.saldoCaixaAtual,
+                  operador: senderNorm
+                }
+              });
+            } catch (auditErr) {
+              console.warn('[WhatsApp Sangria Audit] Falha não-bloqueante:', auditErr.message);
+            }
+          } else {
+            msgSucesso = `⚠️ Não foi possível realizar a sangria: ${resOp.error}`;
+          }
+        } else if (pendente.acao === 'suprimento_caixa') {
+          resOp = financialAnalystService.registrarMovimentacao(tenantState, {
+            tenantId: tenantKey,
+            tipo: 'entrada',
+            subtipo: 'suprimento',
+            naturezaOperacao: 'suprimento',
+            valor: pendente.valor,
+            descricao: pendente.descricao,
+            formaPagamento: 'dinheiro',
+            forma: 'dinheiro',
+            categoria: 'Suprimento de Caixa',
+            operador: senderNorm,
+            origem: 'whatsapp',
+            canal: 'whatsapp',
+            autorNumero: senderNorm,
+            confirmadoEm: agoraIso
+          });
+          if (resOp.ok) {
+            msgSucesso = `🪙 *Suprimento de Caixa Realizado com Sucesso!*\n\n• Valor Aportado: ${financialEngine.formatarMoeda(pendente.valor)}\n• Motivo: ${pendente.descricao}\n• Saldo Atual do Caixa: ${financialEngine.formatarMoeda(resOp.saldoCaixaAtual || 0)}`;
+            try {
+              await recordSecurityAudit({
+                tenantId: tenantKey,
+                actorId: `whatsapp:${senderNorm}`,
+                actorType: 'whatsapp_sender',
+                action: 'financeiro:caixa:suprimento',
+                entity: 'caixa_diario',
+                entityId: resOp.caixa?.id || null,
+                details: {
+                  movimentoId: resOp.movimentacao?.id,
+                  valor: pendente.valor,
+                  motivo: pendente.descricao,
+                  saldoAtual: resOp.saldoCaixaAtual,
+                  operador: senderNorm
+                }
+              });
+            } catch (auditErr) {
+              console.warn('[WhatsApp Suprimento Audit] Falha não-bloqueante:', auditErr.message);
+            }
+          } else {
+            msgSucesso = `⚠️ Não foi possível registrar o suprimento: ${resOp.error}`;
           }
         }
 
@@ -1267,6 +1350,165 @@ async function processarMensagemTexto(msg, {
 
       await msg.reply(msgConfirm);
       await auditarComandoWhatsApp({ tenantId: tenantKey, numero: senderNorm, comando: textoMensagem, resultado: 'aguardando_confirmacao', detalhes: { acao: 'lancar_saida', valor: resValor.valor, descricao: descricaoFinal, formaPagamento: formaPagamentoFinal, osId: osFinal, placa: placaFinal } });
+      return true;
+    }
+
+    // 3.1 Sangria de Caixa (Retirada de numerário em espécie para cofre/banco)
+    if (isComandoSangria) {
+      const caixaAberto = financialAnalystService.obterCaixaAberto(tenantState, tenantKey);
+      if (!caixaAberto) {
+        const respSemCaixa = '⚠️ Não há nenhum turno de caixa aberto no momento. Abra o caixa antes de realizar sangrias.';
+        await msg.reply(respSemCaixa);
+        await auditarComandoWhatsApp({ tenantId: tenantKey, numero: senderNorm, comando: textoMensagem, resultado: 'recusado_sem_caixa_aberto' });
+        return true;
+      }
+
+      const resValor = extrairValorMonetario(textoMensagem);
+      if (resValor.status === 'ausente') {
+        const respPedeVal = '⚠️ Não identifiquei o valor para a sangria. Por favor, envie o comando com valor e motivo (ex: *sangria 500 recolhimento cofre*).';
+        await msg.reply(respPedeVal);
+        await auditarComandoWhatsApp({ tenantId: tenantKey, numero: senderNorm, comando: textoMensagem, resultado: 'solicitado_esclarecimento_valor', detalhes: { motivo: 'valor_ausente' } });
+        return true;
+      }
+      if (resValor.status === 'ambiguo') {
+        const respAmbiguo = '⚠️ Identifiquei múltiplos valores no comando. Para evitar divergência no caixa, por favor informe o comando com um único valor (ex: *sangria 500 recolhimento cofre*).';
+        await msg.reply(respAmbiguo);
+        await auditarComandoWhatsApp({ tenantId: tenantKey, numero: senderNorm, comando: textoMensagem, resultado: 'solicitado_esclarecimento_valor', detalhes: { motivo: 'valor_ambiguo', valores: resValor.valores } });
+        return true;
+      }
+
+      const valorFinal = resValor.valor;
+      if (valorFinal > (caixaAberto.saldoAtual || 0)) {
+        const respSaldoInsuf = `🚫 *Saldo Insuficiente:* O valor solicitado para sangria (${financialEngine.formatarMoeda(valorFinal)}) excede o saldo disponível no caixa (${financialEngine.formatarMoeda(caixaAberto.saldoAtual || 0)}).`;
+        await msg.reply(respSaldoInsuf);
+        await auditarComandoWhatsApp({
+          tenantId: tenantKey,
+          numero: senderNorm,
+          comando: textoMensagem,
+          resultado: 'recusado_saldo_insuficiente',
+          detalhes: { acao: 'sangria', valor: valorFinal, saldoAtual: caixaAberto.saldoAtual }
+        });
+        return true;
+      }
+
+      const rawLimite = Number(tenantState?.cfg?.limiteValorLancamentoWhatsapp);
+      const limiteMax = (!isNaN(rawLimite) && rawLimite > 0) ? rawLimite : 1000.00;
+      if (valorFinal > limiteMax) {
+        const respLimite = `🚫 *Limite Excedido:* O valor informado (${financialEngine.formatarMoeda(valorFinal)}) excede o limite máximo permitido para operações via WhatsApp (${financialEngine.formatarMoeda(limiteMax)}). Por questões de segurança, realize esta sangria diretamente pelo painel do Pátio CRM Web.`;
+        await msg.reply(respLimite);
+        await auditarComandoWhatsApp({
+          tenantId: tenantKey,
+          numero: senderNorm,
+          comando: textoMensagem,
+          resultado: 'negado_limite',
+          detalhes: { acao: 'sangria', valor: valorFinal, limite: limiteMax }
+        });
+        return true;
+      }
+
+      const matchDesc = textoMensagem.match(/(?:motivo|para|referente\s+a|descrição|descricao)\s+(.+)$/i);
+      const motivoFinal = matchDesc ? matchDesc[1].trim() : (textoMensagem.replace(/^!?sangria\s*(?:de\s+)?(?:r\$\s*)?[\d.,]+/i, '').trim() || 'Retirada de numerário para cofre/banco');
+
+      confirmacoesPendentes.set(chavePendente, {
+        acao: 'sangria_caixa',
+        descricaoAcao: 'Sangria de Caixa',
+        valor: valorFinal,
+        descricao: motivoFinal,
+        naturezaOperacao: 'sangria',
+        formaPagamento: 'dinheiro',
+        expiraEm: Date.now() + CONFIRMACAO_TTL_MS,
+        tenantKey,
+        fromNumber: senderNorm,
+        perfil
+      });
+
+      const msgConfirm =
+        prefixoSubstituicao +
+        `⚠️ *CONFIRMAÇÃO DE SANGRIA DE CAIXA* ⚠️\n\n` +
+        `Por favor, confira os dados da retirada:\n` +
+        `• *Ação:* Sangria de Caixa (Saída de Espécie)\n` +
+        `• *Valor da Retirada:* ${financialEngine.formatarMoeda(valorFinal)}\n` +
+        `• *Saldo Atual:* ${financialEngine.formatarMoeda(caixaAberto.saldoAtual || 0)}\n` +
+        `• *Saldo Previsto Após Sangria:* ${financialEngine.formatarMoeda((caixaAberto.saldoAtual || 0) - valorFinal)}\n` +
+        `• *Destino / Motivo:* ${motivoFinal}\n\n` +
+        `Para executar, responda exatamente *CONFIRMAR* ou *SIM* em até 2 minutos.\n` +
+        `Qualquer outra resposta cancelará esta operação.`;
+
+      await msg.reply(msgConfirm);
+      await auditarComandoWhatsApp({ tenantId: tenantKey, numero: senderNorm, comando: textoMensagem, resultado: 'aguardando_confirmacao', detalhes: { acao: 'sangria_caixa', valor: valorFinal, motivo: motivoFinal } });
+      return true;
+    }
+
+    // 3.2 Suprimento de Caixa (Aporte de troco/reforço)
+    if (isComandoSuprimento) {
+      const caixaAberto = financialAnalystService.obterCaixaAberto(tenantState, tenantKey);
+      if (!caixaAberto) {
+        const respSemCaixa = '⚠️ Não há nenhum turno de caixa aberto no momento. Abra o caixa antes de realizar suprimentos.';
+        await msg.reply(respSemCaixa);
+        await auditarComandoWhatsApp({ tenantId: tenantKey, numero: senderNorm, comando: textoMensagem, resultado: 'recusado_sem_caixa_aberto' });
+        return true;
+      }
+
+      const resValor = extrairValorMonetario(textoMensagem);
+      if (resValor.status === 'ausente') {
+        const respPedeVal = '⚠️ Não identifiquei o valor para o suprimento. Por favor, envie o comando com valor e motivo (ex: *suprimento 200 reforço de troco*).';
+        await msg.reply(respPedeVal);
+        await auditarComandoWhatsApp({ tenantId: tenantKey, numero: senderNorm, comando: textoMensagem, resultado: 'solicitado_esclarecimento_valor', detalhes: { motivo: 'valor_ausente' } });
+        return true;
+      }
+      if (resValor.status === 'ambiguo') {
+        const respAmbiguo = '⚠️ Identifiquei múltiplos valores no comando. Para evitar divergência no caixa, por favor informe o comando com um único valor (ex: *suprimento 200 reforço de troco*).';
+        await msg.reply(respAmbiguo);
+        await auditarComandoWhatsApp({ tenantId: tenantKey, numero: senderNorm, comando: textoMensagem, resultado: 'solicitado_esclarecimento_valor', detalhes: { motivo: 'valor_ambiguo', valores: resValor.valores } });
+        return true;
+      }
+
+      const valorFinal = resValor.valor;
+      const rawLimite = Number(tenantState?.cfg?.limiteValorLancamentoWhatsapp);
+      const limiteMax = (!isNaN(rawLimite) && rawLimite > 0) ? rawLimite : 1000.00;
+      if (valorFinal > limiteMax) {
+        const respLimite = `🚫 *Limite Excedido:* O valor informado (${financialEngine.formatarMoeda(valorFinal)}) excede o limite máximo permitido para operações via WhatsApp (${financialEngine.formatarMoeda(limiteMax)}). Por questões de segurança, realize este suprimento diretamente pelo painel do Pátio CRM Web.`;
+        await msg.reply(respLimite);
+        await auditarComandoWhatsApp({
+          tenantId: tenantKey,
+          numero: senderNorm,
+          comando: textoMensagem,
+          resultado: 'negado_limite',
+          detalhes: { acao: 'suprimento', valor: valorFinal, limite: limiteMax }
+        });
+        return true;
+      }
+
+      const matchDesc = textoMensagem.match(/(?:motivo|para|referente\s+a|descrição|descricao)\s+(.+)$/i);
+      const motivoFinal = matchDesc ? matchDesc[1].trim() : (textoMensagem.replace(/^!?suprimento\s*(?:de\s+)?(?:r\$\s*)?[\d.,]+/i, '').trim() || 'Aporte de troco no caixa');
+
+      confirmacoesPendentes.set(chavePendente, {
+        acao: 'suprimento_caixa',
+        descricaoAcao: 'Suprimento de Caixa',
+        valor: valorFinal,
+        descricao: motivoFinal,
+        naturezaOperacao: 'suprimento',
+        formaPagamento: 'dinheiro',
+        expiraEm: Date.now() + CONFIRMACAO_TTL_MS,
+        tenantKey,
+        fromNumber: senderNorm,
+        perfil
+      });
+
+      const msgConfirm =
+        prefixoSubstituicao +
+        `⚠️ *CONFIRMAÇÃO DE SUPRIMENTO DE CAIXA* ⚠️\n\n` +
+        `Por favor, confira os dados do aporte:\n` +
+        `• *Ação:* Suprimento de Caixa (Fundo de Troco)\n` +
+        `• *Valor do Aporte:* ${financialEngine.formatarMoeda(valorFinal)}\n` +
+        `• *Saldo Atual:* ${financialEngine.formatarMoeda(caixaAberto.saldoAtual || 0)}\n` +
+        `• *Saldo Previsto Após Suprimento:* ${financialEngine.formatarMoeda((caixaAberto.saldoAtual || 0) + valorFinal)}\n` +
+        `• *Origem / Motivo:* ${motivoFinal}\n\n` +
+        `Para executar, responda exatamente *CONFIRMAR* ou *SIM* em até 2 minutos.\n` +
+        `Qualquer outra resposta cancelará esta operação.`;
+
+      await msg.reply(msgConfirm);
+      await auditarComandoWhatsApp({ tenantId: tenantKey, numero: senderNorm, comando: textoMensagem, resultado: 'aguardando_confirmacao', detalhes: { acao: 'suprimento_caixa', valor: valorFinal, motivo: motivoFinal } });
       return true;
     }
 

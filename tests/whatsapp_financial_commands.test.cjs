@@ -1363,6 +1363,108 @@ test('WhatsApp Agente Financeiro - Suíte Completa de Leitura e Escrita Controla
     assert.equal(repliesAposEstorno.length, 1);
     assert.match(repliesAposEstorno[0], /400,00/); // Total após abatimento
   });
+
+  await t.test('24. Operações de sangria e suprimento via WhatsApp com confirmação em 2 etapas, saldo e RBAC', async () => {
+    const mockState = criarEstadoMock();
+    const adminNum = '5511999998888';
+    mockState.cfg.adminFones = [adminNum];
+    mockState.caixas = [
+      {
+        id: 'cx-tes-wpp',
+        status: 'aberto',
+        aberto: true,
+        abertoPor: adminNum,
+        saldoInicial: 600,
+        saldoAtual: 600,
+        totalEntradas: 0,
+        totalSaidas: 0,
+        movimentacoesIds: []
+      }
+    ];
+
+    // 24.1 Comando suprimento 200 reforço de troco
+    const repliesSup1 = [];
+    await processarMensagemTexto({
+      from: `${adminNum}@c.us`,
+      author: `${adminNum}@c.us`,
+      body: 'suprimento 200 reforço de troco',
+      reply: async (txt) => { repliesSup1.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: adminNum });
+
+    assert.equal(repliesSup1.length, 1);
+    assert.match(repliesSup1[0], /CONFIRMAÇÃO DE SUPRIMENTO DE CAIXA/i);
+    assert.match(repliesSup1[0], /200,00/);
+    assert.match(repliesSup1[0], /800,00/); // Saldo previsto
+
+    // Confirmação do suprimento
+    const repliesSupConf = [];
+    await processarMensagemTexto({
+      from: `${adminNum}@c.us`,
+      author: `${adminNum}@c.us`,
+      body: 'CONFIRMAR',
+      reply: async (txt) => { repliesSupConf.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: adminNum });
+
+    assert.equal(repliesSupConf.length, 1);
+    assert.match(repliesSupConf[0], /Suprimento de Caixa Realizado com Sucesso/i);
+    assert.equal(mockState.caixas[0].saldoAtual, 800);
+    assert.equal(mockState.movimentos[0].naturezaOperacao, 'suprimento');
+
+    // 24.2 Comando sangria 350 recolhimento cofre
+    const repliesSang1 = [];
+    await processarMensagemTexto({
+      from: `${adminNum}@c.us`,
+      author: `${adminNum}@c.us`,
+      body: 'sangria 350 recolhimento cofre',
+      reply: async (txt) => { repliesSang1.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: adminNum });
+
+    assert.equal(repliesSang1.length, 1);
+    assert.match(repliesSang1[0], /CONFIRMAÇÃO DE SANGRIA DE CAIXA/i);
+    assert.match(repliesSang1[0], /350,00/);
+    assert.match(repliesSang1[0], /450,00/); // Saldo previsto (800 - 350)
+
+    // Confirmação da sangria via SIM
+    const repliesSangConf = [];
+    await processarMensagemTexto({
+      from: `${adminNum}@c.us`,
+      author: `${adminNum}@c.us`,
+      body: 'SIM',
+      reply: async (txt) => { repliesSangConf.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: adminNum });
+
+    assert.equal(repliesSangConf.length, 1);
+    assert.match(repliesSangConf[0], /Sangria de Caixa Realizada com Sucesso/i);
+    assert.equal(mockState.caixas[0].saldoAtual, 450);
+    assert.equal(mockState.movimentos[0].naturezaOperacao, 'sangria');
+
+    // 24.3 Tentativa de sangria excedendo saldo disponível (500 > 450)
+    const repliesInsuf = [];
+    await processarMensagemTexto({
+      from: `${adminNum}@c.us`,
+      author: `${adminNum}@c.us`,
+      body: 'sangria 500 cofre',
+      reply: async (txt) => { repliesInsuf.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: adminNum });
+
+    assert.equal(repliesInsuf.length, 1);
+    assert.match(repliesInsuf[0], /Saldo Insuficiente/i);
+    assert.equal(mockState.caixas[0].saldoAtual, 450);
+
+    // 24.4 Bloqueio de RBAC para mecânico tentando sangria
+    const mecNum = '5511955554444';
+    const repliesMecSang = [];
+    await processarMensagemTexto({
+      from: `${mecNum}@c.us`,
+      author: `${mecNum}@c.us`,
+      body: 'sangria 100 cofre',
+      reply: async (txt) => { repliesMecSang.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: mecNum, isContextAdmin: false });
+
+    assert.equal(repliesMecSang.length, 1);
+    assert.match(repliesMecSang[0], /Acesso Negado|Olá! Sou o assistente/i);
+  });
 });
+
 
 

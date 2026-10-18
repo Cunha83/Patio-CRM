@@ -302,6 +302,12 @@ function calcularKPIsFinanceiros(state = {}, options = {}) {
     qtdEstornados: movsEstornadosPeriodo.length
   };
 
+  // 8. Tesouraria (Sangrias e Suprimentos)
+  const movsSangriaPeriodo = movsPeriodo.filter(m => (m.naturezaOperacao === 'sangria' || m.subtipo === 'sangria') && !m.estornado);
+  const movsSuprimentoPeriodo = movsPeriodo.filter(m => (m.naturezaOperacao === 'suprimento' || m.subtipo === 'suprimento') && !m.estornado);
+  const totalSangrias = +movsSangriaPeriodo.reduce((acc, m) => acc + (Number(m.valor) || 0), 0).toFixed(2);
+  const totalSuprimentos = +movsSuprimentoPeriodo.reduce((acc, m) => acc + (Number(m.valor) || 0), 0).toFixed(2);
+
   return {
     filtro,
     de,
@@ -317,6 +323,12 @@ function calcularKPIsFinanceiros(state = {}, options = {}) {
     saidasPeriodo,
     resultadoLiquidoPeriodo,
     qtdMovimentosPeriodo: movsPeriodo.length,
+
+    // Tesouraria
+    totalSangrias,
+    qtdSangrias: movsSangriaPeriodo.length,
+    totalSuprimentos,
+    qtdSuprimentos: movsSuprimentoPeriodo.length,
 
     // Contas a Receber
     totalReceberAberto,
