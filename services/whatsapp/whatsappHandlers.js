@@ -159,6 +159,7 @@ setInterval(async () => {
 
 // Memória de operações financeiras de escrita aguardando confirmação explícita (TTL estrito de 2 minutos)
 const confirmacoesPendentes = new Map();
+const execucoesEmAndamento = new Set();
 const CONFIRMACAO_TTL_MS = 2 * 60 * 1000;
 
 setInterval(() => {
@@ -520,8 +521,30 @@ async function processarMensagemTexto(msg, {
   const senderNorm = normalizePhone(rawSender) || rawSender;
   const chavePendente = `${tenantKey}:${senderNorm}`;
 
+  // ── DETECÇÃO PRÉVIA DE COMANDOS DE ESCRITA FINANCEIRA ──
+  const isComandoAbrirCaixa = /(?:abrir|iniciar|abertura\s+de)\s*(?:o\s+)?caixa/i.test(textoLower);
+  const isComandoFecharCaixa = /(?:fechar|encerrar|fechamento\s+de)\s*(?:o\s+)?caixa/i.test(textoLower);
+  const isComandoEntrada = /(?:lançar|lancar|registrar)\s*(?:uma\s+)?(?:entrada|receita|suprimento)/i.test(textoLower) || /(?:suprimento|entrada)\s+de\s+caixa/i.test(textoLower);
+  const isComandoSaida = /(?:lançar|lancar|registrar)\s*(?:uma\s+)?(?:saída|saida|despesa|sangria)/i.test(textoLower) || /(?:sangria|saída|saida)\s+de\s+caixa/i.test(textoLower);
+  const isComandoEscrita = isComandoAbrirCaixa || isComandoFecharCaixa || isComandoEntrada || isComandoSaida;
+
+  // Sobrescrita de pendência se o mesmo administrador enviar um novo comando de escrita
+  let prefixoSubstituicao = '';
+  if (isComandoEscrita && confirmacoesPendentes.has(chavePendente)) {
+    const pendenteAnt = confirmacoesPendentes.get(chavePendente);
+    confirmacoesPendentes.delete(chavePendente);
+    await auditarComandoWhatsApp({
+      tenantId: tenantKey,
+      numero: senderNorm,
+      comando: textoMensagem,
+      resultado: 'substituido_por_novo_comando',
+      detalhes: { acaoAnterior: pendenteAnt.acao, valorAnterior: pendenteAnt.valor }
+    });
+    prefixoSubstituicao = `ℹ️ *Aviso:* A operação anterior não confirmada (${pendenteAnt.descricaoAcao || pendenteAnt.acao}) foi substituída por esta nova.\n\n`;
+  }
+
   // ── 0. CONFIRMAÇÃO OU CANCELAMENTO DE AÇÃO FINANCEIRA PENDENTE ──
-  if (confirmacoesPendentes.has(chavePendente)) {
+  if (!isComandoEscrita && confirmacoesPendentes.has(chavePendente)) {
     const pendente = confirmacoesPendentes.get(chavePendente);
     const agora = Date.now();
 
@@ -539,76 +562,113 @@ async function processarMensagemTexto(msg, {
       return true;
     }
 
-    if (textoMensagem.toUpperCase() === 'CONFIRMAR') {
+    const textoUpper = textoMensagem.toUpperCase().trim();
+    const isConfirmacao = textoUpper === 'CONFIRMAR' || textoUpper === 'SIM';
+
+    if (isConfirmacao) {
+      // Lock atômico contra concorrência/duplo clique
+      if (execucoesEmAndamento.has(chavePendente)) {
+        console.warn(`[WhatsApp Confirmação] Execução concorrente ignorada para ${chavePendente}`);
+        return true;
+      }
+      execucoesEmAndamento.add(chavePendente);
       confirmacoesPendentes.delete(chavePendente);
+
       let resOp = null;
       let msgSucesso = '';
-
-      if (pendente.acao === 'abrir_caixa') {
-        resOp = financialAnalystService.abrirCaixa(tenantState, {
-          tenantId: tenantKey,
-          saldoInicial: pendente.valor,
-          operador: senderNorm,
-          operadorNome: pendente.perfil?.role || 'Operador'
-        });
-        if (resOp.ok) {
-          msgSucesso = `✅ *Caixa Aberto com Sucesso!*\n\n• Saldo Inicial: ${financialEngine.formatarMoeda(pendente.valor)}\n• Responsável: ${senderNorm}\n• Turno: #${resOp.caixa.id}`;
-        } else {
-          msgSucesso = `⚠️ Não foi possível abrir o caixa: ${resOp.error}`;
-        }
-      } else if (pendente.acao === 'fechar_caixa') {
-        resOp = financialAnalystService.fecharCaixa(tenantState, {
-          tenantId: tenantKey,
-          operador: senderNorm,
-          operadorNome: pendente.perfil?.role || 'Operador'
-        });
-        if (resOp.ok) {
-          const rf = resOp.resumoFechamento || {};
-          msgSucesso = `🔒 *Caixa Fechado com Sucesso!*\n\n• Saldo Final: ${financialEngine.formatarMoeda(rf.saldoFinalCalculado || resOp.caixaFechado?.saldoAtual || 0)}\n• Entradas: ${financialEngine.formatarMoeda(rf.totalEntradas || 0)}\n• Saídas: ${financialEngine.formatarMoeda(rf.totalSaidas || 0)}\n• Responsável: ${senderNorm}`;
-        } else {
-          msgSucesso = `⚠️ Não foi possível fechar o caixa: ${resOp.error}`;
-        }
-      } else if (pendente.acao === 'lancar_entrada') {
-        resOp = financialAnalystService.registrarMovimentacao(tenantState, {
-          tenantId: tenantKey,
-          tipo: 'entrada',
-          valor: pendente.valor,
-          descricao: pendente.descricao,
-          operador: senderNorm
-        });
-        if (resOp.ok) {
-          msgSucesso = `✅ *Entrada Registrada com Sucesso!*\n\n• Valor: ${financialEngine.formatarMoeda(pendente.valor)}\n• Descrição: ${pendente.descricao}\n• Saldo Atual do Caixa: ${financialEngine.formatarMoeda(resOp.saldoCaixaAtual || 0)}`;
-        } else {
-          msgSucesso = `⚠️ Não foi possível registrar a entrada: ${resOp.error}`;
-        }
-      } else if (pendente.acao === 'lancar_saida') {
-        resOp = financialAnalystService.registrarMovimentacao(tenantState, {
-          tenantId: tenantKey,
-          tipo: 'saida',
-          valor: pendente.valor,
-          descricao: pendente.descricao,
-          operador: senderNorm
-        });
-        if (resOp.ok) {
-          msgSucesso = `🔴 *Saída Registrada com Sucesso!*\n\n• Valor: ${financialEngine.formatarMoeda(pendente.valor)}\n• Descrição: ${pendente.descricao}\n• Saldo Atual do Caixa: ${financialEngine.formatarMoeda(resOp.saldoCaixaAtual || 0)}`;
-        } else {
-          msgSucesso = `⚠️ Não foi possível registrar a saída: ${resOp.error}`;
-        }
-      }
+      const agoraIso = new Date().toISOString();
 
       try {
-        await salvarEstado(tenantKey, tenantState);
-      } catch (errPersist) {
-        console.warn('[WhatsApp Handlers] Falha tolerante ao persistir estado:', errPersist.message);
+        if (pendente.acao === 'abrir_caixa') {
+          resOp = financialAnalystService.abrirCaixa(tenantState, {
+            tenantId: tenantKey,
+            saldoInicial: pendente.valor,
+            operador: senderNorm,
+            operadorNome: pendente.perfil?.role || 'Operador',
+            origem: 'whatsapp',
+            canal: 'whatsapp',
+            autorNumero: senderNorm,
+            confirmadoEm: agoraIso
+          });
+          if (resOp.ok) {
+            msgSucesso = `✅ *Caixa Aberto com Sucesso!*\n\n• Saldo Inicial: ${financialEngine.formatarMoeda(pendente.valor)}\n• Responsável: ${senderNorm}\n• Turno: #${resOp.caixa.id}`;
+          } else {
+            msgSucesso = `⚠️ Não foi possível abrir o caixa: ${resOp.error}`;
+          }
+        } else if (pendente.acao === 'fechar_caixa') {
+          resOp = financialAnalystService.fecharCaixa(tenantState, {
+            tenantId: tenantKey,
+            operador: senderNorm,
+            operadorNome: pendente.perfil?.role || 'Operador',
+            origem: 'whatsapp',
+            canal: 'whatsapp',
+            autorNumero: senderNorm,
+            confirmadoEm: agoraIso
+          });
+          if (resOp.ok) {
+            const rf = resOp.resumoFechamento || {};
+            msgSucesso = `🔒 *Caixa Fechado com Sucesso!*\n\n• Saldo Final: ${financialEngine.formatarMoeda(rf.saldoFinalCalculado || resOp.caixaFechado?.saldoAtual || 0)}\n• Entradas: ${financialEngine.formatarMoeda(rf.totalEntradas || 0)}\n• Saídas: ${financialEngine.formatarMoeda(rf.totalSaidas || 0)}\n• Responsável: ${senderNorm}`;
+          } else {
+            msgSucesso = `⚠️ Não foi possível fechar o caixa: ${resOp.error}`;
+          }
+        } else if (pendente.acao === 'lancar_entrada') {
+          resOp = financialAnalystService.registrarMovimentacao(tenantState, {
+            tenantId: tenantKey,
+            tipo: 'entrada',
+            valor: pendente.valor,
+            descricao: pendente.descricao,
+            operador: senderNorm,
+            origem: 'whatsapp',
+            canal: 'whatsapp',
+            autorNumero: senderNorm,
+            confirmadoEm: agoraIso
+          });
+          if (resOp.ok) {
+            msgSucesso = `✅ *Entrada Registrada com Sucesso!*\n\n• Valor: ${financialEngine.formatarMoeda(pendente.valor)}\n• Descrição: ${pendente.descricao}\n• Saldo Atual do Caixa: ${financialEngine.formatarMoeda(resOp.saldoCaixaAtual || 0)}`;
+          } else {
+            msgSucesso = `⚠️ Não foi possível registrar a entrada: ${resOp.error}`;
+          }
+        } else if (pendente.acao === 'lancar_saida') {
+          resOp = financialAnalystService.registrarMovimentacao(tenantState, {
+            tenantId: tenantKey,
+            tipo: 'saida',
+            valor: pendente.valor,
+            descricao: pendente.descricao,
+            operador: senderNorm,
+            origem: 'whatsapp',
+            canal: 'whatsapp',
+            autorNumero: senderNorm,
+            confirmadoEm: agoraIso
+          });
+          if (resOp.ok) {
+            msgSucesso = `🔴 *Saída Registrada com Sucesso!*\n\n• Valor: ${financialEngine.formatarMoeda(pendente.valor)}\n• Descrição: ${pendente.descricao}\n• Saldo Atual do Caixa: ${financialEngine.formatarMoeda(resOp.saldoCaixaAtual || 0)}`;
+          } else {
+            msgSucesso = `⚠️ Não foi possível registrar a saída: ${resOp.error}`;
+          }
+        }
+
+        try {
+          await salvarEstado(tenantKey, tenantState);
+        } catch (errPersist) {
+          console.warn('[WhatsApp Handlers] Falha tolerante ao persistir estado:', errPersist.message);
+        }
+        await msg.reply(msgSucesso);
+        await auditarComandoWhatsApp({
+          tenantId: tenantKey,
+          numero: senderNorm,
+          comando: textoMensagem,
+          resultado: resOp && resOp.ok ? 'sucesso' : 'falha_execucao',
+          detalhes: {
+            acao: pendente.acao,
+            valor: pendente.valor,
+            descricao: pendente.descricao,
+            origem: 'whatsapp',
+            confirmadoEm: agoraIso
+          }
+        });
+      } finally {
+        execucoesEmAndamento.delete(chavePendente);
       }
-      await msg.reply(msgSucesso);
-      await auditarComandoWhatsApp({
-        tenantId: tenantKey,
-        numero: senderNorm,
-        comando: 'CONFIRMAR',
-        resultado: resOp && resOp.ok ? 'sucesso' : 'falha_execucao',
-        detalhes: { acao: pendente.acao, valor: pendente.valor, descricao: pendente.descricao }
-      });
       return true;
     } else {
       // Qualquer outra resposta cancela imediatamente
@@ -627,12 +687,7 @@ async function processarMensagemTexto(msg, {
   }
 
   // ── COMANDOS DE ESCRITA FINANCEIRA (ABRIR/FECHAR CAIXA, LANÇAR ENTRADA/SAÍDA) ──
-  const isComandoAbrirCaixa = /(?:abrir|iniciar|abertura\s+de)\s*(?:o\s+)?caixa/i.test(textoLower);
-  const isComandoFecharCaixa = /(?:fechar|encerrar|fechamento\s+de)\s*(?:o\s+)?caixa/i.test(textoLower);
-  const isComandoEntrada = /(?:lançar|lancar|registrar)\s*(?:uma\s+)?(?:entrada|receita|suprimento)/i.test(textoLower) || /(?:suprimento|entrada)\s+de\s+caixa/i.test(textoLower);
-  const isComandoSaida = /(?:lançar|lancar|registrar)\s*(?:uma\s+)?(?:saída|saida|despesa|sangria)/i.test(textoLower) || /(?:sangria|saída|saida)\s+de\s+caixa/i.test(textoLower);
-
-  if (isComandoAbrirCaixa || isComandoFecharCaixa || isComandoEntrada || isComandoSaida) {
+  if (isComandoEscrita) {
     // 0. Flag comandosFinanceirosEscrita (padrão false, editável por /config-relatorio)
     const escritaAtiva = Boolean(tenantState?.cfg?.comandosFinanceirosEscrita);
     if (!escritaAtiva) {
@@ -742,12 +797,13 @@ async function processarMensagemTexto(msg, {
       });
 
       const msgConfirm =
+        prefixoSubstituicao +
         `⚠️ *CONFIRMAÇÃO DE OPERAÇÃO FINANCEIRA* ⚠️\n\n` +
         `Por favor, confira os dados da operação:\n` +
         `• *Ação:* Abertura de Caixa\n` +
         `• *Valor:* ${financialEngine.formatarMoeda(valorFinal)}\n` +
         `• *Descrição:* Abertura de caixa com saldo inicial\n\n` +
-        `Para executar, responda exatamente *CONFIRMAR* em até 2 minutos.\n` +
+        `Para executar, responda exatamente *CONFIRMAR* ou *SIM* em até 2 minutos.\n` +
         `Qualquer outra resposta cancelará esta operação.`;
 
       await msg.reply(msgConfirm);
@@ -777,12 +833,13 @@ async function processarMensagemTexto(msg, {
       });
 
       const msgConfirm =
+        prefixoSubstituicao +
         `⚠️ *CONFIRMAÇÃO DE OPERAÇÃO FINANCEIRA* ⚠️\n\n` +
         `Por favor, confira os dados da operação:\n` +
         `• *Ação:* Fechamento de Caixa\n` +
         `• *Valor em Caixa:* ${financialEngine.formatarMoeda(valorFinal)}\n` +
         `• *Descrição:* Fechamento do Caixa #${caixaAberto.id}\n\n` +
-        `Para executar, responda exatamente *CONFIRMAR* em até 2 minutos.\n` +
+        `Para executar, responda exatamente *CONFIRMAR* ou *SIM* em até 2 minutos.\n` +
         `Qualquer outra resposta cancelará esta operação.`;
 
       await msg.reply(msgConfirm);
@@ -845,12 +902,13 @@ async function processarMensagemTexto(msg, {
       });
 
       const msgConfirm =
+        prefixoSubstituicao +
         `⚠️ *CONFIRMAÇÃO DE OPERAÇÃO FINANCEIRA* ⚠️\n\n` +
         `Por favor, confira os dados da operação:\n` +
         `• *Ação:* Lançar Entrada\n` +
         `• *Valor:* ${financialEngine.formatarMoeda(valorFinal)}\n` +
         `• *Descrição:* ${descricaoFinal}\n\n` +
-        `Para executar, responda exatamente *CONFIRMAR* em até 2 minutos.\n` +
+        `Para executar, responda exatamente *CONFIRMAR* ou *SIM* em até 2 minutos.\n` +
         `Qualquer outra resposta cancelará esta operação.`;
 
       await msg.reply(msgConfirm);
@@ -913,12 +971,13 @@ async function processarMensagemTexto(msg, {
       });
 
       const msgConfirm =
+        prefixoSubstituicao +
         `⚠️ *CONFIRMAÇÃO DE OPERAÇÃO FINANCEIRA* ⚠️\n\n` +
         `Por favor, confira os dados da operação:\n` +
         `• *Ação:* Lançar Saída\n` +
         `• *Valor:* ${financialEngine.formatarMoeda(resValor.valor)}\n` +
         `• *Descrição:* ${descricaoFinal}\n\n` +
-        `Para executar, responda exatamente *CONFIRMAR* em até 2 minutos.\n` +
+        `Para executar, responda exatamente *CONFIRMAR* ou *SIM* em até 2 minutos.\n` +
         `Qualquer outra resposta cancelará esta operação.`;
 
       await msg.reply(msgConfirm);
@@ -1790,6 +1849,7 @@ module.exports = {
   rateLimitMap,
   mensagensProcessadas,
   confirmacoesPendentes,
+  execucoesEmAndamento,
   verificarIdempotencia,
   registrarIdempotencia,
   extrairValorMonetario,

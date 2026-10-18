@@ -104,6 +104,10 @@ function abrirCaixa(state = {}, payload = {}) {
     totalMovimentacoes: 0,
     movimentacoesIds: [],
     observacoes: String(payload.observacoes || '').trim(),
+    origem: payload.origem || 'sistema',
+    canal: payload.canal || (payload.origem === 'whatsapp' ? 'whatsapp' : 'web'),
+    autorNumero: payload.autorNumero || null,
+    confirmadoEm: payload.confirmadoEm || null,
     fechamento: null
   };
 
@@ -187,6 +191,10 @@ function registrarMovimentacao(state = {}, payload = {}) {
     clienteId: payload.clienteId || null,
     fornecedorId: payload.fornecedorId || null,
     operador: String(payload.operador || payload.actorId || 'operador'),
+    origem: payload.origem || 'sistema',
+    canal: payload.canal || (payload.origem === 'whatsapp' ? 'whatsapp' : 'web'),
+    autorNumero: payload.autorNumero || null,
+    confirmadoEm: payload.confirmadoEm || null,
     criadoEm: agoraInfo.dataObj.toISOString()
   };
 
@@ -310,6 +318,10 @@ function fecharCaixa(state = {}, payload = {}) {
     valoresInformados,
     diferenca,
     statusConferencia,
+    origemFechamento: payload.origem || 'sistema',
+    canalFechamento: payload.canal || (payload.origem === 'whatsapp' ? 'whatsapp' : 'web'),
+    autorNumero: payload.autorNumero || null,
+    confirmadoEm: payload.confirmadoEm || null,
     observacoes: String(payload.observacoes || '').trim()
   };
 

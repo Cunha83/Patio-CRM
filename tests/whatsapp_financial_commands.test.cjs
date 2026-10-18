@@ -715,5 +715,120 @@ test('WhatsApp Agente Financeiro - Suíte Completa de Leitura e Escrita Controla
     assert.match(repliesAudio[0], /texto digitado/i);
     assert.ok(confirmacoesPendentes.has(chavePendente), 'Pendência não deve ser consumida nem afetada por áudio');
   });
+
+  // ── 15. AUDITORIA DE CONCORRÊNCIA, TTL, SOBRESCRITA E RASTREABILIDADE (TAREFA 1) ─
+  await t.test('15. Confirmação financeira: TTL com SIM, sobrescrita de comandos encadeados, atomicidade contra duplo clique e metadados', async () => {
+    const mockState = criarEstadoMock();
+    const numeroAdmin = '5511999998888';
+    const chave = `default:${numeroAdmin}`;
+
+    // A. Tentativa de confirmar ('SIM') após expiração do TTL: deve bloquear e limpar pendência
+    confirmacoesPendentes.clear();
+    await processarMensagemTexto({
+      from: `${numeroAdmin}@c.us`,
+      author: `${numeroAdmin}@c.us`,
+      body: 'abrir caixa com R$ 150,00',
+      reply: async () => {}
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: numeroAdmin });
+
+    assert.ok(confirmacoesPendentes.has(chave));
+    // Força expiração do TTL
+    confirmacoesPendentes.get(chave).expiraEm = Date.now() - 5000;
+
+    const repliesSimExpirado = [];
+    await processarMensagemTexto({
+      from: `${numeroAdmin}@c.us`,
+      author: `${numeroAdmin}@c.us`,
+      body: 'SIM',
+      reply: async (txt) => { repliesSimExpirado.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: numeroAdmin });
+
+    assert.equal(repliesSimExpirado.length, 1);
+    assert.match(repliesSimExpirado[0], /prazo .* confirmação expirou/i);
+    assert.equal(confirmacoesPendentes.has(chave), false, 'Pendência expirada deve ser limpa');
+    assert.equal(financialAnalystService.obterCaixaAberto(mockState, 'default'), null);
+
+    // B. Envio de dois comandos financeiros seguidos antes do SIM (apenas o segundo deve permanecer)
+    confirmacoesPendentes.clear();
+    const repliesPrimeiro = [];
+    await processarMensagemTexto({
+      from: `${numeroAdmin}@c.us`,
+      author: `${numeroAdmin}@c.us`,
+      body: 'abrir caixa com R$ 200,00',
+      reply: async (txt) => { repliesPrimeiro.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: numeroAdmin });
+
+    assert.ok(confirmacoesPendentes.has(chave));
+    assert.equal(confirmacoesPendentes.get(chave).valor, 200);
+
+    // Segundo comando antes da confirmação
+    const repliesSegundo = [];
+    await processarMensagemTexto({
+      from: `${numeroAdmin}@c.us`,
+      author: `${numeroAdmin}@c.us`,
+      body: 'abrir caixa com R$ 350,00',
+      reply: async (txt) => { repliesSegundo.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: numeroAdmin });
+
+    assert.ok(confirmacoesPendentes.has(chave));
+    assert.equal(confirmacoesPendentes.get(chave).valor, 350, 'A pendência deve ter sido substituída pelo valor do segundo comando');
+    assert.match(repliesSegundo[0], /substituída por esta nova/i, 'Deve avisar que a pendência anterior foi substituída');
+    assert.match(repliesSegundo[0], /350,00/);
+
+    // Confirma o segundo comando via 'SIM'
+    const repliesConfirmarSegundo = [];
+    await processarMensagemTexto({
+      from: `${numeroAdmin}@c.us`,
+      author: `${numeroAdmin}@c.us`,
+      body: 'SIM',
+      reply: async (txt) => { repliesConfirmarSegundo.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: numeroAdmin });
+
+    assert.match(repliesConfirmarSegundo[0], /Caixa Aberto com Sucesso/i);
+    const caixaAberto = financialAnalystService.obterCaixaAberto(mockState, 'default');
+    assert.ok(caixaAberto);
+    assert.equal(caixaAberto.saldoInicial, 350);
+    assert.equal(caixaAberto.origem, 'whatsapp', 'Deve registrar origem whatsapp no caixa');
+    assert.equal(caixaAberto.autorNumero, numeroAdmin, 'Deve registrar autorNumero no caixa');
+
+    // C. Disparo concorrente/duplicado de 'SIM' para a mesma pendência (deve efetivar apenas 1 lançamento)
+    confirmacoesPendentes.clear();
+    await processarMensagemTexto({
+      from: `${numeroAdmin}@c.us`,
+      author: `${numeroAdmin}@c.us`,
+      body: 'lançar entrada de R$ 80,00 adiantamento',
+      reply: async () => {}
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: numeroAdmin });
+
+    assert.ok(confirmacoesPendentes.has(chave));
+    const qtdMovimentosAntes = (mockState.movimentos || []).length;
+
+    // Dispara dois SIM quase em paralelo simulando duplo clique ou reentrega simultânea
+    const repliesConc1 = [];
+    const repliesConc2 = [];
+    const p1 = processarMensagemTexto({
+      from: `${numeroAdmin}@c.us`,
+      author: `${numeroAdmin}@c.us`,
+      body: 'SIM',
+      reply: async (txt) => { repliesConc1.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: numeroAdmin });
+
+    const p2 = processarMensagemTexto({
+      from: `${numeroAdmin}@c.us`,
+      author: `${numeroAdmin}@c.us`,
+      body: 'SIM',
+      reply: async (txt) => { repliesConc2.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: numeroAdmin });
+
+    await Promise.all([p1, p2]);
+
+    const qtdMovimentosDepois = (mockState.movimentos || []).length;
+    assert.equal(qtdMovimentosDepois, qtdMovimentosAntes + 1, 'Deve efetivar estritamente 1 lançamento mesmo com confirmações concorrentes');
+    const ultimaMov = mockState.movimentos[0];
+    assert.equal(ultimaMov.valor, 80);
+    assert.equal(ultimaMov.origem, 'whatsapp', 'Metadado de origem deve ser whatsapp');
+    assert.equal(ultimaMov.autorNumero, numeroAdmin, 'Metadado de autorNumero deve ser o telefone normalizado');
+    assert.ok(ultimaMov.confirmadoEm, 'Deve registrar timestamp de confirmação');
+  });
 });
 
