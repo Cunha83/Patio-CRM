@@ -1418,6 +1418,12 @@ async function tratarMensagemWhatsApp(msg, wppClient) {
 
   const ai = getAiClient();
   if (base64Audio) {
+    const chavePendente = `${tenantKey}:${normalizePhone(fromNumber) || fromNumber}`;
+    if (confirmacoesPendentes.has(chavePendente)) {
+      await msg.reply('⚠️ *Operação Financeira Pendente:* Para confirmar ou cancelar lançamentos financeiros, por favor envie o comando em texto digitado (*CONFIRMAR* ou *CANCELAR*). Comandos de áudio não são aceitos para confirmação.');
+      return;
+    }
+
     try {
       console.log(`[WhatsApp] Processando áudio de voz recebido de ${fromNumber} via VoiceActionEngine...`);
       const resVoz = await voiceActionEngine.interpretarEExecutar({
@@ -1436,6 +1442,12 @@ async function tratarMensagemWhatsApp(msg, wppClient) {
         state: tenantState,
         aiClient: ai
       });
+
+      // Se o áudio tentar qualquer ação financeira de escrita (abrir caixa, fechar caixa, movimentação)
+      if (resVoz && (resVoz.acao === 'abrir_caixa' || resVoz.acao === 'fechar_caixa' || resVoz.acao === 'lancar_entrada' || resVoz.acao === 'lancar_saida' || resVoz.acao === 'confirmar_acao')) {
+        await msg.reply('🔒 *Operações Financeiras por Áudio Não Permitidas:* Para garantir a segurança e a precisão contábil, lançamentos de caixa e confirmações financeiras devem ser enviados exclusivamente por texto digitado.');
+        return;
+      }
 
       if (resVoz.ok && !resVoz.pendenteConfirmacao && resVoz.acao !== 'consultar_status' && resVoz.acao !== 'duvida_geral') {
         await msg.reply(

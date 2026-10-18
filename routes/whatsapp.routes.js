@@ -334,14 +334,16 @@ router.post('/api/whatsapp/config-grupos', authMiddleware, async (req, res) => {
     const targetState = await getOrLoadState(req);
     if (!targetState) return res.status(404).json({ error: 'Tenant não encontrado.' });
     if (!targetState.cfg) targetState.cfg = {};
+    const currentCfg = targetState.cfg || {};
 
     const { grupoAdminId, grupoOperacaoId, horaRelatorio, envioAutomatico, apenasDiasUteis, avisarCaixaWhatsapp } = req.body || {};
 
     const role = (req.securityContext?.role || '').toLowerCase();
     const isDono = ['dono', 'tenant_admin', 'owner', 'platform_admin', 'admin'].includes(role);
 
-    // Restringe avisarCaixaWhatsapp e grupoAdminId ao perfil Dono/Owner
-    if (avisarCaixaWhatsapp !== undefined && !isDono) {
+    // Restringe avisarCaixaWhatsapp ao perfil Dono/Owner se houver mutação de valor
+    const mudouAvisarCaixa = avisarCaixaWhatsapp !== undefined && Boolean(avisarCaixaWhatsapp) !== Boolean(currentCfg.avisarCaixaWhatsapp);
+    if (mudouAvisarCaixa && !isDono) {
       return res.status(403).json({
         error: 'Acesso negado: a alteração de aviso de caixa via WhatsApp é restrita ao perfil dono.'
       });
@@ -452,15 +454,20 @@ router.post('/api/whatsapp/config-relatorio', authMiddleware, async (req, res) =
       limiteValorLancamentoWhatsapp
     } = req.body || {};
 
+    const targetState = (await getOrLoadState(req)) || {};
+    const currentCfg = targetState.cfg || {};
+
     const role = (req.securityContext?.role || '').toLowerCase();
     const isDono = ['dono', 'tenant_admin', 'owner', 'platform_admin', 'admin'].includes(role);
 
-    // Restringe comandosFinanceirosEscrita, limiteValorLancamentoWhatsapp, adminFones e avisarCaixaWhatsapp ao Dono
-    const tentouModificarSensiveis =
-      comandosFinanceirosEscrita !== undefined ||
-      limiteValorLancamentoWhatsapp !== undefined ||
-      adminFones !== undefined ||
-      avisarCaixaWhatsapp !== undefined;
+    // Detecta mutação real comparando com a configuração atual
+    const { isDeepStrictEqual } = require('node:util');
+    const mudouEscrita = comandosFinanceirosEscrita !== undefined && Boolean(comandosFinanceirosEscrita) !== Boolean(currentCfg.comandosFinanceirosEscrita);
+    const mudouAvisarCaixa = avisarCaixaWhatsapp !== undefined && Boolean(avisarCaixaWhatsapp) !== Boolean(currentCfg.avisarCaixaWhatsapp);
+    const mudouLimite = limiteValorLancamentoWhatsapp !== undefined && Number(limiteValorLancamentoWhatsapp) !== Number(currentCfg.limiteValorLancamentoWhatsapp || 1000);
+    const mudouAdminFones = adminFones !== undefined && !isDeepStrictEqual(adminFones, currentCfg.adminFones || []);
+
+    const tentouModificarSensiveis = mudouEscrita || mudouAvisarCaixa || mudouLimite || mudouAdminFones;
 
     if (tentouModificarSensiveis && !isDono) {
       return res.status(403).json({

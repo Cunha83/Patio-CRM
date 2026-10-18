@@ -110,8 +110,26 @@ test('Agendador de Relatório Diário do WhatsApp: Horário, Idempotência, Flag
   });
 
   // 4. Teste de Tolerância a WhatsApp Desconectado: registra no log e limita tentativas sem quebrar
-  await t.test('4. WhatsApp offline: registra falha de conexão, respeita limite de tentativas e não lança exceção', async () => {
-    // Garante que está offline
+  await t.test('4. WhatsApp offline vs desabilitado por flag: flag pula em silêncio; offline habilitado mantém retry', async () => {
+    // A. WhatsApp desabilitado por flag -> pula em silêncio sem acumular tentativas de falha
+    process.env.DISABLE_WHATSAPP = 'true';
+    _tentativasFalhaPorTenant.clear();
+
+    const resFlag = await executarCicloDisparoRelatorioDiario({
+      horaRef: '07:30',
+      dryRun: false,
+      force: true
+    });
+    const rFlag = resFlag.find(r => r.tenantKey === tenantAlfa);
+    assert.equal(rFlag.disparado, false);
+    assert.equal(rFlag.motivo, 'whatsapp_desabilitado_por_flag');
+    assert.equal(_tentativasFalhaPorTenant.get(tenantAlfa)?.tentativas || 0, 0, 'Não deve incrementar tentativas de erro quando desligado por flag');
+
+    // B. WhatsApp habilitado (DISABLE_WHATSAPP removido/false) porém offline -> mantém tentativas e retry
+    delete process.env.DISABLE_WHATSAPP;
+    const oldDisableInt = process.env.DISABLE_INTEGRATIONS;
+    delete process.env.DISABLE_INTEGRATIONS; // Permite simular WhatsApp ativo na config de ambiente
+
     setWppClient(null);
     wppStatus.status = 'desconectado';
     _tentativasFalhaPorTenant.clear();
@@ -155,11 +173,16 @@ test('Agendador de Relatório Diário do WhatsApp: Horário, Idempotência, Flag
     assert.equal(r4.disparado, false);
     assert.equal(r4.motivo, 'whatsapp_desconectado_limite_atingido');
     assert.equal(r4.tentativas, 3);
+
+    // Restaura ambiente
+    if (oldDisableInt !== undefined) process.env.DISABLE_INTEGRATIONS = oldDisableInt;
   });
 
   // 5. Teste de Idempotência Durável: com mock seguro (sem rede), envia uma vez e bloqueia na segunda mesmo após restart
   await t.test('5. Idempotência durável: nunca envia o mesmo relatório duas vezes no mesmo dia (inclusive pós-restart)', async () => {
     const diaHoje = '2026-10-17';
+    delete process.env.DISABLE_INTEGRATIONS;
+    delete process.env.DISABLE_WHATSAPP;
 
     // Mock seguro do WhatsApp em memória (apenas registra chamadas, nunca dispara socket ou requisição)
     let mensagensEnviadas = [];
@@ -488,6 +511,51 @@ test('Agendador de Relatório Diário do WhatsApp: Horário, Idempotência, Flag
     const auditDetails = JSON.parse(auditRows[0].details_json || '{}');
     assert.equal(auditDetails.role, 'dono');
     assert.equal(auditDetails.changes?.limiteValorLancamentoWhatsapp, 2500);
+
+    // D. Financeiro enviando o payload completo com valores IGUAIS aos atuais: passa com 200 OK sem 403
+    let statusFinIgual = null;
+    let jsonFinIgual = null;
+    const reqFinIgual = {
+      securityContext: { role: 'financeiro', actorId: 'user_fin', tenantId: tenantAlfa },
+      headers: { 'x-tenant-id': tenantAlfa },
+      body: {
+        horaRelatorio: '08:00', // Campo permitido alterado
+        comandosFinanceirosEscrita: true, // Mesmo valor já cadastrado
+        limiteValorLancamentoWhatsapp: 2500.00, // Mesmo valor
+        adminFones: ['5511999990001', '5511999990002'], // Mesmos fones
+        avisarCaixaWhatsapp: true // Mesmo valor
+      }
+    };
+    const resFinIgual = {
+      status(c) { statusFinIgual = c; return this; },
+      json(j) { jsonFinIgual = j; return this; }
+    };
+    await handler(reqFinIgual, resFinIgual);
+    assert.equal(statusFinIgual || 200, 200, 'Financeiro enviando valores idênticos nos campos sensíveis deve receber HTTP 200');
+    assert.equal(jsonFinIgual?.success, true);
+    assert.equal(jsonFinIgual?.cfg?.horaRelatorioDiario, '08:00');
+
+    // E. Porta dos fundos (/api/estado ou stateRepository): Não-dono tenta sobrescrever cfg diretamente
+    const { persistState, getState } = require('../lib/repository/stateRepository');
+    const currentState = await getState(tenantAlfa);
+    assert.equal(currentState.cfg.limiteValorLancamentoWhatsapp, 2500);
+
+    // Financeiro tenta injetar limite de R$ 99.999 via substituição de estado
+    const maliciousPayload = JSON.parse(JSON.stringify(currentState));
+    maliciousPayload.cfg.limiteValorLancamentoWhatsapp = 99999;
+    maliciousPayload.cfg.comandosFinanceirosEscrita = false;
+
+    const resPersist = await persistState({
+      tenantId: tenantAlfa,
+      actorId: 'user_financeiro_attacker',
+      role: 'financeiro',
+      permissions: ['financial:write', 'financial:read']
+    }, maliciousPayload, { authorizeReplacement: true });
+
+    assert.equal(resPersist.ok, true);
+    const updatedState = await getState(tenantAlfa);
+    assert.equal(updatedState.cfg.limiteValorLancamentoWhatsapp, 2500, 'Servidor deve preservar o limite atual ignorando a tentativa de mutação');
+    assert.equal(updatedState.cfg.comandosFinanceirosEscrita, true, 'Servidor deve preservar o flag de escrita ignorando a tentativa de mutação');
   });
 
   // Limpeza

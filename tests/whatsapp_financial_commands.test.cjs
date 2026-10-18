@@ -680,4 +680,40 @@ test('WhatsApp Agente Financeiro - Suíte Completa de Leitura e Escrita Controla
     const auditRows = await all("SELECT * FROM security_audit_log WHERE details_json LIKE '%negado_limite%'");
     assert.ok(auditRows.length >= 3, 'Deve registrar eventos de auditoria com resultado negado_limite');
   });
+
+  // ── 14. BLOQUEIO DE ÁUDIO/VOZ EM OPERAÇÕES FINANCEIRAS DE ESCRITA E CONFIRMAR ─
+  await t.test('14. Bloqueio de áudio/voz: escrita e CONFIRMAR só por texto digitado', async () => {
+    const { tratarMensagemWhatsApp } = require('../services/whatsapp/whatsappHandlers');
+    const mockState = criarEstadoMock();
+    const numeroAdmin = '5511999998888';
+
+    // 14.1 Simula recebimento de áudio quando há pendência de confirmação
+    const chavePendente = `default:${numeroAdmin}`;
+    confirmacoesPendentes.set(chavePendente, {
+      acao: 'lancar_entrada',
+      valor: 200,
+      expiraEm: Date.now() + 60000,
+      fromNumber: numeroAdmin
+    });
+
+    const repliesAudio = [];
+    const msgAudio = {
+      id: { _serialized: 'msg_audio_confirm_attempt' },
+      from: `${numeroAdmin}@c.us`,
+      author: `${numeroAdmin}@c.us`,
+      hasMedia: true,
+      type: 'audio',
+      body: '',
+      downloadMedia: async () => ({ data: 'fake_audio_base64_data', mimetype: 'audio/ogg' }),
+      reply: async (txt) => { repliesAudio.push(txt); }
+    };
+
+    await tratarMensagemWhatsApp(msgAudio, null);
+
+    assert.equal(repliesAudio.length, 1);
+    assert.match(repliesAudio[0], /Operação Financeira Pendente/i);
+    assert.match(repliesAudio[0], /texto digitado/i);
+    assert.ok(confirmacoesPendentes.has(chavePendente), 'Pendência não deve ser consumida nem afetada por áudio');
+  });
 });
+

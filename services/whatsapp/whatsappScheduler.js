@@ -160,6 +160,21 @@ async function executarCicloDisparoRelatorioDiario(options = {}) {
       }
 
       // 7. Checagem de disponibilidade do WhatsApp sem derrubar o servidor
+      const isWppDesligadoFlag = process.env.DISABLE_WHATSAPP === 'true' || process.env.DISABLE_INTEGRATIONS === 'true';
+      if (isWppDesligadoFlag) {
+        const infoSilencioso = tentativasFalhaPorTenant.get(tenantKey) || {};
+        if (infoSilencioso.diaLogadoFlag !== diaHoje) {
+          console.log(`[Agendador WhatsApp] Disparo diário ignorado para ${tenantKey}: WhatsApp desabilitado por variável de ambiente.`);
+          tentativasFalhaPorTenant.set(tenantKey, { ...infoSilencioso, diaLogadoFlag: diaHoje });
+        }
+        resultados.push({
+          tenantKey,
+          disparado: false,
+          motivo: 'whatsapp_desabilitado_por_flag'
+        });
+        continue;
+      }
+
       const wppStatus = getWppStatus();
       const wppClient = getWppClient();
       const wppPronto = Boolean(wppClient && wppStatus && wppStatus.status === 'pronto');

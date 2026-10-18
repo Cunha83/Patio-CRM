@@ -60,7 +60,7 @@
     "lib/metrics.js": "fdb51b8677ddaa4b4b2ab1f39fdd90f786b1d3ff3604fd65e4309430109f9a9d",
     "lib/outbox/scheduler.js": "4609855e5f4b8612a17d7a9276bdb83ff1f1a084b59272f1abcf6a28160e7333",
     "lib/repository/migration.js": "9fdea76f414ee9c08b14b66efc85e2cd599dde10b161ae15148d3b727bfaf999",
-    "lib/repository/stateRepository.js": "1a46fdba59531ffa71ed1efda756f11b288c2912e954052d3473b5801e381c0d",
+    "lib/repository/stateRepository.js": "57b8e188e6f691c090cc0587c78d4e182aba012b147704dd6f24a412b14cddf4",
     "lib/security/logSanitizer.js": "ab4b30fe514daf11794ae702542fa5c86c92eed2b4b6b4eeb44422b1e7e0048b",
     "lib/security/testPaths.js": "cf816b20d5fd71b055c75479b777db429fc8af5e0ed53cfeb4527597dff95e45",
     "lib/serverContext.js": "066745f4648bef3f98a051792c907798779170d5c63e40dba563eb22ce816642",
@@ -98,7 +98,7 @@
     "routes/static.routes.js": "3afda329580645f9ecc20f0da6ce5543dc18f716d83bef32235bb4da3d5d745b",
     "routes/team.routes.js": "931fa9d7a283857006bc75b8db4bbbfb8dcee8b0e032006dfbd63c76e088d2ff",
     "routes/voice.routes.js": "e443f6cb150e6562c3400dc136547979aa5a7f93ab163ab11e03932f716d72cf",
-    "routes/whatsapp.routes.js": "90fbfcf45bba219d7e7c58d8c54d0d08d39d4820528efbb5907fc42f58a326a8",
+    "routes/whatsapp.routes.js": "90bd588234ac2febf36be7540c97c9540c4f36177ffde0708b39d6814b59ec36",
     "scripts/auditar_execucao_tarefa_agendada.cjs": "47a5d3e281bfcdb4737c23f159baab0dad00520d69feb82a3a6c482f27c46d69",
     "scripts/build_windows_pilot.cjs": "ace15201cd79925808194e4876ec2bb67bf1f4c968f32b8a525249aea15182de",
     "scripts/comprovar_restauracao_remota_host.cjs": "23e0abf8271406e22fa0c3f65edad977a3ebdf7fcf2057ea1474d4fe3e775fb5",
@@ -192,8 +192,8 @@
     "services/voiceActionEngine.js": "963bc5843cc26320598e5f96c36f70bbb29ac4433035ebfccaf34d27bdbaff8c",
     "services/warrantyService.js": "e2772f7e3d8987ebba0d4e6a97e2dfad10f3210e490616902629c68d68ebb14b",
     "services/whatsapp/whatsappClient.js": "42a50ddf76c999477b7ce373bfc5bfec5511b4ae2929ca4ce0c8a047bec88654",
-    "services/whatsapp/whatsappHandlers.js": "6630efc21bb022ef4f0a77cf4e89092a401718c671e25c20b5b65b185bd4f3d3",
-    "services/whatsapp/whatsappScheduler.js": "9f88be4f86d5c32465244b7b7a58c2c0b17f483d3bf895229da5b22d1af20d4e",
+    "services/whatsapp/whatsappHandlers.js": "e215862a8c90243d0f80a1943ce4ad3b6473c0f400fa8387237e0476f5b01831",
+    "services/whatsapp/whatsappScheduler.js": "01a1ba654ab5f872d14a1ff5957083d496d979b7c0a1b5601dde2b3289e7d3a8",
     "services/whatsapp/whatsappState.js": "06aad441cc77f1e5adc508fea0b1a17f0ff59cbbc4862fb0ce3ac761a51e936b",
     "style.css": "ea8a3021eebbd6b45d3d56dd88958139734a39599dd9c2300be46714ec0d8297"
   }
