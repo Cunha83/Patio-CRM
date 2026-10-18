@@ -286,3 +286,49 @@ Para garantir conformidade na conciliação diária de caixas de oficina e ofici
    - Envie esumo caixa ou echamento parcial para o bot para visualizar a qualquer momento o boletim de posição parcial do turno atual (com quebra por origem e meios de pagamento).
 4. **Visualização e Cópia no Painel Web**:
    - Na aba **Fluxo de Caixa**, utilize o botão **📜 Boletim de Fechamento** para abrir a janela com o texto completo do turno e copiar com 1 clique para o WhatsApp.
+
+---
+
+## 9. Conciliação Financeira de OS, Sangria/Suprimento e Exportação Contábil com Assinatura SHA-256
+
+Para elevar o rigor operacional e atender a auditorias financeiras e contábeis de oficinas mecânicas, o módulo financeiro do Pátio-CRM disponibiliza rotinas avançadas de conciliação por Ordem de Serviço, operações de tesouraria de caixa (sangria e suprimento) e exportação com integridade criptográfica.
+
+### A. Conciliação e Extrato por Ordem de Serviço (OS)
+1. **Comando de Leitura via WhatsApp**:
+   - Envie `extrato os <numero>` ou `financeiro os <numero>` (ex.: `extrato os 101`).
+   - O bot responde instantaneamente com:
+     * Status da OS, placa e modelo do veículo;
+     * Total orçado, adiantamentos e pagamentos já realizados;
+     * Saldo devedor pendente;
+     * Detalhamento de cada movimentação vinculada (data, valor, meio de pagamento e canal).
+2. **Endpoint HTTP de Conciliação**:
+   - `GET /api/financeiro/os/:osId/resumo` (requer permissão `financial:read`).
+   - Retorna o sumário financeiro consolidado da OS, indicando `totalPago`, `totalOrcado`, `saldoRestante`, `quitada` e a lista completa de movimentações ativas.
+
+### B. Operações de Sangria e Suprimento de Caixa
+1. **Naturezas Operacionais Dedicadas**:
+   - **Sangria (Retirada/Despesa)**: Saída de dinheiro em espécie da gaveta de caixa para depósito bancário ou pagamento de despesa extraordinária.
+   - **Suprimento (Aporte/Receita)**: Entrada de recursos para reforço ou troco no caixa.
+2. **Comandos de Escrita com Confirmação em 2 Etapas via WhatsApp**:
+   - `sangria <valor> <motivo>` (ex.: `sangria 250 deposito bancario`).
+   - `suprimento <valor> <motivo>` (ex.: `suprimento 100 troco inicial`).
+   - O bot valida o saldo disponível em caixa (rejeitando sangrias com valor superior ao saldo atual).
+   - Solicita confirmação explícita (`CONFIRMAR`) com TTL de 2 minutos.
+3. **Controle de Acesso e Auditoria**:
+   - Apenas perfis `dono` e `financeiro` podem operar sangria e suprimento.
+   - Rotas dedicadas: `POST /api/financeiro/caixa/sangria` e `POST /api/financeiro/caixa/suprimento`.
+   - Eventos auditados no banco: `financeiro:caixa:sangria` e `financeiro:caixa:suprimento`.
+   - Boletim de fechamento destaca montantes e quantidades de sangrias e suprimentos do turno.
+
+### C. Exportação Contábil Auditada com Assinatura SHA-256
+1. **Formatos Suportados**:
+   - **CSV Compatível com Excel**: Inclui marca de ordem de byte UTF-8 (`\uFEFF`) e separador `;` com cabeçalho contábil canônico:
+     `ID;DataHora;Tipo;Natureza;Valor;MeioPagamento;Origem;OS;Placa;Autor;StatusEstorno;Descricao`
+   - **JSON Estruturado**: Contém metadados de exportação, resumo por origem, consolidação por meios de pagamento e o objeto `integridade` com o hash SHA-256 do payload.
+2. **Assinatura e Validação Criptográfica**:
+   - O endpoint `GET /api/financeiro/exportar` calcula o hash SHA-256 do arquivo gerado e o envia no cabeçalho HTTP `X-Export-SHA256`.
+   - Permite à contabilidade externa conferir se o arquivo baixado foi corrompido ou adulterado.
+   - Cada exportação grava evento `financeiro:relatorio:exportar` no log de auditoria permanente.
+3. **Filtros Combinados no Painel Web**:
+   - No menu **Fluxo de Caixa**, o usuário pode filtrar simultaneamente por **Canal/Origem** (Todos, WhatsApp, Web, Estornados) e **Meio de Pagamento** (Todos, PIX, Dinheiro, Cartão, Boleto).
+   - O botão **📥 Exportar CSV Auditado** aciona o download automático respeitando os filtros ativos e confirmando o hash SHA-256 na notificação em tela.

@@ -265,6 +265,52 @@ router.get('/api/financeiro/os/:osId/resumo', requirePermission('financial:read'
 });
 
 /**
+ * 4.2 GET /api/financeiro/exportar
+ * Exporta lote de movimentações contábeis em formato CSV ou JSON com assinatura SHA-256 e auditoria
+ */
+router.get('/api/financeiro/exportar', requirePermission('financial:read'), async (req, res) => {
+  try {
+    const state = await getOrLoadState(req);
+    const formato = String(req.query.formato || 'csv').toLowerCase();
+    const exportResult = financialAnalystService.exportarMovimentacoesContabeis(state, req.query || {});
+
+    // Auditoria de exportação contábil
+    try {
+      await recordSecurityAudit({
+        tenantId: extractTenantId(req),
+        actorId: req.securityContext?.actorId || req.user?.username || 'usuario_web',
+        action: 'financeiro:relatorio:exportar',
+        entity: 'relatorio_financeiro',
+        entityId: null,
+        details: {
+          formato: exportResult.formato,
+          sha256: exportResult.sha256,
+          totalRegistros: exportResult.totalRegistros,
+          filtros: req.query
+        }
+      });
+    } catch (auditErr) {
+      console.warn('[Financeiro Exportar Audit] Falha não-bloqueante:', auditErr.message);
+    }
+
+    res.setHeader('X-Export-SHA256', exportResult.sha256);
+
+    if (formato === 'json') {
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      return res.send(exportResult.conteudo);
+    }
+
+    const filename = `extrato_financeiro_${new Date().toISOString().slice(0, 10)}.csv`;
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    return res.send(exportResult.conteudo);
+  } catch (err) {
+    console.error('[API /api/financeiro/exportar GET] Erro:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+/**
  * 5. POST /api/financeiro/movimentacoes
  * Registra lançamento no caixa (receita, despesa, sangria, suprimento)
  */
@@ -303,20 +349,34 @@ router.post('/api/financeiro/movimentacoes', requirePermission('financial:write'
 
     if (resultado.movimentacao?.subtipo === 'sangria' || resultado.movimentacao?.naturezaOperacao === 'sangria') {
       try {
-        await recordSecurityAudit(req, 'financeiro:caixa:sangria', 'caixa_diario', resultado.movimentacao?.caixaId, {
-          movimentoId: resultado.movimentacao?.id,
-          valor: resultado.movimentacao?.valor,
-          motivo: resultado.movimentacao?.descricao,
-          saldoAtual: resultado.saldoCaixaAtual
+        await recordSecurityAudit({
+          tenantId,
+          actorId: req.securityContext?.actorId || req.user?.username || req.body?.operador || 'operador',
+          action: 'financeiro:caixa:sangria',
+          entity: 'caixa_diario',
+          entityId: resultado.movimentacao?.caixaId,
+          details: {
+            movimentoId: resultado.movimentacao?.id,
+            valor: resultado.movimentacao?.valor,
+            motivo: resultado.movimentacao?.descricao,
+            saldoAtual: resultado.saldoCaixaAtual
+          }
         });
       } catch (_) {}
     } else if (resultado.movimentacao?.subtipo === 'suprimento' || resultado.movimentacao?.naturezaOperacao === 'suprimento') {
       try {
-        await recordSecurityAudit(req, 'financeiro:caixa:suprimento', 'caixa_diario', resultado.movimentacao?.caixaId, {
-          movimentoId: resultado.movimentacao?.id,
-          valor: resultado.movimentacao?.valor,
-          motivo: resultado.movimentacao?.descricao,
-          saldoAtual: resultado.saldoCaixaAtual
+        await recordSecurityAudit({
+          tenantId,
+          actorId: req.securityContext?.actorId || req.user?.username || req.body?.operador || 'operador',
+          action: 'financeiro:caixa:suprimento',
+          entity: 'caixa_diario',
+          entityId: resultado.movimentacao?.caixaId,
+          details: {
+            movimentoId: resultado.movimentacao?.id,
+            valor: resultado.movimentacao?.valor,
+            motivo: resultado.movimentacao?.descricao,
+            saldoAtual: resultado.saldoCaixaAtual
+          }
         });
       } catch (_) {}
     }
@@ -375,11 +435,18 @@ router.post('/api/financeiro/caixa/sangria', requirePermission('financial:write'
     }
 
     try {
-      await recordSecurityAudit(req, 'financeiro:caixa:sangria', 'caixa_diario', resultado.movimentacao?.caixaId, {
-        movimentoId: resultado.movimentacao?.id,
-        valor: resultado.movimentacao?.valor,
-        motivo: resultado.movimentacao?.descricao,
-        saldoAtual: resultado.saldoCaixaAtual
+      await recordSecurityAudit({
+        tenantId,
+        actorId: operador,
+        action: 'financeiro:caixa:sangria',
+        entity: 'caixa_diario',
+        entityId: resultado.movimentacao?.caixaId,
+        details: {
+          movimentoId: resultado.movimentacao?.id,
+          valor: resultado.movimentacao?.valor,
+          motivo: resultado.movimentacao?.descricao,
+          saldoAtual: resultado.saldoCaixaAtual
+        }
       });
     } catch (_) {}
 
@@ -435,11 +502,18 @@ router.post('/api/financeiro/caixa/suprimento', requirePermission('financial:wri
     }
 
     try {
-      await recordSecurityAudit(req, 'financeiro:caixa:suprimento', 'caixa_diario', resultado.movimentacao?.caixaId, {
-        movimentoId: resultado.movimentacao?.id,
-        valor: resultado.movimentacao?.valor,
-        motivo: resultado.movimentacao?.descricao,
-        saldoAtual: resultado.saldoCaixaAtual
+      await recordSecurityAudit({
+        tenantId,
+        actorId: operador,
+        action: 'financeiro:caixa:suprimento',
+        entity: 'caixa_diario',
+        entityId: resultado.movimentacao?.caixaId,
+        details: {
+          movimentoId: resultado.movimentacao?.id,
+          valor: resultado.movimentacao?.valor,
+          motivo: resultado.movimentacao?.descricao,
+          saldoAtual: resultado.saldoCaixaAtual
+        }
       });
     } catch (_) {}
 

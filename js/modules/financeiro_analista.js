@@ -290,7 +290,11 @@ function blocoVeronicaAnalista() {
                       ${m.placa ? `<span class="selo mono" style="background:#fef3c7;color:#92400e;font-size:9.5px;padding:1px 5px">🚗 ${esc(m.placa)}</span>` : ''}
                     </div>
                   ` : ''}
-                  <div class="mini">${esc(m.cat || m.categoria || 'Geral')}</div>
+                  <div class="mini">
+                    ${(m.naturezaOperacao === 'sangria' || m.subtipo === 'sangria') ? `<span class="selo" style="background:#fee2e2;color:#991b1b;border:1px solid #fecaca;font-size:9.5px;padding:1px 5px;font-weight:700;margin-right:3px">🏦 Sangria</span>` : ''}
+                    ${(m.naturezaOperacao === 'suprimento' || m.subtipo === 'suprimento') ? `<span class="selo" style="background:#e0e7ff;color:#3730a3;border:1px solid #c7d2fe;font-size:9.5px;padding:1px 5px;font-weight:700;margin-right:3px">🪙 Suprimento</span>` : ''}
+                    ${esc(m.cat || m.categoria || 'Geral')}
+                  </div>
                   ${isEstornado ? `
                     <div class="mini" style="color:var(--tijolo);font-weight:700;margin-top:2px">
                       ⚠️ ESTORNADO: ${esc(m.motivoEstorno || 'Estornado')}

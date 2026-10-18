@@ -663,5 +663,143 @@ test('12. Operações de Tesouraria (Sangria e Suprimento): reflexo no saldo, fe
   assert.equal(kpis.totalSangrias, 500);
 });
 
+test('13. Exportação contábil CSV e JSON com cálculo de hash SHA-256 e BOM UTF-8', () => {
+  const crypto = require('crypto');
+  const financialAnalystService = require('../services/financialAnalystService.js');
+  const state = {
+    cfg: { saldoInicial: 1000 },
+    caixas: [{ id: 'cx_exp_1', status: 'aberto', saldoAtual: 1000 }],
+    movimentos: [
+      {
+        id: 'mov_exp_1',
+        tipo: 'entrada',
+        subtipo: 'receita',
+        naturezaOperacao: 'receita',
+        valor: 450,
+        desc: 'Troca de freios',
+        forma: 'pix',
+        origem: 'whatsapp',
+        osId: '201',
+        placa: 'BRA2E19',
+        autorNumero: '5511999990001',
+        data: '2026-10-18T10:00:00Z'
+      },
+      {
+        id: 'mov_exp_2',
+        tipo: 'saida',
+        subtipo: 'sangria',
+        naturezaOperacao: 'sangria',
+        valor: 200,
+        desc: 'Retirada de segurança',
+        forma: 'dinheiro',
+        origem: 'web',
+        operador: 'dono_joao',
+        data: '2026-10-18T11:00:00Z'
+      }
+    ]
+  };
+
+  // 13.1 Exportação em CSV
+  const csvRes = financialAnalystService.exportarMovimentacoesContabeis(state, { formato: 'csv' });
+  assert.equal(csvRes.formato, 'csv');
+  assert.equal(csvRes.mimeType, 'text/csv; charset=utf-8');
+  assert.equal(csvRes.totalRegistros, 2);
+  assert.ok(csvRes.conteudo.startsWith('\uFEFF'), 'CSV deve iniciar com BOM UTF-8');
+  assert.match(csvRes.conteudo, /ID;DataHora;Tipo;Natureza;Valor;MeioPagamento;Origem;OS;Placa;Autor;StatusEstorno;Descricao/);
+  assert.match(csvRes.conteudo, /mov_exp_1;.*entrada;receita;450\.00;pix;whatsapp;201;BRA2E19;5511999990001;ATIVO;"Troca de freios"/);
+  assert.match(csvRes.conteudo, /mov_exp_2;.*saida;sangria;200\.00;dinheiro;web;;;dono_joao;ATIVO;"Retirada de segurança"/);
+
+  // Validação do hash SHA-256
+  const shaCalculado = crypto.createHash('sha256').update(csvRes.conteudo, 'utf8').digest('hex');
+  assert.equal(csvRes.sha256, shaCalculado);
+
+  // 13.2 Exportação em JSON
+  const jsonRes = financialAnalystService.exportarMovimentacoesContabeis(state, { formato: 'json' });
+  assert.equal(jsonRes.formato, 'json');
+  assert.equal(jsonRes.mimeType, 'application/json');
+  assert.equal(jsonRes.totalRegistros, 2);
+  const parsed = JSON.parse(jsonRes.conteudo);
+  assert.equal(parsed.integridade.algoritmo, 'sha256');
+  assert.equal(parsed.integridade.sha256, jsonRes.sha256);
+  assert.equal(parsed.movimentacoes.length, 2);
+});
+
+test('14. Rota GET /api/financeiro/exportar com header X-Export-SHA256, filtros e auditoria', async () => {
+  const fs = require('fs');
+  const os = require('os');
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'patio_test_export_'));
+  const testDb = path.join(tempDir, 'test_export.db');
+  process.env.DB_PATH = testDb;
+
+  const { initDB, closeDB, all } = require('../db');
+  await initDB();
+
+  try {
+    const express = require('express');
+    const http = require('http');
+    const financialRoutes = require('../routes/financial.routes');
+    const { salvarEstado } = require('../lib/serverContext');
+    const { getDefaultState } = require('../lib/repository/stateRepository');
+
+    const app = express();
+    app.use(express.json());
+
+    const tenantId = 'tenant_export_test';
+    const mockContext = { role: 'dono', actorId: 'dono_exportador', tenantId, permissions: ['financial:read'] };
+    app.use((req, res, next) => {
+      req.securityContext = mockContext;
+      req.headers['x-tenant-id'] = tenantId;
+      next();
+    });
+    app.use(financialRoutes);
+
+    const base = getDefaultState(tenantId);
+    const testState = {
+      ...base,
+      tenantId,
+      caixas: [{ id: 'cx_exp_route', status: 'aberto', saldoAtual: 1500 }],
+      movimentos: [
+        { id: 'mov_r1', tenantId, tipo: 'entrada', valor: 300, forma: 'pix', origem: 'whatsapp', data: '2026-10-18' },
+        { id: 'mov_r2', tenantId, tipo: 'saida', valor: 100, forma: 'dinheiro', origem: 'web', data: '2026-10-18' }
+      ]
+    };
+    await salvarEstado(tenantId, testState);
+
+    const server = http.createServer(app);
+    await new Promise(r => server.listen(0, '127.0.0.1', r));
+    const port = server.address().port;
+    const baseUrl = `http://127.0.0.1:${port}`;
+
+    try {
+      // 14.1 Download CSV com filtro origem=whatsapp
+      const resCsv = await fetch(`${baseUrl}/api/financeiro/exportar?formato=csv&origem=whatsapp`);
+      assert.equal(resCsv.status, 200);
+      assert.match(resCsv.headers.get('content-type'), /text\/csv/);
+      const shaHeader = resCsv.headers.get('x-export-sha256');
+      assert.ok(shaHeader, 'Cabeçalho X-Export-SHA256 deve estar presente');
+      const textCsv = await resCsv.text();
+      assert.match(textCsv, /mov_r1/);
+      assert.doesNotMatch(textCsv, /mov_r2/);
+
+      // 14.2 Verifica gravação da auditoria
+      const auditRows = await all(`
+        SELECT action, details_json FROM security_audit_log
+        WHERE tenant_id = ? AND action = 'financeiro:relatorio:exportar'
+        ORDER BY id DESC LIMIT 1
+      `, [tenantId]);
+      assert.ok(auditRows.length > 0, 'Registro de auditoria deve ser encontrado');
+      const details = JSON.parse(auditRows[0].details_json);
+      assert.equal(details.formato, 'csv');
+      assert.equal(details.sha256, shaHeader);
+    } finally {
+      await new Promise(r => server.close(r));
+    }
+  } finally {
+    await closeDB().catch(() => {});
+    try { fs.rmSync(tempDir, { recursive: true, force: true }); } catch (_) {}
+  }
+});
+
+
 
 

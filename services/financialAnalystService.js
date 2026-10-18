@@ -620,8 +620,13 @@ function listarMovimentacoes(state = {}, filtros = {}) {
   if (caixaId) {
     lista = lista.filter(m => m.caixaId === caixaId);
   }
-  if (forma) {
-    lista = lista.filter(m => (m.forma || m.formaPagamento) === forma);
+  const formaFiltro = forma || filtros.meioPagamento;
+  if (formaFiltro && formaFiltro !== 'todos') {
+    const fNorm = String(formaFiltro).toLowerCase().trim();
+    lista = lista.filter(m => {
+      const f = String(m.forma || m.formaPagamento || '').toLowerCase().trim();
+      return f === fNorm || f.includes(fNorm);
+    });
   }
   if (de) {
     lista = lista.filter(m => (m.data || '').slice(0, 10) >= de);
@@ -629,9 +634,15 @@ function listarMovimentacoes(state = {}, filtros = {}) {
   if (ate) {
     lista = lista.filter(m => (m.data || '').slice(0, 10) <= ate);
   }
-  if (origem) {
+  if (origem && origem !== 'todos') {
     const origNorm = String(origem).toLowerCase().trim();
-    lista = lista.filter(m => String(m.origem || '').toLowerCase() === origNorm);
+    if (origNorm === 'estornados') {
+      lista = lista.filter(m => Boolean(m.estornado));
+    } else if (origNorm === 'web') {
+      lista = lista.filter(m => String(m.origem || 'web').toLowerCase() !== 'whatsapp');
+    } else {
+      lista = lista.filter(m => String(m.origem || '').toLowerCase() === origNorm);
+    }
   }
   if (estornado !== undefined && estornado !== null && estornado !== '') {
     const estBool = String(estornado) === 'true' || estornado === true;
@@ -1417,6 +1428,78 @@ function formatarParecerExecutivoVerônica(optionsOrState = {}) {
   return texto;
 }
 
+/**
+ * Exporta movimentações financeiras em formato CSV ou JSON com cálculo de hash SHA-256
+ */
+function exportarMovimentacoesContabeis(state = {}, opcoes = {}) {
+  const formato = String(opcoes.formato || 'csv').toLowerCase();
+  const crypto = require('crypto');
+
+  // Utiliza listarMovimentacoes com filtros aplicados
+  const resultado = listarMovimentacoes(state, {
+    ...opcoes,
+    limit: opcoes.limit || 5000
+  });
+
+  const movs = resultado.movimentacoes || [];
+
+  if (formato === 'json') {
+    const payloadJson = {
+      exportadoEm: new Date().toISOString(),
+      totalRegistros: movs.length,
+      resumoOrigem: resultado.resumoOrigem,
+      resumoMeiosPagamento: resultado.resumoMeiosPagamento,
+      movimentacoes: movs
+    };
+    const jsonStr = JSON.stringify(payloadJson, null, 2);
+    const sha256 = crypto.createHash('sha256').update(jsonStr, 'utf8').digest('hex');
+    payloadJson.integridade = {
+      algoritmo: 'sha256',
+      sha256
+    };
+    return {
+      formato: 'json',
+      mimeType: 'application/json',
+      conteudo: JSON.stringify(payloadJson, null, 2),
+      sha256,
+      totalRegistros: movs.length
+    };
+  }
+
+  // Formato CSV com BOM UTF-8 (\uFEFF)
+  // Cabeçalho: ID;DataHora;Tipo;Natureza;Valor;MeioPagamento;Origem;OS;Placa;Autor;StatusEstorno;Descricao
+  const cabecalho = 'ID;DataHora;Tipo;Natureza;Valor;MeioPagamento;Origem;OS;Placa;Autor;StatusEstorno;Descricao';
+  const linhas = [cabecalho];
+
+  for (const m of movs) {
+    const id = m.id || '';
+    const dataHora = m.dataHora || m.criadoEm || (m.data ? `${m.data}T00:00:00Z` : '');
+    const tipo = m.tipo || '';
+    const natureza = m.naturezaOperacao || m.subtipo || 'operacional';
+    const valor = Number(m.valor || 0).toFixed(2);
+    const meio = m.forma || m.formaPagamento || 'dinheiro';
+    const origem = m.origem || 'sistema';
+    const os = m.osId || '';
+    const placa = m.placa || '';
+    const autor = m.autorNumero || m.operador || '';
+    const statusEstorno = m.estornado ? 'ESTORNADO' : (m.estornoDeId || m.subtipo === 'estorno' ? 'COMPENSATORIO' : 'ATIVO');
+    const desc = (m.desc || m.descricao || '').replace(/[;\r\n]/g, ' ').trim();
+
+    linhas.push(`${id};${dataHora};${tipo};${natureza};${valor};${meio};${origem};${os};${placa};${autor};${statusEstorno};"${desc}"`);
+  }
+
+  const csvContent = '\uFEFF' + linhas.join('\r\n');
+  const sha256 = crypto.createHash('sha256').update(csvContent, 'utf8').digest('hex');
+
+  return {
+    formato: 'csv',
+    mimeType: 'text/csv; charset=utf-8',
+    conteudo: csvContent,
+    sha256,
+    totalRegistros: movs.length
+  };
+}
+
 module.exports = {
   obterCaixaAberto,
   abrirCaixa,
@@ -1434,5 +1517,6 @@ module.exports = {
   estornarMovimentacao,
   formatarBoletimFechamentoWhatsapp,
   obterResumoFechamentoParcial,
-  obterResumoFinanceiroOS
+  obterResumoFinanceiroOS,
+  exportarMovimentacoesContabeis
 };

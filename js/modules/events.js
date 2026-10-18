@@ -411,6 +411,17 @@ document.addEventListener('click', e => {
       render();
       break;
     }
+    case 'filtro-meio-mov': {
+      S.ui.filtroMeioPagamentoMov = b.dataset.m;
+      render();
+      break;
+    }
+    case 'exportar-csv-financeiro': {
+      if (typeof exportarMovimentacoesCSV === 'function') {
+        exportarMovimentacoesCSV();
+      }
+      break;
+    }
     case 'estornar-mov': {
       if (typeof solicitarEstornoMovimento === 'function') {
         solicitarEstornoMovimento(b.dataset.id);

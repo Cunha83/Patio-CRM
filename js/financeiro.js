@@ -943,12 +943,21 @@ function renderBadgeMeioPagamento(forma = 'dinheiro') {
 
 function blocoFluxoCaixa() {
   const filtroOrigem = (S.ui && S.ui.filtroOrigemMov) || 'todos';
+  const filtroMeio = (S.ui && S.ui.filtroMeioPagamentoMov) || 'todos';
   const todosMovs = (S.movimentos || []).slice().reverse();
 
   const movsFiltrados = todosMovs.filter(m => {
-    if (filtroOrigem === 'whatsapp') return m.origem === 'whatsapp';
-    if (filtroOrigem === 'web') return (m.origem || 'web') !== 'whatsapp';
-    if (filtroOrigem === 'estornados') return Boolean(m.estornado);
+    if (filtroOrigem === 'whatsapp' && m.origem !== 'whatsapp') return false;
+    if (filtroOrigem === 'web' && (m.origem || 'web') === 'whatsapp') return false;
+    if (filtroOrigem === 'estornados' && !m.estornado) return false;
+
+    if (filtroMeio !== 'todos') {
+      const f = String(m.forma || m.formaPagamento || '').toLowerCase();
+      if (filtroMeio === 'pix' && !f.includes('pix')) return false;
+      if (filtroMeio === 'dinheiro' && !f.includes('dinheiro')) return false;
+      if (filtroMeio === 'cartao' && !f.includes('cartao') && !f.includes('cartão') && !f.includes('credito') && !f.includes('debito')) return false;
+      if (filtroMeio === 'boleto' && !f.includes('boleto')) return false;
+    }
     return true;
   });
 
@@ -963,6 +972,14 @@ function blocoFluxoCaixa() {
     ['estornados', `⚠️ Estornados (${qtdEstornados})`]
   ];
 
+  const filtrosMeio = [
+    ['todos', 'Todos os Meios'],
+    ['pix', '⚡ PIX'],
+    ['dinheiro', '💵 Dinheiro'],
+    ['cartao', '💳 Cartão'],
+    ['boleto', '📄 Boleto']
+  ];
+
   return `
   <div class="entre" style="margin-bottom:12px;flex-wrap:wrap;gap:10px">
     <div>
@@ -970,6 +987,9 @@ function blocoFluxoCaixa() {
       <div class="mini">Saldo Atual: <b style="color:var(--verde)">${brl(saldoCaixa())}</b></div>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-secundario" data-act="exportar-csv-financeiro" style="font-size:13px;padding:6px 14px" title="Exportar movimentações em CSV auditado com assinatura SHA-256">
+        📥 Exportar CSV Auditado
+      </button>
       <button class="btn btn-secundario" onclick="abrirBoletimFechamentoModal()" style="font-size:13px;padding:6px 14px">
         📜 Boletim de Fechamento
       </button>
@@ -979,15 +999,27 @@ function blocoFluxoCaixa() {
     </div>
   </div>
 
-  <!-- Barra de Filtro Rápido por Origem e Auditoria -->
-  <div class="card card-p" style="margin-bottom:12px;padding:8px 12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--aco-050);border:1px solid var(--aco-200)">
-    <span class="mini" style="font-weight:700;color:var(--aco-700)">Filtrar Origem:</span>
-    <div class="grupo-chips-filtro" style="display:inline-flex;gap:6px;flex-wrap:wrap">
-      ${filtrosOrigem.map(([k, label]) => `
-        <button class="chip-filtro ${filtroOrigem === k ? 'ativo' : ''}" data-act="filtro-origem-mov" data-o="${k}" style="font-size:11.5px;padding:4px 10px;cursor:pointer">
-          ${label}
-        </button>
-      `).join('')}
+  <!-- Barra de Filtros Rápidos (Origem e Meio de Pagamento) -->
+  <div class="card card-p" style="margin-bottom:12px;padding:10px 12px;display:flex;flex-direction:column;gap:8px;background:var(--aco-050);border:1px solid var(--aco-200)">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <span class="mini" style="font-weight:700;color:var(--aco-700);min-width:90px">Canal / Origem:</span>
+      <div class="grupo-chips-filtro" style="display:inline-flex;gap:6px;flex-wrap:wrap">
+        ${filtrosOrigem.map(([k, label]) => `
+          <button class="chip-filtro ${filtroOrigem === k ? 'ativo' : ''}" data-act="filtro-origem-mov" data-o="${k}" style="font-size:11.5px;padding:4px 10px;cursor:pointer">
+            ${label}
+          </button>
+        `).join('')}
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <span class="mini" style="font-weight:700;color:var(--aco-700);min-width:90px">Meio de Pgto:</span>
+      <div class="grupo-chips-filtro" style="display:inline-flex;gap:6px;flex-wrap:wrap">
+        ${filtrosMeio.map(([k, label]) => `
+          <button class="chip-filtro ${filtroMeio === k ? 'ativo' : ''}" data-act="filtro-meio-mov" data-m="${k}" style="font-size:11.5px;padding:4px 10px;cursor:pointer">
+            ${label}
+          </button>
+        `).join('')}
+      </div>
     </div>
   </div>
 
@@ -1067,7 +1099,11 @@ function blocoFluxoCaixa() {
                   </div>
                 `}
               </td>
-              <td><span class="selo">${esc(m.cat || m.categoria || 'Geral')}</span></td>
+              <td>
+                ${(m.naturezaOperacao === 'sangria' || m.subtipo === 'sangria') ? `<span class="selo" style="background:#fee2e2;color:#991b1b;border:1px solid #fecaca;font-size:10px;font-weight:700;margin-right:4px">🏦 Sangria</span>` : ''}
+                ${(m.naturezaOperacao === 'suprimento' || m.subtipo === 'suprimento') ? `<span class="selo" style="background:#e0e7ff;color:#3730a3;border:1px solid #c7d2fe;font-size:10px;font-weight:700;margin-right:4px">🪙 Suprimento</span>` : ''}
+                <span class="selo">${esc(m.cat || m.categoria || 'Geral')}</span>
+              </td>
               <td>${renderBadgeMeioPagamento(m.forma || m.formaPagamento)}</td>
               <td style="text-align:right;font-weight:700;color:${isEstornado ? 'var(--aco-500)' : isEntrada ? 'var(--verde)' : 'var(--tijolo)'}" class="num">
                 <span style="${isEstornado ? 'text-decoration:line-through' : ''}">
@@ -1603,6 +1639,43 @@ function copiarBoletimFechamento() {
   }
 }
 
+async function exportarMovimentacoesCSV() {
+  try {
+    const fOrigem = (S.ui && S.ui.filtroOrigemMov) || 'todos';
+    const fMeio = (S.ui && S.ui.filtroMeioPagamentoMov) || 'todos';
+    const params = new URLSearchParams();
+    params.set('formato', 'csv');
+    if (fOrigem !== 'todos') params.set('origem', fOrigem);
+    if (fMeio !== 'todos') params.set('meioPagamento', fMeio);
+
+    const res = await fetch(`/api/financeiro/exportar?${params.toString()}`);
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error || `HTTP ${res.status}`);
+    }
+
+    const sha256 = res.headers.get('X-Export-SHA256');
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `extrato_financeiro_${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+
+    if (typeof torrar === 'function') {
+      torrar(`Exportação CSV concluída! SHA-256: ${sha256 ? sha256.slice(0, 12) + '...' : 'OK'}`);
+    }
+  } catch (err) {
+    console.error('[Exportar CSV] Falha:', err);
+    if (typeof torrar === 'function') {
+      torrar(`Erro na exportação CSV: ${err.message}`);
+    }
+  }
+}
+
 // Exportações explícitas no escopo global window
 if (typeof window !== 'undefined') {
   window.viewFinanceiro = viewFinanceiro;
@@ -1629,4 +1702,5 @@ if (typeof window !== 'undefined') {
   window.folhaBoletimFechamento = folhaBoletimFechamento;
   window.abrirBoletimFechamentoModal = abrirBoletimFechamentoModal;
   window.copiarBoletimFechamento = copiarBoletimFechamento;
+  window.exportarMovimentacoesCSV = exportarMovimentacoesCSV;
 }
