@@ -235,10 +235,31 @@ router.get('/api/financeiro/movimentacoes', requirePermission('financial:read'),
       total: resultado.total,
       movimentacoes: resultado.movimentacoes,
       resumoOrigem: resultado.resumoOrigem,
-      resumoMeiosPagamento: resultado.resumoMeiosPagamento
+      resumoMeiosPagamento: resultado.resumoMeiosPagamento,
+      resumoPorOS: resultado.resumoPorOS
     });
   } catch (err) {
     console.error('[API /api/financeiro/movimentacoes GET] Erro:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+/**
+ * 4.1 GET /api/financeiro/os/:osId/resumo
+ * Retorna o extrato e a posição financeira consolidada de uma Ordem de Serviço (OS)
+ */
+router.get('/api/financeiro/os/:osId/resumo', requirePermission('financial:read'), async (req, res) => {
+  try {
+    const state = await getOrLoadState(req);
+    const osId = req.params.osId;
+    const resumoOS = financialAnalystService.obterResumoFinanceiroOS(state, osId, req.query || {});
+
+    res.json({
+      success: true,
+      ...resumoOS
+    });
+  } catch (err) {
+    console.error('[API /api/financeiro/os/:osId/resumo GET] Erro:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });

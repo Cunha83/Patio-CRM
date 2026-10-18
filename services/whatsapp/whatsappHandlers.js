@@ -631,7 +631,13 @@ async function processarMensagemTexto(msg, {
   const isComandoEstorno = /^(?:!estornar|estornar)\b/i.test(textoLower);
   const isComandoEscrita = isComandoAbrirCaixa || isComandoFecharCaixa || isComandoEntrada || isComandoSaida || isComandoEstorno;
 
-  const isComandoExtrato = (
+  const matchComandoOS = textoLower.match(/(?:extrato|financeiro|saldo)\s+(?:da\s+|de\s+)?(?:os|o\.s\.)\s*#?\s*([a-zA-Z0-9_\-]+)/i) ||
+                         textoLower.match(/(?:os|o\.s\.)\s*#?\s*([a-zA-Z0-9_\-]+)\s+(?:financeiro|extrato|saldo)/i) ||
+                         textoLower.match(/^!?(?:extrato|financeiro|saldo)\s+os\s*#?\s*([a-zA-Z0-9_\-]+)/i) ||
+                         textoLower.match(/^(?:os\s+financeira|financeiro\s+da\s+os)\s*#?\s*([a-zA-Z0-9_\-]+)/i);
+  const isComandoExtratoOS = Boolean(matchComandoOS);
+
+  const isComandoExtrato = !isComandoExtratoOS && (
     textoLower === '!extrato' ||
     textoLower.startsWith('extrato') ||
     textoLower.includes('ultimos lancamentos') ||
@@ -650,6 +656,7 @@ async function processarMensagemTexto(msg, {
   );
 
   const isComandoLeituraFinanceira = (
+    isComandoExtratoOS ||
     isComandoExtrato ||
     isComandoResumoCaixa ||
     textoLower === '!caixa' || textoLower === 'caixa' ||
@@ -1382,6 +1389,73 @@ async function processarMensagemTexto(msg, {
       });
       return true;
     }
+  }
+
+  // 0. Extrato Financeiro de Ordem de Serviço (OS) (Leitura)
+  if (isComandoExtratoOS) {
+    if (isContextOperacao || !isContextAdmin) {
+      await msg.reply('🔒 *Acesso Restrito:* A consulta financeira de Ordens de Serviço é disponibilizada exclusivamente para administradores autorizados.');
+      await auditarComandoWhatsApp({ tenantId: tenantKey, numero: senderNorm, comando: textoMensagem, resultado: 'negado_permissao' });
+      return true;
+    }
+
+    const osIdAlvo = matchComandoOS[1].trim();
+    const resOS = financialAnalystService.obterResumoFinanceiroOS(tenantState, osIdAlvo);
+
+    if (!resOS || !resOS.historico || resOS.historico.length === 0) {
+      await msg.reply(`⚠️ Nenhuma movimentação financeira vinculada à OS #${osIdAlvo} foi localizada.`);
+      await auditarComandoWhatsApp({
+        tenantId: tenantKey,
+        numero: senderNorm,
+        comando: textoMensagem,
+        resultado: 'recusado_os_sem_movimentacoes',
+        detalhes: { osId: osIdAlvo }
+      });
+      return true;
+    }
+
+    let respOS = `📋 *POSIÇÃO FINANCEIRA - OS #${osIdAlvo}* 🚗\n\n`;
+    if (resOS.placasVinculadas && resOS.placasVinculadas.length > 0) {
+      respOS += `• *Veículo / Placa:* ${resOS.placasVinculadas.join(', ')}\n`;
+    }
+    respOS += `• *Total Recebido (Entradas):* ${financialEngine.formatarMoeda(resOS.totalEntradasOS)}\n`;
+    respOS += `• *Despesas Vinculadas (Saídas):* ${financialEngine.formatarMoeda(resOS.totalSaidasOS)}\n`;
+    respOS += `• *Saldo Líquido da OS:* ${financialEngine.formatarMoeda(resOS.saldoLiquidoOS)}\n`;
+    respOS += `• *Total de Lançamentos:* ${resOS.historico.length} (${resOS.qtdLancamentos} ativo(s))\n\n`;
+
+    const meiosKeys = Object.keys(resOS.resumoMeiosPagamento || {});
+    if (meiosKeys.length > 0) {
+      respOS += `💳 *Meios de Pagamento Utilizados:*\n`;
+      meiosKeys.forEach(m => {
+        const item = resOS.resumoMeiosPagamento[m];
+        respOS += `• ${m.toUpperCase()}: ${financialEngine.formatarMoeda(item.total)} (${item.qtd}x)\n`;
+      });
+      respOS += `\n`;
+    }
+
+    respOS += `📜 *Histórico de Movimentações:*\n`;
+    resOS.historico.slice(0, 10).forEach((mov, idx) => {
+      const isEstornado = Boolean(mov.estornado);
+      const isComp = Boolean(mov.estornoDeId || mov.subtipo === 'estorno');
+      const isEnt = mov.tipo === 'entrada' || mov.tipo === 'receita';
+      const tagTipo = isEstornado ? '⚠️ Estornado' : isComp ? '↩️ Compensatório' : isEnt ? '🟢 Entrada' : '🔴 Saída';
+      const formaStr = (mov.forma || mov.formaPagamento || 'dinheiro').toUpperCase();
+      const idCurto = mov.id ? (mov.id.length > 8 ? mov.id.slice(-6) : mov.id) : `${idx + 1}`;
+      respOS += `• [${idCurto}] ${tagTipo} ${financialEngine.formatarMoeda(mov.valor)} (${formaStr}) - ${mov.desc || mov.descricao || 'Movimento'}\n`;
+    });
+    if (resOS.historico.length > 10) {
+      respOS += `_... e mais ${resOS.historico.length - 10} movimentação(ões)._\n`;
+    }
+
+    await msg.reply(respOS.trim());
+    await auditarComandoWhatsApp({
+      tenantId: tenantKey,
+      numero: senderNorm,
+      comando: textoMensagem,
+      resultado: 'sucesso',
+      detalhes: { osId: osIdAlvo, totalEntradas: resOS.totalEntradasOS, totalSaidas: resOS.totalSaidasOS, saldoLiquido: resOS.saldoLiquidoOS }
+    });
+    return true;
   }
 
   // 0. Extrato Recente de Movimentações (Leitura)

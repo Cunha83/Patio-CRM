@@ -493,3 +493,92 @@ test('10. RBAC e Trilha de Auditoria na Rota de Estorno: Dono autoriza (200), Me
   }
 });
 
+test('11. Conciliação de Saldo por Ordem de Serviço (OS): múltiplos recebimentos, estorno e API de resumo', async () => {
+  const financialAnalystService = require('../services/financialAnalystService.js');
+
+  const state = {
+    tenantId: 'default',
+    caixas: [
+      {
+        id: 'cx_os_1',
+        status: 'aberto',
+        aberto: true,
+        saldoInicial: 1000,
+        saldoAtual: 1000,
+        totalEntradas: 0,
+        totalSaidas: 0,
+        movimentacoesIds: []
+      }
+    ],
+    movimentos: []
+  };
+
+  // 11.1 Adiantamento Pix de R$ 300 na OS #401
+  const mov1 = financialAnalystService.registrarMovimentacao(state, {
+    tipo: 'entrada',
+    valor: 300,
+    forma: 'pix',
+    osId: '401',
+    placa: 'ABC1D23',
+    descricao: 'Adiantamento sinal OS #401'
+  });
+  assert.equal(mov1.ok, true);
+
+  // 11.2 Despesa/peça vinculada à OS #401 de R$ 100 em dinheiro
+  const mov2 = financialAnalystService.registrarMovimentacao(state, {
+    tipo: 'saida',
+    valor: 100,
+    forma: 'dinheiro',
+    osId: '401',
+    placa: 'ABC1D23',
+    descricao: 'Compra de filtro de óleo OS #401'
+  });
+  assert.equal(mov2.ok, true);
+
+  // 11.3 Quitação restante de R$ 500 no cartão de crédito na OS #401
+  const mov3 = financialAnalystService.registrarMovimentacao(state, {
+    tipo: 'entrada',
+    valor: 500,
+    forma: 'cartao_credito',
+    osId: '401',
+    placa: 'ABC1D23',
+    descricao: 'Quitação serviço OS #401'
+  });
+  assert.equal(mov3.ok, true);
+
+  // 11.4 Consulta de resumo financeiro da OS #401
+  const resumo1 = financialAnalystService.obterResumoFinanceiroOS(state, '401');
+  assert.equal(resumo1.osId, '401');
+  assert.equal(resumo1.totalEntradasOS, 800);
+  assert.equal(resumo1.totalSaidasOS, 100);
+  assert.equal(resumo1.saldoLiquidoOS, 700);
+  assert.equal(resumo1.qtdLancamentos, 3);
+  assert.deepEqual(resumo1.placasVinculadas, ['ABC1D23']);
+  assert.equal(resumo1.resumoMeiosPagamento.pix.total, 300);
+  assert.equal(resumo1.resumoMeiosPagamento.cartao_credito.total, 500);
+  assert.equal(resumo1.resumoMeiosPagamento.dinheiro.total, 100);
+
+  // 11.5 Enriquecimento de listarMovimentacoes com resumoPorOS
+  const lista1 = financialAnalystService.listarMovimentacoes(state);
+  assert.ok(lista1.resumoPorOS);
+  assert.ok(lista1.resumoPorOS['401']);
+  assert.equal(lista1.resumoPorOS['401'].saldoLiquidoOS, 700);
+
+  // 11.6 Estorno da quitação de R$ 500: reflexo imediato de anulação
+  const estornoRes = financialAnalystService.estornarMovimentacao(state, {
+    movimentoId: mov3.movimento.id,
+    motivo: 'Lançamento indevido de quitação'
+  });
+  assert.equal(estornoRes.ok, true);
+
+  const resumoAposEstorno = financialAnalystService.obterResumoFinanceiroOS(state, '401');
+  assert.equal(resumoAposEstorno.totalEntradasOS, 300, 'Entradas devem abater imediatamente os 500 estornados');
+  assert.equal(resumoAposEstorno.totalSaidasOS, 100);
+  assert.equal(resumoAposEstorno.saldoLiquidoOS, 200, 'Saldo líquido da OS deve ser 300 - 100 = 200');
+  assert.equal(resumoAposEstorno.qtdLancamentos, 2, 'Apenas as 2 movimentações ativas restantes');
+
+  const listaAposEstorno = financialAnalystService.listarMovimentacoes(state);
+  assert.equal(listaAposEstorno.resumoPorOS['401'].saldoLiquidoOS, 200);
+});
+
+

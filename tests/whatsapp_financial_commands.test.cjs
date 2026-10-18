@@ -1265,5 +1265,104 @@ test('WhatsApp Agente Financeiro - Suíte Completa de Leitura e Escrita Controla
     assert.equal(listaRes.resumoMeiosPagamento.pix?.qtd, 1);
     assert.equal(listaRes.resumoMeiosPagamento.pix?.total, 350);
   });
+
+  await t.test('23. Consulta de extrato financeiro por OS via WhatsApp com múltiplos recebimentos e estorno', async () => {
+    const mockState = criarEstadoMock();
+    const adminNum = '5511999998888';
+    mockState.cfg.adminFones = [adminNum];
+    mockState.caixas = [
+      {
+        id: 'cx-os-test',
+        status: 'aberto',
+        aberto: true,
+        abertoPor: adminNum,
+        saldoInicial: 500,
+        saldoAtual: 500,
+        totalEntradas: 0,
+        totalSaidas: 0,
+        movimentacoesIds: []
+      }
+    ];
+
+    // Lança entrada 1: R$ 400 sinal Pix OS 777
+    financialAnalystService.registrarMovimentacao(mockState, {
+      tipo: 'entrada',
+      valor: 400,
+      forma: 'pix',
+      osId: '777',
+      placa: 'XYZ9K88',
+      descricao: 'Sinal 50% OS 777'
+    });
+
+    // Lança entrada 2: R$ 400 quitação Cartão Débito OS 777
+    const movQuitacao = financialAnalystService.registrarMovimentacao(mockState, {
+      tipo: 'entrada',
+      valor: 400,
+      forma: 'cartao_debito',
+      osId: '777',
+      placa: 'XYZ9K88',
+      descricao: 'Quitação OS 777'
+    });
+
+    // 23.1 Consulta por administrador: extrato os 777
+    const repliesAdmin = [];
+    await processarMensagemTexto({
+      from: `${adminNum}@c.us`,
+      author: `${adminNum}@c.us`,
+      body: 'extrato os 777',
+      reply: async (txt) => { repliesAdmin.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: adminNum });
+
+    assert.equal(repliesAdmin.length, 1);
+    assert.match(repliesAdmin[0], /POSIÇÃO FINANCEIRA - OS #777/i);
+    assert.match(repliesAdmin[0], /XYZ9K88/);
+    assert.match(repliesAdmin[0], /800,00/); // Total recebido
+    assert.match(repliesAdmin[0], /PIX/);
+    assert.match(repliesAdmin[0], /CARTAO_DEBITO/);
+
+    // 23.2 Bloqueio de permissão para mecânico
+    const mecNum = '5511988887777';
+    mockState.mecanicos = [{ fone: mecNum, nome: 'Mecânico Zé' }];
+    const repliesMec = [];
+    await processarMensagemTexto({
+      from: `${mecNum}@c.us`,
+      author: `${mecNum}@c.us`,
+      body: 'extrato os 777',
+      reply: async (txt) => { repliesMec.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: mecNum, isContextAdmin: false });
+
+    assert.equal(repliesMec.length, 1);
+    assert.match(repliesMec[0], /Acesso Restrito|Olá! Sou o assistente do Pátio CRM/i);
+
+    // 23.3 Consulta de OS inexistente sem movimentações
+    const repliesInexistente = [];
+    await processarMensagemTexto({
+      from: `${adminNum}@c.us`,
+      author: `${adminNum}@c.us`,
+      body: 'extrato os 99999',
+      reply: async (txt) => { repliesInexistente.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: adminNum });
+
+    assert.equal(repliesInexistente.length, 1);
+    assert.match(repliesInexistente[0], /Nenhuma movimentação financeira vinculada à OS #99999/i);
+
+    // 23.4 Estorno e re-consulta: reflete abatimento imediato
+    financialAnalystService.estornarMovimentacao(mockState, {
+      movimentoId: movQuitacao.movimento.id,
+      motivo: 'Estorno de quitação para teste'
+    });
+
+    const repliesAposEstorno = [];
+    await processarMensagemTexto({
+      from: `${adminNum}@c.us`,
+      author: `${adminNum}@c.us`,
+      body: 'extrato os 777',
+      reply: async (txt) => { repliesAposEstorno.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: adminNum });
+
+    assert.equal(repliesAposEstorno.length, 1);
+    assert.match(repliesAposEstorno[0], /400,00/); // Total após abatimento
+  });
 });
+
 

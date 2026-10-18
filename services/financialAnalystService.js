@@ -548,7 +548,8 @@ function projetarCaixa(c = {}) {
     origem,
     canal: c.canal || (origem === 'whatsapp' ? 'whatsapp' : 'web'),
     autorNumero: c.autorNumero || null,
-    confirmadoEm: c.confirmadoEm || null
+    confirmadoEm: c.confirmadoEm || null,
+    resumoPorOS: c.resumoPorOS || {}
   };
 }
 
@@ -638,11 +639,127 @@ function listarMovimentacoes(state = {}, filtros = {}) {
     resumoMeiosPagamento[f].total = arredondar(resumoMeiosPagamento[f].total + v);
   }
 
+  // Consolidação por Ordem de Serviço (OS) no escopo filtrado
+  const resumoPorOS = {};
+  for (const m of lista) {
+    if (m.osId && !m.estornado && !m.estornoDeId && m.subtipo !== 'estorno') {
+      const osKey = String(m.osId).replace(/^#/, '').trim();
+      if (!resumoPorOS[osKey]) {
+        resumoPorOS[osKey] = {
+          osId: osKey,
+          totalEntradasOS: 0,
+          totalSaidasOS: 0,
+          saldoLiquidoOS: 0,
+          qtdLancamentos: 0,
+          placasVinculadas: []
+        };
+      }
+      const v = Number(m.valor) || 0;
+      if (m.tipo === 'entrada' || m.tipo === 'receita') {
+        resumoPorOS[osKey].totalEntradasOS = arredondar(resumoPorOS[osKey].totalEntradasOS + v);
+      } else {
+        resumoPorOS[osKey].totalSaidasOS = arredondar(resumoPorOS[osKey].totalSaidasOS + v);
+      }
+      resumoPorOS[osKey].saldoLiquidoOS = arredondar(resumoPorOS[osKey].totalEntradasOS - resumoPorOS[osKey].totalSaidasOS);
+      resumoPorOS[osKey].qtdLancamentos++;
+      if (m.placa && !resumoPorOS[osKey].placasVinculadas.includes(String(m.placa).toUpperCase().trim())) {
+        resumoPorOS[osKey].placasVinculadas.push(String(m.placa).toUpperCase().trim());
+      }
+    }
+  }
+
   const max = Number(limit) > 0 ? Number(limit) : 200;
   return {
     total: lista.length,
     movimentacoes: lista.slice(0, max),
     resumoOrigem,
+    resumoMeiosPagamento,
+    resumoPorOS
+  };
+}
+
+/**
+ * Obtém a conciliação financeira de uma Ordem de Serviço (OS), calculando entradas, saídas, saldo e histórico
+ */
+function obterResumoFinanceiroOS(stateOrOsId, osIdOrOptions, optionsArg) {
+  let state = {};
+  let osId = null;
+  let options = {};
+
+  if (typeof stateOrOsId === 'object' && stateOrOsId !== null && !('osId' in stateOrOsId) && ('movimentos' in stateOrOsId || 'caixas' in stateOrOsId)) {
+    state = stateOrOsId;
+    osId = osIdOrOptions;
+    options = optionsArg || {};
+  } else if (typeof stateOrOsId === 'string' || typeof stateOrOsId === 'number') {
+    osId = stateOrOsId;
+    if (typeof osIdOrOptions === 'object' && osIdOrOptions !== null) {
+      if ('movimentos' in osIdOrOptions || 'caixas' in osIdOrOptions) {
+        state = osIdOrOptions;
+        options = optionsArg || {};
+      } else {
+        options = osIdOrOptions;
+      }
+    }
+  } else if (typeof stateOrOsId === 'object' && stateOrOsId !== null) {
+    state = stateOrOsId;
+    osId = osIdOrOptions;
+    options = optionsArg || {};
+  }
+
+  const osNorm = String(osId || '').replace(/^#/, '').trim();
+  const todosMovs = Array.isArray(state.movimentos) ? state.movimentos : [];
+
+  const movsOS = todosMovs.filter(m => {
+    if (!m.osId) return false;
+    const mOs = String(m.osId).replace(/^#/, '').trim();
+    return mOs === osNorm;
+  });
+
+  let totalEntradasOS = 0;
+  let totalSaidasOS = 0;
+  let qtdLancamentos = 0;
+  const placasSet = new Set();
+  const resumoMeiosPagamento = {};
+
+  for (const m of movsOS) {
+    if (m.placa) {
+      placasSet.add(String(m.placa).toUpperCase().trim());
+    }
+
+    // Apenas movimentações ativas (não estornadas e não compensatórias de estorno)
+    const isEstornado = Boolean(m.estornado);
+    const isCompensatorio = Boolean(m.estornoDeId || m.subtipo === 'estorno');
+
+    if (!isEstornado && !isCompensatorio) {
+      qtdLancamentos++;
+      const val = Number(m.valor) || 0;
+      const isEnt = m.tipo === 'entrada' || m.tipo === 'receita';
+      if (isEnt) {
+        totalEntradasOS = arredondar(totalEntradasOS + val);
+      } else {
+        totalSaidasOS = arredondar(totalSaidasOS + val);
+      }
+
+      const forma = normalizarFormaPagamento(m.forma || m.formaPagamento);
+      if (!resumoMeiosPagamento[forma]) {
+        resumoMeiosPagamento[forma] = { total: 0, qtd: 0 };
+      }
+      resumoMeiosPagamento[forma].qtd++;
+      resumoMeiosPagamento[forma].total = arredondar(resumoMeiosPagamento[forma].total + val);
+    }
+  }
+
+  const saldoLiquidoOS = arredondar(totalEntradasOS - totalSaidasOS);
+  const historico = movsOS.map(projetarMovimentacao);
+
+  return {
+    osId: osNorm,
+    totalEntradasOS,
+    totalSaidasOS,
+    saldoLiquidoOS,
+    qtdLancamentos,
+    placasVinculadas: Array.from(placasSet),
+    historico,
     resumoMeiosPagamento
   };
 }
@@ -1239,5 +1356,6 @@ module.exports = {
   listarMovimentacoes,
   estornarMovimentacao,
   formatarBoletimFechamentoWhatsapp,
-  obterResumoFechamentoParcial
+  obterResumoFechamentoParcial,
+  obterResumoFinanceiroOS
 };
