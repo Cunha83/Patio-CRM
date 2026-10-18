@@ -1272,6 +1272,174 @@ test('18. Validação de Liberação de Pátio (Portaria) e Override Auditado co
   }
 });
 
+test('19. Sincronia Bidirecional de Estorno (Caixa <-> Títulos Liquidados) e DRE Simplificado (Frente 5B)', async () => {
+  const fs = require('fs');
+  const os = require('os');
+  const express = require('express');
+  const http = require('http');
+  const financialAnalystService = require('../services/financialAnalystService.js');
+  const financialEngine = require('../services/financialEngine.js');
+  const financialRoutes = require('../routes/financial.routes');
+  const { salvarEstado } = require('../lib/serverContext');
+  const { getDefaultState } = require('../lib/repository/stateRepository');
+  const { initDB, closeDB, all } = require('../db');
+
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'patio-estorno-dre-test-'));
+  const testDb = path.join(tempDir, 'test.db');
+  process.env.DB_PATH = testDb;
+
+  try {
+    await initDB();
+    const tenantId = 't_estorno_dre';
+
+    // 19.1 Estado inicial: OS 950 com total 2000, 0 entradas, 1 título a receber faturado a prazo de 2000
+    const state = {
+      tenantId,
+      os: [
+        { id: '950', numero: '950', total: 2000, cliente: 'Transportes Expresso' }
+      ],
+      caixas: [
+        {
+          id: 'cx_est_1',
+          status: 'aberto',
+          aberto: true,
+          saldoInicial: 500,
+          saldoAtual: 500,
+          totalEntradas: 0,
+          totalSaidas: 0,
+          movimentacoesIds: []
+        }
+      ],
+      movimentos: [],
+      contas: [
+        {
+          id: 'tit_rec_950',
+          tipo: 'receber',
+          osId: '950',
+          valor: 2000,
+          desc: 'Faturamento OS #950',
+          pago: false,
+          status: 'aberto'
+        }
+      ]
+    };
+
+    // Antes da liquidação: OS deve estar liberado_faturado
+    const resumoAntes = financialAnalystService.obterResumoFinanceiroOS(state, '950');
+    assert.equal(resumoAntes.statusLiberacaoPatio, 'liberado_faturado');
+    assert.equal(resumoAntes.totalFaturadoPrazo, 2000);
+    assert.equal(resumoAntes.totalPago, 0);
+
+    // 19.2 Liquidação do título -> Gera entrada no caixa e quita a OS
+    const resLiq = financialAnalystService.liquidarTituloFinanceiro(state, {
+      id: 'tit_rec_950',
+      meioPagamento: 'pix',
+      operador: 'dono_1'
+    });
+    assert.equal(resLiq.ok, true);
+    assert.equal(state.caixas[0].saldoAtual, 2500); // 500 + 2000
+    assert.equal(state.contas[0].pago, true);
+    assert.equal(state.contas[0].status, 'liquidado');
+
+    const resumoPosLiq = financialAnalystService.obterResumoFinanceiroOS(state, '950');
+    assert.equal(resumoPosLiq.statusLiberacaoPatio, 'liberado_quitado');
+    assert.equal(resumoPosLiq.totalPago, 2000);
+    assert.equal(resumoPosLiq.saldoRestante, 0);
+
+    // 19.3 Estorno da movimentação de caixa originada pela baixa do título
+    const movId = resLiq.movimentacao.id;
+    const resEstorno = financialAnalystService.estornarMovimentacao(state, {
+      movimentoId: movId,
+      motivo: 'Cliente solicitou cancelamento do recebimento Pix',
+      operador: 'dono_1'
+    });
+    assert.equal(resEstorno.ok, true);
+    assert.equal(state.caixas[0].saldoAtual, 500, 'Saldo deve voltar para 500 após estorno');
+
+    // Sincronia Bidirecional: Título deve ter sido reaberto automaticamente!
+    const tituloReaberto = state.contas.find(c => c.id === 'tit_rec_950');
+    assert.equal(tituloReaberto.pago, false, 'Título deve ser reaberto como não pago');
+    assert.equal(tituloReaberto.status, 'aberto', 'Status do título deve voltar para aberto');
+    assert.ok(tituloReaberto.reabertoPorEstornoEm, 'Deve registrar datahora de reabertura por estorno');
+    assert.ok(tituloReaberto.ultimoEstornoId, 'Deve registrar o id do estorno');
+
+    // OS deve voltar imediatamente para liberado_faturado
+    const resumoPosEstorno = financialAnalystService.obterResumoFinanceiroOS(state, '950');
+    assert.equal(resumoPosEstorno.statusLiberacaoPatio, 'liberado_faturado', 'OS deve voltar para liberado_faturado');
+    assert.equal(resumoPosEstorno.totalPago, 0, 'Total pago volta a ser zero');
+    assert.equal(resumoPosEstorno.totalFaturadoPrazo, 2000, 'Faturamento a prazo reativado');
+    assert.equal(resumoPosEstorno.saldoRestante, 2000);
+
+    // 19.4 DRE Operacional Simplificado: Expurgando Sangrias e Suprimentos
+    const agoraSP = financialEngine.obterAgoraSP();
+    const dHoje = agoraSP.dataISO;
+    const stateDRE = {
+      tenantId,
+      cfg: { saldoInicial: 1000 },
+      movimentos: [
+        // Receitas operacionais puras (5.000)
+        { id: 'm_op_1', tipo: 'entrada', subtipo: 'receita', valor: 3000, data: dHoje },
+        { id: 'm_op_2', tipo: 'entrada', subtipo: 'receita', valor: 2000, data: dHoje },
+        // Despesas operacionais puras (2.000)
+        { id: 'm_op_3', tipo: 'saida', subtipo: 'despesa', valor: 1500, data: dHoje },
+        { id: 'm_op_4', tipo: 'saida', subtipo: 'despesa', valor: 500, data: dHoje },
+        // Suprimento de caixa (aporte de troco - 1.500)
+        { id: 'm_sup_1', tipo: 'entrada', subtipo: 'suprimento', naturezaOperacao: 'suprimento', valor: 1500, data: dHoje },
+        // Sangria de caixa (retirada para cofre - 1.200)
+        { id: 'm_sang_1', tipo: 'saida', subtipo: 'sangria', naturezaOperacao: 'sangria', valor: 1200, data: dHoje },
+        // Movimento estornado (não deve impactar o DRE)
+        { id: 'm_est_orig', tipo: 'entrada', subtipo: 'receita', valor: 800, data: dHoje, estornado: true },
+        // Compensatório de estorno (não deve impactar o DRE)
+        { id: 'm_est_comp', tipo: 'saida', subtipo: 'estorno', naturezaOperacao: 'estorno', valor: 800, data: dHoje, estornoDeId: 'm_est_orig' }
+      ]
+    };
+
+    const dre = financialEngine.calcularDRESimplificado(stateDRE, { filtro: 'hoje' });
+    assert.equal(dre.receitaOperacionalBruta, 5000, 'Receita bruta deve ser exatamente 5000, sem suprimentos');
+    assert.equal(dre.despesasOperacionais, 2000, 'Despesas devem ser exatamente 2000, sem sangrias');
+    assert.equal(dre.resultadoOperacionalLiquido, 3000, 'Resultado deve ser 5000 - 2000 = 3000');
+    assert.equal(dre.margemOperacionalPercentual, 60, 'Margem deve ser 60%');
+    assert.equal(dre.lucro, true);
+    assert.equal(dre.movimentacaoTesourariaNeutra.totalSuprimentos, 1500);
+    assert.equal(dre.movimentacaoTesourariaNeutra.totalSangrias, 1200);
+    assert.equal(dre.movimentacaoTesourariaNeutra.saldoTesouraria, 300);
+
+    // 19.5 Verificação do DRE exposto em GET /api/financeiro/resumo
+    const app = express();
+    app.use(express.json());
+    app.use((req, res, next) => {
+      req.securityContext = { role: 'dono', actorId: 'dono_1', tenantId, permissions: ['financial:read'] };
+      req.headers['x-tenant-id'] = tenantId;
+      next();
+    });
+    app.use(financialRoutes);
+
+    const base = getDefaultState(tenantId);
+    await salvarEstado(tenantId, { ...base, ...stateDRE });
+
+    const server = http.createServer(app);
+    await new Promise(r => server.listen(0, '127.0.0.1', r));
+    const port = server.address().port;
+    const baseUrl = `http://127.0.0.1:${port}`;
+
+    try {
+      const resApi = await fetch(`${baseUrl}/api/financeiro/resumo`);
+      assert.equal(resApi.status, 200);
+      const jsonResumo = await resApi.json();
+      assert.ok(jsonResumo.dreOperacional, 'Endpoint deve expor dreOperacional');
+      assert.equal(jsonResumo.dreOperacional.receitaOperacionalBruta, 5000);
+      assert.equal(jsonResumo.dreOperacional.despesasOperacionais, 2000);
+      assert.equal(jsonResumo.dreOperacional.resultadoOperacionalLiquido, 3000);
+    } finally {
+      await new Promise(r => server.close(r));
+    }
+  } finally {
+    await closeDB().catch(() => {});
+    try { fs.rmSync(tempDir, { recursive: true, force: true }); } catch (_) {}
+  }
+});
+
+
 
 
 

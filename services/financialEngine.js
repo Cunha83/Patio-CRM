@@ -1074,6 +1074,104 @@ function gerarResumoPatio(state = {}, options = {}) {
     `_Digite *!relatorio* para ver os detalhes de cada caminhão e serviços._`;
 }
 
+/**
+ * Consolida o Demonstrativo do Resultado do Exercício (DRE Operacional Simplificado)
+ * Segrega receitas operacionais e despesas operacionais puras da movimentação de tesouraria (sangria/suprimento/estorno).
+ */
+function calcularDRESimplificado(state = {}, options = {}) {
+  const filtro = options.filtro || '30d';
+  const dataRef = options.dataRef || dataISO();
+  const { de, ate } = obterIntervaloFiltro(filtro, dataRef, options.customDe, options.customAte);
+
+  const movimentos = Array.isArray(state.movimentos) ? state.movimentos : [];
+
+  let receitaOperacionalBruta = 0;
+  let despesasOperacionais = 0;
+  let totalSuprimentos = 0;
+  let totalSangrias = 0;
+  let totalEstornosCompensatorios = 0;
+  let qtdReceitas = 0;
+  let qtdDespesas = 0;
+
+  for (const m of movimentos) {
+    const d = (m.data || '').slice(0, 10);
+    if (d && (d < de || d > ate)) continue;
+
+    // Movimentações estornadas são expurgadas
+    if (m.estornado) continue;
+
+    const val = Number(m.valor) || 0;
+    const nat = m.naturezaOperacao || (m.subtipo === 'sangria' ? 'sangria' : (m.subtipo === 'suprimento' ? 'suprimento' : (m.subtipo === 'estorno' || m.estornoDeId ? 'estorno' : 'operacional')));
+
+    // Classificação por natureza
+    if (nat === 'suprimento' || m.subtipo === 'suprimento') {
+      totalSuprimentos = +(totalSuprimentos + val).toFixed(2);
+    } else if (nat === 'sangria' || m.subtipo === 'sangria') {
+      totalSangrias = +(totalSangrias + val).toFixed(2);
+    } else if (nat === 'estorno' || m.estornoDeId || m.subtipo === 'estorno') {
+      totalEstornosCompensatorios = +(totalEstornosCompensatorios + val).toFixed(2);
+    } else {
+      // Operacional puro
+      if (m.tipo === 'entrada' || m.tipo === 'receita') {
+        receitaOperacionalBruta = +(receitaOperacionalBruta + val).toFixed(2);
+        qtdReceitas++;
+      } else if (m.tipo === 'saida' || m.tipo === 'despesa') {
+        despesasOperacionais = +(despesasOperacionais + val).toFixed(2);
+        qtdDespesas++;
+      }
+    }
+  }
+
+  const resultadoOperacionalLiquido = +(receitaOperacionalBruta - despesasOperacionais).toFixed(2);
+  const margemOperacionalPercentual = receitaOperacionalBruta > 0
+    ? +((resultadoOperacionalLiquido / receitaOperacionalBruta) * 100).toFixed(2)
+    : 0;
+
+  return {
+    periodo: { de, ate, filtro },
+    receitaOperacionalBruta,
+    despesasOperacionais,
+    resultadoOperacionalLiquido,
+    margemOperacionalPercentual,
+    lucro: resultadoOperacionalLiquido >= 0,
+    qtdReceitas,
+    qtdDespesas,
+    movimentacaoTesourariaNeutra: {
+      totalSuprimentos,
+      totalSangrias,
+      saldoTesouraria: +(totalSuprimentos - totalSangrias).toFixed(2)
+    }
+  };
+}
+
+/**
+ * Formata o DRE simplificado para exibição elegante no WhatsApp
+ */
+function formatarDREWhatsapp(dre, state = {}) {
+  const nomeAssistente = state.cfg?.assistente?.displayName || 'Verônica';
+  const rec = formatarMoeda(dre.receitaOperacionalBruta);
+  const desp = formatarMoeda(dre.despesasOperacionais);
+  const res = formatarMoeda(dre.resultadoOperacionalLiquido);
+  const margem = (Number(dre.margemOperacionalPercentual) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%';
+  const sup = formatarMoeda(dre.movimentacaoTesourariaNeutra.totalSuprimentos);
+  const sang = formatarMoeda(dre.movimentacaoTesourariaNeutra.totalSangrias);
+  const iconeResultado = dre.lucro ? '🟢 *LUCRO OPERACIONAL*' : '🔴 *PREJUÍZO OPERACIONAL*';
+
+  return `📊 *DEMONSTRATIVO DE RESULTADO OPERACIONAL (DRE)*\n` +
+    `🤖 *Assistente:* ${nomeAssistente}\n` +
+    `📅 *Período:* ${formatarDataBR(dre.periodo.de)} até ${formatarDataBR(dre.periodo.ate)}\n` +
+    `════════════════════════════\n\n` +
+    `➕ *Receita Operacional Bruta:* ${rec} (${dre.qtdReceitas} entradas)\n` +
+    `➖ *Despesas Operacionais:* ${desp} (${dre.qtdDespesas} saídas)\n` +
+    `────────────────────────────\n` +
+    `${iconeResultado}: *${res}*\n` +
+    `📈 *Margem Operacional:* *${margem}*\n\n` +
+    `🏦 *Movimentação de Tesouraria (Neutra):*\n` +
+    `• Suprimentos (Aportes): ${sup}\n` +
+    `• Sangrias (Retiradas): ${sang}\n` +
+    `_(Valores de tesouraria não afetam o resultado das operações.)_`;
+}
+
 module.exports = {
   FUSO_HORARIO_PADRAO,
   obterAgoraSP,
@@ -1095,5 +1193,7 @@ module.exports = {
   gerarMensagensAdmin,
   gerarMensagensOperacao,
   gerarResumoCaixa,
-  gerarResumoPatio
+  gerarResumoPatio,
+  calcularDRESimplificado,
+  formatarDREWhatsapp
 };

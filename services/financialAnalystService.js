@@ -200,6 +200,7 @@ function registrarMovimentacao(state = {}, payload = {}) {
     dataHora: agoraInfo.dataObj.toISOString(),
     osId: payload.osId || null,
     placa: payload.placa || null,
+    tituloId: payload.tituloId || null,
     clienteId: payload.clienteId || null,
     fornecedorId: payload.fornecedorId || null,
     operador: String(payload.operador || payload.actorId || 'operador'),
@@ -358,14 +359,50 @@ function estornarMovimentacao(state = {}, { movimentoId, motivo, operador, opera
     caixaAberto.movimentacoesIds.push(idEstorno);
   }
 
+  // Sincronia Bidirecional: Reabertura automática de título liquidado vinculado
+  let tituloReaberto = null;
+  const contas = Array.isArray(state.contas) ? state.contas : [];
+  const tituloVinculado = contas.find(c =>
+    (c.movimentoId && String(c.movimentoId) === String(movOriginal.id)) ||
+    (movOriginal.tituloId && String(c.id) === String(movOriginal.tituloId)) ||
+    (c.ultimoMovimentoId && String(c.ultimoMovimentoId) === String(movOriginal.id))
+  );
+
+  if (tituloVinculado && (tituloVinculado.pago || tituloVinculado.status === 'liquidado')) {
+    tituloVinculado.pago = false;
+    tituloVinculado.status = 'aberto';
+    tituloVinculado.reabertoPorEstornoEm = agoraIso;
+    tituloVinculado.ultimoEstornoId = idEstorno;
+    delete tituloVinculado.dataPagamento;
+    delete tituloVinculado.dataPgto;
+    tituloReaberto = tituloVinculado;
+  }
+
+  // Recalculo imediato do status financeiro da OS vinculada
+  const osAlvoId = movOriginal.osId || tituloVinculado?.osId;
+  let resumoOSAtualizado = null;
+  if (osAlvoId) {
+    resumoOSAtualizado = obterResumoFinanceiroOS(state, osAlvoId);
+    if (Array.isArray(state.os)) {
+      const osCad = state.os.find(o => String(o.id || o.numero || '').replace(/^#/, '').trim() === String(osAlvoId).replace(/^#/, '').trim());
+      if (osCad) {
+        osCad.statusLiberacaoPatio = resumoOSAtualizado.statusLiberacaoPatio;
+      }
+    }
+  }
+
   return {
     ok: true,
     status: 200,
-    mensagem: `Movimentação #${movOriginal.id} estornada com sucesso. Lançamento compensatório #${idEstorno} registrado.`,
+    mensagem: `Movimentação #${movOriginal.id} estornada com sucesso. Lançamento compensatório #${idEstorno} registrado.${tituloReaberto ? ` Título #${tituloReaberto.id} reaberto automaticamente.` : ''}`,
     movimentoOriginal: projetarMovimentacao(movOriginal),
+    movimentoEstornado: projetarMovimentacao(movOriginal),
     movimentoCompensatorio: projetarMovimentacao(movCompensatorio),
     caixa: caixaAberto ? projetarCaixa(caixaAberto) : null,
-    saldoCaixaAtual: caixaAberto ? caixaAberto.saldoAtual : null
+    saldoCaixaAtual: caixaAberto ? caixaAberto.saldoAtual : null,
+    saldoAtual: caixaAberto ? caixaAberto.saldoAtual : null,
+    tituloReaberto,
+    resumoOS: resumoOSAtualizado
   };
 }
 
@@ -571,7 +608,8 @@ function projetarMovimentacao(m = {}) {
     estornadoEm: m.estornadoEm || null,
     estornadoPor: m.estornadoPor || null,
     motivoEstorno: m.motivoEstorno || null,
-    estornoDeId: m.estornoDeId || null
+    estornoDeId: m.estornoDeId || null,
+    tituloId: m.tituloId || null
   };
 }
 
@@ -1053,6 +1091,7 @@ function liquidarTituloFinanceiro(state = {}, payload = {}) {
     formaPagamento: meioLiquidacao,
     osId: titulo.osId || '',
     placa: titulo.placa || '',
+    tituloId: titulo.id,
     categoria: isReceber ? 'Recebimento de Título' : 'Pagamento de Despesa',
     operador,
     origem: payload.origem || 'sistema',
@@ -1888,6 +1927,13 @@ function exportarMovimentacoesContabeis(state = {}, opcoes = {}) {
   };
 }
 
+/**
+ * Consolida o DRE Operacional Simplificado delegando para o motor centralizado
+ */
+function calcularDRESimplificado(state = {}, options = {}) {
+  return financialEngine.calcularDRESimplificado(state, options);
+}
+
 module.exports = {
   obterCaixaAberto,
   abrirCaixa,
@@ -1909,5 +1955,7 @@ module.exports = {
   exportarMovimentacoesContabeis,
   faturarSaldoOS,
   liquidarTituloFinanceiro,
-  validarOuAutorizarSaidaPatioOS
+  validarOuAutorizarSaidaPatioOS,
+  calcularDRESimplificado
 };
+

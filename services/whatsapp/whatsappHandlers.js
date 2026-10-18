@@ -658,10 +658,13 @@ async function processarMensagemTexto(msg, {
     textoLower === 'parcial do caixa'
   );
 
+  const isComandoDRE = /^(?:!dre|dre|resultado\s+operacional|demonstrativo\s+dre)\b/i.test(textoLower);
+
   const isComandoLeituraFinanceira = (
     isComandoExtratoOS ||
     isComandoExtrato ||
     isComandoResumoCaixa ||
+    isComandoDRE ||
     textoLower === '!caixa' || textoLower === 'caixa' ||
     textoLower === '!saldo' || textoLower === 'saldo' ||
     textoLower === 'saldo do caixa' || textoLower === 'saldo de caixa' ||
@@ -2174,6 +2177,30 @@ async function processarMensagemTexto(msg, {
 
     await msg.reply(txtContas);
     await auditarComandoWhatsApp({ tenantId: tenantKey, numero: (msg.author || msg.from || '').split('@')[0], comando: textoMensagem, resultado: 'sucesso' });
+    return true;
+  }
+
+  // 3.1 Demonstrativo de Resultado Operacional (DRE Simplificado)
+  if (isComandoDRE) {
+    if (isContextOperacao || !isContextAdmin) {
+      await msg.reply('🔒 *Acesso Restrito:* O Demonstrativo de Resultado Operacional (DRE) é disponibilizado exclusivamente para administradores autorizados.');
+      await auditarComandoWhatsApp({ tenantId: tenantKey, numero: (msg.author || msg.from || '').split('@')[0], comando: textoMensagem, resultado: 'negado_permissao' });
+      return true;
+    }
+    const dre = financialEngine.calcularDRESimplificado(tenantState, { filtro: '30d' });
+    const msgDRE = financialEngine.formatarDREWhatsapp(dre, tenantState);
+    await msg.reply(msgDRE);
+    await auditarComandoWhatsApp({
+      tenantId: tenantKey,
+      numero: (msg.author || msg.from || '').split('@')[0],
+      comando: textoMensagem,
+      resultado: 'sucesso',
+      detalhes: {
+        receitaOperacionalBruta: dre.receitaOperacionalBruta,
+        despesasOperacionais: dre.despesasOperacionais,
+        resultadoOperacionalLiquido: dre.resultadoOperacionalLiquido
+      }
+    });
     return true;
   }
 

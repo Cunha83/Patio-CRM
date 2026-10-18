@@ -1720,7 +1720,125 @@ test('WhatsApp Agente Financeiro - Suíte Completa de Leitura e Escrita Controla
     `);
     assert.ok(auditRows.length >= 2, 'Deve conter auditorias de tentativa negada e concessao excepcional');
   });
+
+  await t.test('28. Reabertura bidirecional de títulos via estorno no WhatsApp e comando DRE (Frente 5B)', async () => {
+    const mockState = criarEstadoMock();
+    const adminNum = '5511999998888';
+    mockState.cfg.adminFones = [adminNum];
+    mockState.cfg.comandosFinanceirosEscrita = true;
+    mockState.caixas = [
+      {
+        id: 'cx-dre-wpp',
+        status: 'aberto',
+        aberto: true,
+        saldoInicial: 1000,
+        saldoAtual: 1000,
+        totalEntradas: 0,
+        totalSaidas: 0,
+        movimentacoesIds: []
+      }
+    ];
+    mockState.contas = [
+      {
+        id: 'tit_wpp_dre_1',
+        tipo: 'receber',
+        osId: '990',
+        valor: 450,
+        desc: 'Serviço Suspensão OS #990',
+        pago: false,
+        status: 'aberto'
+      }
+    ];
+    mockState.os = [
+      { id: '990', numero: '990', total: 450, cliente: 'Transportes Brasil' }
+    ];
+
+    // 28.1 Baixa do título via WhatsApp
+    const repliesBaixa = [];
+    await processarMensagemTexto({
+      from: `${adminNum}@c.us`,
+      author: `${adminNum}@c.us`,
+      body: 'baixar tit_wpp_dre_1 pix',
+      reply: async (txt) => { repliesBaixa.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: adminNum });
+
+    assert.equal(repliesBaixa.length, 1);
+    assert.match(repliesBaixa[0], /CONFIRMAÇÃO DE LIQUIDAÇÃO FINANCEIRA/i);
+
+    // Confirmação
+    const repliesConf = [];
+    await processarMensagemTexto({
+      from: `${adminNum}@c.us`,
+      author: `${adminNum}@c.us`,
+      body: 'CONFIRMAR',
+      reply: async (txt) => { repliesConf.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: adminNum });
+
+    assert.equal(repliesConf.length, 1);
+    assert.match(repliesConf[0], /Título Liquidado com Sucesso/i);
+    assert.equal(mockState.contas[0].pago, true);
+
+    // 28.2 Dono executa estorno do último lançamento pelo WhatsApp
+    const repliesEstorno = [];
+    await processarMensagemTexto({
+      from: `${adminNum}@c.us`,
+      author: `${adminNum}@c.us`,
+      body: 'estornar ultimo cancelamento solicitado pelo cliente',
+      reply: async (txt) => { repliesEstorno.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: adminNum });
+
+    assert.equal(repliesEstorno.length, 1);
+    assert.match(repliesEstorno[0], /CONFIRMAÇÃO DE ESTORNO CONTÁBIL/i);
+
+    // Confirma o estorno com SIM
+    const repliesConfEst = [];
+    await processarMensagemTexto({
+      from: `${adminNum}@c.us`,
+      author: `${adminNum}@c.us`,
+      body: 'SIM',
+      reply: async (txt) => { repliesConfEst.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: adminNum });
+
+    assert.equal(repliesConfEst.length, 1);
+    assert.match(repliesConfEst[0], /Estorno Realizado com Sucesso/i);
+
+    // Título deve estar reaberto
+    assert.equal(mockState.contas[0].pago, false, 'Título deve ser reaberto pelo estorno');
+    assert.equal(mockState.contas[0].status, 'aberto');
+    assert.ok(mockState.contas[0].reabertoPorEstornoEm);
+
+    // 28.3 Consulta de DRE Operacional Simplificado via WhatsApp
+    // Injeta movimentações operacionais puras e movimentações de tesouraria
+    const agoraSP = financialEngine.obterAgoraSP();
+    const dHoje = agoraSP.dataISO;
+    mockState.movimentos = [
+      { id: 'm_op_rec', tipo: 'entrada', subtipo: 'receita', valor: 4000, data: dHoje },
+      { id: 'm_op_desp', tipo: 'saida', subtipo: 'despesa', valor: 1500, data: dHoje },
+      { id: 'm_tes_sup', tipo: 'entrada', subtipo: 'suprimento', naturezaOperacao: 'suprimento', valor: 800, data: dHoje },
+      { id: 'm_tes_sang', tipo: 'saida', subtipo: 'sangria', naturezaOperacao: 'sangria', valor: 600, data: dHoje }
+    ];
+
+    const repliesDRE = [];
+    await processarMensagemTexto({
+      from: `${adminNum}@c.us`,
+      author: `${adminNum}@c.us`,
+      body: 'dre',
+      reply: async (txt) => { repliesDRE.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: adminNum });
+
+    assert.equal(repliesDRE.length, 1);
+    assert.match(repliesDRE[0], /DEMONSTRATIVO DE RESULTADO OPERACIONAL \(DRE\)/i);
+    assert.match(repliesDRE[0], /4\.000,00/); // Receita operacional
+    assert.match(repliesDRE[0], /1\.500,00/); // Despesa operacional
+    assert.match(repliesDRE[0], /2\.500,00/); // Lucro operacional líquido 4000 - 1500
+    assert.match(repliesDRE[0], /62,5%/);     // Margem operacional 2500/4000
+    assert.match(repliesDRE[0], /LUCRO OPERACIONAL/i);
+    assert.match(repliesDRE[0], /Tesouraria \(Neutra\)/i);
+    assert.match(repliesDRE[0], /800,00/); // Suprimento
+    assert.match(repliesDRE[0], /600,00/); // Sangria
+  });
 });
+
 
 
 

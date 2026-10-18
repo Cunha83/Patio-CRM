@@ -36,6 +36,7 @@ router.get('/api/financeiro/resumo', requirePermission('financial:read'), async 
       },
       indicadores: kpis,
       resumoOrigem: kpis.resumoOrigem || null,
+      dreOperacional: financialEngine.calcularDRESimplificado(state, { filtro: req.query?.filtro || '30d' }),
       previsao: {
         saldoAtual: previsao30d.saldoAtual,
         em7Dias: previsao30d.marcos.em7Dias,
