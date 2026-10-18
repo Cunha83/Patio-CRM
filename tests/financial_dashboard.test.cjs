@@ -1439,6 +1439,128 @@ test('19. Sincronia Bidirecional de Estorno (Caixa <-> Títulos Liquidados) e DR
   }
 });
 
+test('20. Geração de texto amigável de cobrança de OS e visualização de liberação excepcional e DRE (Frente 5C)', async () => {
+  const fs = require('fs');
+  const os = require('os');
+  const express = require('express');
+  const http = require('http');
+  const financialAnalystService = require('../services/financialAnalystService.js');
+  const financialRoutes = require('../routes/financial.routes');
+  const { salvarEstado } = require('../lib/serverContext');
+  const { getDefaultState } = require('../lib/repository/stateRepository');
+  const { initDB, closeDB } = require('../db');
+
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'patio-crm-test-cobranca-'));
+  const testDb = path.join(tempDir, 'test.db');
+  process.env.DB_PATH = testDb;
+
+  try {
+    const tenantId = 'tenant_cobranca_5c';
+    await initDB();
+
+    const state = {
+      cfg: {
+        nomeOficina: 'Oficina Diesel Forte',
+        chavePix: 'pix@dieselforte.com.br'
+      },
+      clientes: [
+        { id: 'cli_5c', nome: 'Transportadora Alfa Ltda', fantasia: 'Alfa Transportes' }
+      ],
+      veiculos: [
+        { id: 'vei_5c', placa: 'ABC1D23', modelo: 'Volvo FH 540', marca: 'Volvo' }
+      ],
+      os: [
+        {
+          id: 'os_cobranca_1',
+          numero: '7001',
+          num: '7001',
+          cli: 'cli_5c',
+          vei: 'vei_5c',
+          total: 4500,
+          statusLiberacaoPatio: 'retido_pendente'
+        }
+      ],
+      movimentos: [
+        {
+          id: 'mov_cob_1',
+          tipo: 'entrada',
+          valor: 1500,
+          osId: '7001',
+          naturezaOperacao: 'operacional',
+          estornado: false
+        }
+      ],
+      contas: []
+    };
+
+    // 20.1 Validar gerarTextoCobrancaOS
+    const cobranca = financialAnalystService.gerarTextoCobrancaOS(state, '7001');
+    assert.equal(cobranca.ok, true);
+    assert.equal(cobranca.osId, '7001');
+    assert.equal(cobranca.clienteNome, 'Alfa Transportes');
+    assert.equal(cobranca.valorTotal, 4500);
+    assert.equal(cobranca.saldoRestante, 3000);
+    assert.equal(cobranca.chavePix, 'pix@dieselforte.com.br');
+    assert.ok(cobranca.textoCobranca.includes('Alfa Transportes'));
+    assert.ok(cobranca.textoCobranca.includes('Oficina Diesel Forte'));
+    assert.match(cobranca.textoCobranca, /3\.000,00/);
+    assert.ok(cobranca.textoCobranca.includes('pix@dieselforte.com.br'));
+
+    // 20.2 Validar endpoint GET /api/financeiro/os/:osId/cobranca
+    const app = express();
+    app.use(express.json());
+    app.use((req, res, next) => {
+      req.securityContext = { role: 'dono', actorId: 'dono_1', tenantId, permissions: ['financial:read'] };
+      req.headers['x-tenant-id'] = tenantId;
+      next();
+    });
+    app.use(financialRoutes);
+
+    const base = getDefaultState(tenantId);
+    await salvarEstado(tenantId, { ...base, ...state });
+
+    const server = http.createServer(app);
+    await new Promise(r => server.listen(0, '127.0.0.1', r));
+    const port = server.address().port;
+    const baseUrl = `http://127.0.0.1:${port}`;
+
+    try {
+      const resCobranca = await fetch(`${baseUrl}/api/financeiro/os/7001/cobranca`);
+      assert.equal(resCobranca.status, 200);
+      const jsonCobranca = await resCobranca.json();
+      assert.equal(jsonCobranca.success, true);
+      assert.equal(jsonCobranca.saldoRestante, 3000);
+      assert.ok(jsonCobranca.textoCobranca.includes('OS *#7001*'));
+    } finally {
+      await new Promise(r => server.close(r));
+    }
+
+    // 20.3 Validar simulação de Frontend: liberação excepcional e status
+    const osComExcecao = {
+      ...state.os[0],
+      statusLiberacaoPatio: 'liberado_excepcional',
+      liberacaoExcepcional: {
+        autorizadoPor: 'Carlos Diretor',
+        perfil: 'dono',
+        justificativa: 'Cliente corporativo com pagamento quinzenal'
+      }
+    };
+
+    // Avaliação no motor
+    const validacaoMotor = financialAnalystService.validarOuAutorizarSaidaPatioOS(
+      { ...state, os: [osComExcecao] },
+      { osId: '7001' }
+    );
+    assert.equal(validacaoMotor.ok, true);
+    assert.equal(validacaoMotor.autorizado, true);
+    assert.equal(validacaoMotor.statusLiberacaoPatio, 'liberado_excepcional');
+  } finally {
+    await closeDB().catch(() => {});
+    try { fs.rmSync(tempDir, { recursive: true, force: true }); } catch (_) {}
+  }
+});
+
+
 
 
 

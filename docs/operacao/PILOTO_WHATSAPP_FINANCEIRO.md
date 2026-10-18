@@ -379,3 +379,57 @@ O badge é renderizado no card de box do Pátio, no modal da Ordem de Serviço e
    - Ao confirmar, o título é marcado como `pago: true` e `status: 'liquidado'`.
    - Gera a movimentação de caixa integrada (entrada para recebimento, saída para pagamento).
    - Grava auditoria permanente `financeiro:titulo:liquidar` no banco de dados SQLite.
+
+---
+
+## 11. Governança de Pátio, Reabertura Automática de Títulos, DRE e Cobrança Amigável
+
+### A. Trava de Liberação de Pátio e Estados Canônicos de Portaria
+Para garantir que nenhum veículo saia da oficina sem quitação, faturamento formal ou consentimento superior explícito, o Pátio-CRM implementa quatro estados canônicos de liberação:
+- `🟢 Liberado (Quitado)`: Ordem com 100% do saldo recebido no caixa ativo (`saldoRestante <= 0.01`).
+- `🔵 Liberado (Faturado)`: Ordem cujo saldo remanescente está formalizado em títulos a receber a prazo (`totalFaturadoPrazo >= saldoRestante`).
+- `🟣 Liberado (Exceção Auditada)`: Ordem retida que recebeu autorização excepcional concedida por perfil superior com justificativa registrada e auditada.
+- `🟡 Retido (Saldo Pendente)`: Ordem com pendência financeira em aberto sem cobertura de pagamento ou faturamento. A portaria física e a API bloqueiam a entrega da OS.
+
+### B. Liberação Excepcional Auditada com RBAC (Portaria / WhatsApp / Web)
+Quando um cliente necessita retirar o veículo antes da compensação bancária ou do fechamento de faturamento corporativo:
+1. **Pela Interface Web**:
+   - No Radar de Liberação Financeira ou na folha da OS, clique no botão `🔓 Liberar c/ Justificativa`.
+   - Informe a justificativa detalhada (mínimo de 5 caracteres).
+   - O sistema aciona `POST /api/financeiro/os/:osId/liberar-saida` exigindo perfil Dono/Admin e registra o evento `financeiro:os:liberar_saida_excepcional` no `security_audit_log`.
+2. **Pelo WhatsApp**:
+   - O administrador envia: `liberar os <id> <justificativa>` (ex.: `liberar os 901 Autorizado faturamento no dia 25`).
+   - O bot exige perfil superior e confirmação em 2 etapas (`CONFIRMAR`), com TTL de 2 minutos.
+   - Ao confirmar, a OS é atualizada para `liberado_excepcional` e o veículo é liberado no pátio.
+
+### C. Reabertura Bidirecional Automática de Títulos por Estorno
+Para manter estrita consonância entre a tesouraria física e o contas a receber:
+- Quando uma movimentação de caixa vinculada à liquidação de um título for estornada (seja pelo botão `Estornar` na web ou pelo comando `estornar ultimo <motivo>` no WhatsApp):
+  1. O título correspondente é automaticamente reaberto (`pago: false`, `status: 'aberto'`).
+  2. São gravados os metadados `reabertoPorEstornoEm` e `ultimoEstornoId`.
+  3. A Ordem de Serviço vinculada tem seu diagnóstico recalculado imediatamente, retornando seu status de liberação de pátio para `liberado_faturado`.
+  4. O saldo do caixa do turno é compensado sem quebras de integridade.
+
+### D. Demonstrativo DRE Operacional e Segregação de Tesouraria Neutra
+O Demonstrativo de Resultado Operacional (DRE) simplificado do Pátio-CRM isola o desempenho do negócio das movimentações patrimoniais:
+- **Expurgos Contábeis**: Suprimentos (aportes de capital/troco) e sangrias (retiradas para depósito bancário/cofre) não afetam o resultado das operações.
+- **Métricas Apuradas**:
+  - *Receita Operacional Bruta*: Total de entradas operacionais do período.
+  - *Despesas Operacionais*: Total de saídas operacionais e custos com peças/serviços.
+  - *Lucro/Prejuízo Operacional Líquido*: Receitas operacionais − Despesas operacionais.
+  - *Margem Operacional Percentual*: `(Lucro / Receita) * 100`, formatada no padrão brasileiro (`X,X%`).
+  - *Movimentação de Tesouraria Neutra*: Total de Suprimentos vs Sangrias e saldo de caixa em custódia.
+- **Canais de Consulta**:
+  - WhatsApp: Comandos `dre`, `resultado operacional`, `demonstrativo dre`.
+  - Web: Card compacto `📊 DRE Operacional (Visão Gerencial)` no painel da Verônica Analista e resumo da API (`GET /api/financeiro/resumo`).
+
+### E. Notificação e Mensagem Pronta de Cobrança Amigável via WhatsApp
+Para agilizar o contato com devedores e evitar atritos de cobrança:
+- **Pelo WhatsApp**:
+  - Envie `cobranca os <id>` ou `aviso vencimento <id>`.
+  - O bot retorna o texto completo cordial já formatado com nome do cliente, placa/veículo, valores e chave Pix da oficina para pagamento imediato.
+  - Se a OS já estiver quitada, o bot confirma a regularidade e informa que não há saldo devedor.
+- **Pela Interface Web**:
+  - No Radar de Liberação de Pátio, cada OS com saldo pendente disponibiliza o botão `📲 Copiar Aviso`.
+  - O clique copia o texto estruturado para a área de transferência para colagem rápida no chat do cliente.
+

@@ -140,6 +140,12 @@ function folhaOS() {
         <button class="btn btn-primario" data-act="faturar-os-prazo" data-id="${o.id || o.num}" style="height:34px;padding:0 14px;font-weight:600" title="Faturar saldo a prazo com geração de títulos a receber">
           📄 Faturar a Prazo
         </button>
+        <button class="btn btn-secundario" data-act="liberar-os-excepcional" data-id="${o.id || o.num}" style="height:34px;padding:0 12px;font-weight:600;color:#6b21a8;border-color:#d8b4fe" title="Autorizar saída excepcional de pátio (Dono/Admin)">
+          🔓 Liberar Exceção
+        </button>
+        <button class="btn btn-secundario" data-act="copiar-aviso-cobranca" data-id="${o.id || o.num}" style="height:34px;padding:0 12px;font-weight:600" title="Copiar mensagem amigável de cobrança para WhatsApp">
+          📲 Copiar Cobrança
+        </button>
         <button class="btn btn-sucesso" data-act="faturar-os-modal" style="height:34px;padding:0 16px;font-weight:600">
           ${ico('check', 14)} Faturar & Entregar
         </button>

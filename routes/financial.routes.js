@@ -440,6 +440,25 @@ router.post('/api/financeiro/os/:osId/liberar-saida', requirePermission('os:read
 });
 
 /**
+ * GET /api/financeiro/os/:osId/cobranca
+ * Retorna mensagem de cobrança amigável formatada para envio ao cliente da OS via WhatsApp
+ */
+router.get('/api/financeiro/os/:osId/cobranca', requirePermission('financial:read'), async (req, res) => {
+  try {
+    const { osId } = req.params;
+    const state = await getOrLoadState(req);
+    const resultado = financialAnalystService.gerarTextoCobrancaOS(state, osId, req.query || {});
+    res.status(200).json({
+      success: true,
+      ...resultado
+    });
+  } catch (err) {
+    console.error('[API /api/financeiro/os/:osId/cobranca GET] Erro:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+/**
  * 4.1.2 POST /api/financeiro/titulos/:id/liquidar
  * Realiza a liquidação (baixa) de um título a receber ou conta a pagar com geração de movimento no caixa e auditoria
  */

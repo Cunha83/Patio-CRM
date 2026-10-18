@@ -1837,6 +1837,86 @@ test('WhatsApp Agente Financeiro - Suíte Completa de Leitura e Escrita Controla
     assert.match(repliesDRE[0], /800,00/); // Suprimento
     assert.match(repliesDRE[0], /600,00/); // Sangria
   });
+
+  await t.test('29. Comando de cobrança amigável de OS via WhatsApp com dados do cliente e chave Pix (Frente 5C)', async () => {
+    const mockState = criarEstadoMock();
+    const adminNum = '5511999998888';
+    mockState.cfg.adminFones = [adminNum];
+    mockState.cfg.nomeOficina = 'Oficina Pátio Diesel';
+    mockState.cfg.chavePix = 'financeiro@patiodiesel.com.br';
+    mockState.clientes = [
+      { id: 'cli_zap_5c', nome: 'Transportes Rápido Ltda', fantasia: 'Expresso Rápido' }
+    ];
+    mockState.veiculos = [
+      { id: 'vei_zap_5c', placa: 'XYZ9K88', modelo: 'Scania R450', marca: 'Scania' }
+    ];
+    mockState.os = [
+      {
+        id: '881',
+        numero: '881',
+        num: '881',
+        cli: 'cli_zap_5c',
+        vei: 'vei_zap_5c',
+        total: 5000,
+        statusLiberacaoPatio: 'retido_pendente'
+      },
+      {
+        id: '882',
+        numero: '882',
+        num: '882',
+        cli: 'cli_zap_5c',
+        vei: 'vei_zap_5c',
+        total: 1200,
+        statusLiberacaoPatio: 'liberado_quitado'
+      }
+    ];
+    mockState.movimentos = [
+      { id: 'mov_pago_881', tipo: 'entrada', valor: 2000, osId: '881', estornado: false },
+      { id: 'mov_pago_882', tipo: 'entrada', valor: 1200, osId: '882', estornado: false }
+    ];
+
+    // 29.1 Comando de cobrança para OS com saldo devedor
+    const repliesCob1 = [];
+    await processarMensagemTexto({
+      from: `${adminNum}@c.us`,
+      author: `${adminNum}@c.us`,
+      body: 'cobranca os 881',
+      reply: async (txt) => { repliesCob1.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: adminNum });
+
+    assert.equal(repliesCob1.length, 1);
+    assert.match(repliesCob1[0], /Expresso Rápido/);
+    assert.match(repliesCob1[0], /Oficina Pátio Diesel/);
+    assert.match(repliesCob1[0], /OS \*#881\*/);
+    assert.match(repliesCob1[0], /Scania R450/);
+    assert.match(repliesCob1[0], /5\.000,00/);
+    assert.match(repliesCob1[0], /3\.000,00/); // Saldo pendente: 5000 - 2000
+    assert.match(repliesCob1[0], /financeiro@patiodiesel\.com\.br/);
+
+    // 29.2 Comando de cobrança para OS já quitada
+    const repliesCob2 = [];
+    await processarMensagemTexto({
+      from: `${adminNum}@c.us`,
+      author: `${adminNum}@c.us`,
+      body: 'aviso vencimento 882',
+      reply: async (txt) => { repliesCob2.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: adminNum });
+
+    assert.equal(repliesCob2.length, 1);
+    assert.match(repliesCob2[0], /regularizada|já está quitada/i);
+
+    // 29.3 Comando para OS inexistente
+    const repliesCobInexistente = [];
+    await processarMensagemTexto({
+      from: `${adminNum}@c.us`,
+      author: `${adminNum}@c.us`,
+      body: 'cobranca os 99999',
+      reply: async (txt) => { repliesCobInexistente.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: adminNum });
+
+    assert.equal(repliesCobInexistente.length, 1);
+    assert.match(repliesCobInexistente[0], /Não foi possível localizar|quitada/i);
+  });
 });
 
 

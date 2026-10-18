@@ -841,7 +841,11 @@ function obterResumoFinanceiroOS(stateOrOsId, osIdOrOptions, optionsArg) {
 
   // Consulta de dados cadastrais da OS (caso existam em state.os)
   const osList = Array.isArray(state.os) ? state.os : [];
-  const dadosOS = osList.find(o => String(o.id || o.numero || '').replace(/^#/, '').trim() === osNorm);
+  const dadosOS = osList.find(o => {
+    const id = String(o.id || '').replace(/^#/, '').trim();
+    const num = String(o.num || o.numero || '').replace(/^#/, '').trim();
+    return id === osNorm || num === osNorm;
+  });
   if (dadosOS && dadosOS.placa) {
     placasSet.add(String(dadosOS.placa).toUpperCase().trim());
   }
@@ -887,9 +891,13 @@ function obterResumoFinanceiroOS(stateOrOsId, osIdOrOptions, optionsArg) {
     statusLiberacaoPatio = 'retido_pendente';
   }
 
+  const clientesList = Array.isArray(state.clientes) ? state.clientes : [];
+  const cliObj = dadosOS && clientesList.find(c => c && (c.id === dadosOS.cli || c.nome === dadosOS.cliente));
+  const resolvedCliente = (cliObj && (cliObj.fantasia || cliObj.nome)) || (dadosOS && (dadosOS.cliente || dadosOS.clienteNome)) || options.cliente || '';
+
   return {
     osId: osNorm,
-    cliente: (dadosOS && (dadosOS.cliente || dadosOS.clienteNome)) || options.cliente || '',
+    cliente: resolvedCliente,
     totalOrcado,
     totalPago,
     saldoRestante,
@@ -1934,6 +1942,18 @@ function calcularDRESimplificado(state = {}, options = {}) {
   return financialEngine.calcularDRESimplificado(state, options);
 }
 
+function gerarTextoCobrancaOS(state = {}, osId, options = {}) {
+  const osNorm = String(osId || '').replace(/^#/, '').trim();
+  const resumoOS = obterResumoFinanceiroOS(state, osNorm, options);
+  return financialEngine.gerarTextoCobrancaOS(state, osNorm, {
+    totalOrcado: resumoOS.totalOrcado,
+    saldoRestante: resumoOS.saldoRestante,
+    clienteNome: resumoOS.cliente,
+    resumoOS,
+    ...options
+  });
+}
+
 module.exports = {
   obterCaixaAberto,
   abrirCaixa,
@@ -1956,6 +1976,7 @@ module.exports = {
   faturarSaldoOS,
   liquidarTituloFinanceiro,
   validarOuAutorizarSaidaPatioOS,
-  calcularDRESimplificado
+  calcularDRESimplificado,
+  gerarTextoCobrancaOS
 };
 

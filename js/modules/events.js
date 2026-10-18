@@ -457,6 +457,20 @@ document.addEventListener('click', e => {
       }
       break;
     }
+    case 'liberar-os-excepcional': {
+      const osId = b.dataset.id || (S.ui && S.ui.osAberta);
+      if (osId && typeof folhaLiberarSaidaExcepcional === 'function') {
+        abrirFolha(() => folhaLiberarSaidaExcepcional(osId));
+      }
+      break;
+    }
+    case 'copiar-aviso-cobranca': {
+      const osId = b.dataset.id || (S.ui && S.ui.osAberta);
+      if (osId && typeof copiarAvisoCobranca === 'function') {
+        copiarAvisoCobranca(osId);
+      }
+      break;
+    }
     case 'imprimir-recibo': imprimirRecibo(b.dataset.id); break;
     case 'nova-conta': S.ui.contaTipo = b.dataset.t; S.ui.rascConta = null; abrirFolha(folhaConta); break;
     case 'salvar-conta': {

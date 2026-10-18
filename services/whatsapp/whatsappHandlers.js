@@ -660,11 +660,15 @@ async function processarMensagemTexto(msg, {
 
   const isComandoDRE = /^(?:!dre|dre|resultado\s+operacional|demonstrativo\s+dre)\b/i.test(textoLower);
 
+  const matchCobrancaOS = textoLower.match(/^(?:!cobranca|!cobrança|cobranca|cobrança|aviso\s+vencimento|lembrete\s+cobranca|lembrete\s+cobrança)(?:\s+os)?\s+([#a-zA-Z0-9_\-]+)$/i);
+  const isComandoCobrancaOS = Boolean(matchCobrancaOS);
+
   const isComandoLeituraFinanceira = (
     isComandoExtratoOS ||
     isComandoExtrato ||
     isComandoResumoCaixa ||
     isComandoDRE ||
+    isComandoCobrancaOS ||
     textoLower === '!caixa' || textoLower === 'caixa' ||
     textoLower === '!saldo' || textoLower === 'saldo' ||
     textoLower === 'saldo do caixa' || textoLower === 'saldo de caixa' ||
@@ -2199,6 +2203,48 @@ async function processarMensagemTexto(msg, {
         receitaOperacionalBruta: dre.receitaOperacionalBruta,
         despesasOperacionais: dre.despesasOperacionais,
         resultadoOperacionalLiquido: dre.resultadoOperacionalLiquido
+      }
+    });
+    return true;
+  }
+
+  // 3.2 Notificação / Lembrete Amigável de Cobrança de OS
+  if (isComandoCobrancaOS && matchCobrancaOS) {
+    const osIdParam = String(matchCobrancaOS[1]).replace(/^#/, '').trim();
+    const cobrancaResult = financialAnalystService.gerarTextoCobrancaOS(tenantState, osIdParam);
+
+    if (!cobrancaResult.ok) {
+      await msg.reply(`⚠️ *Falha ao gerar cobrança:* Não foi possível localizar a OS #${osIdParam}.`);
+      await auditarComandoWhatsApp({
+        tenantId: tenantKey,
+        numero: (msg.author || msg.from || '').split('@')[0],
+        comando: textoMensagem,
+        resultado: 'falha_nao_encontrado'
+      });
+      return true;
+    }
+
+    if (cobrancaResult.saldoRestante <= 0) {
+      await msg.reply(`✅ *OS #${osIdParam} já está quitada!*\nNão há pendência financeira ativa para este veículo/cliente. Saldo devedor: R$ 0,00.`);
+      await auditarComandoWhatsApp({
+        tenantId: tenantKey,
+        numero: (msg.author || msg.from || '').split('@')[0],
+        comando: textoMensagem,
+        resultado: 'sucesso_quitada'
+      });
+      return true;
+    }
+
+    await msg.reply(cobrancaResult.textoCobranca);
+    await auditarComandoWhatsApp({
+      tenantId: tenantKey,
+      numero: (msg.author || msg.from || '').split('@')[0],
+      comando: textoMensagem,
+      resultado: 'sucesso',
+      detalhes: {
+        osId: osIdParam,
+        cliente: cobrancaResult.clienteNome,
+        saldoPendente: cobrancaResult.saldoRestante
       }
     });
     return true;

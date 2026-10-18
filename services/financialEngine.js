@@ -1172,6 +1172,64 @@ function formatarDREWhatsapp(dre, state = {}) {
     `_(Valores de tesouraria não afetam o resultado das operações.)_`;
 }
 
+/**
+ * Gera mensagem padronizada amigável para envio de cobrança / lembrete de pendência via WhatsApp
+ */
+function gerarTextoCobrancaOS(state = {}, osId, options = {}) {
+  const osNorm = String(osId || '').replace(/^#/, '').trim();
+  if (!osNorm) {
+    return { ok: false, error: 'OS_ID_OBRIGATORIO', message: 'Identificador da OS não informado.' };
+  }
+
+  const osList = Array.isArray(state.os) ? state.os : [];
+  const veiculos = Array.isArray(state.veiculos) ? state.veiculos : [];
+  const clientes = Array.isArray(state.clientes) ? state.clientes : [];
+
+  const o = osList.find(x => {
+    const id = String(x.id || '').replace(/^#/, '').trim();
+    const num = String(x.num || x.numero || '').replace(/^#/, '').trim();
+    return id === osNorm || num === osNorm;
+  }) || {};
+  const v = veiculos.find(x => x && (x.id === o.vei || x.placa === o.placa)) || {};
+  const c = clientes.find(x => x && (x.id === o.cli || x.nome === o.cliente)) || {};
+
+  const clienteNome = options.clienteNome || c.fantasia || c.nome || o.cliente || 'Cliente';
+  const veiculoInfo = options.veiculo || [v.marca, v.modelo, (v.placa || o.placa ? `Placa ${v.placa || o.placa}` : '')].filter(Boolean).join(' ') || (v.placa || o.placa ? `Placa ${v.placa || o.placa}` : 'Veículo');
+  const nomeOficina = state.cfg?.nomeOficina || state.cfg?.empresa || state.cfg?.nomeFantasia || 'Oficina';
+  const chavePix = options.chavePix || state.cfg?.chavePix || state.cfg?.pix || state.cfg?.financeiro?.chavePix || 'financeiro@oficina.com.br';
+
+  let valorTotal = Number(options.totalOrcado);
+  let saldoPendente = Number(options.saldoRestante);
+
+  if (isNaN(valorTotal) || isNaN(saldoPendente)) {
+    valorTotal = Number(o.total || o.valorTotal || o.totalGeral || 0);
+    const movs = Array.isArray(state.movimentos) ? state.movimentos : [];
+    const movsOS = movs.filter(m => !m.estornado && (
+      String(m.osId) === osNorm || String(m.osNum) === osNorm || (m.desc && m.desc.includes(`OS #${osNorm}`))
+    ));
+    const totalPago = movsOS.filter(m => m.tipo === 'entrada' || m.tipo === 'receita').reduce((a, b) => a + (Number(b.valor) || 0), 0);
+    saldoPendente = Math.max(0, +(valorTotal - totalPago).toFixed(2));
+  }
+
+  const texto = `Olá, *${clienteNome}*! Aqui é da oficina *${nomeOficina}*.\n` +
+    `Constatamos pendência financeira referente à OS *#${osNorm}* (*${veiculoInfo}*).\n` +
+    `Valor total: ${formatarMoeda(valorTotal)} | Saldo pendente: ${formatarMoeda(saldoPendente)}.\n` +
+    `Chave Pix para quitação rápida: *${chavePix}*\n` +
+    `Qualquer dúvida estamos à disposição!`;
+
+  return {
+    ok: true,
+    osId: osNorm,
+    clienteNome,
+    veiculoInfo,
+    nomeOficina,
+    chavePix,
+    valorTotal,
+    saldoRestante: saldoPendente,
+    textoCobranca: texto
+  };
+}
+
 module.exports = {
   FUSO_HORARIO_PADRAO,
   obterAgoraSP,
@@ -1195,5 +1253,7 @@ module.exports = {
   gerarResumoCaixa,
   gerarResumoPatio,
   calcularDRESimplificado,
-  formatarDREWhatsapp
+  formatarDREWhatsapp,
+  gerarTextoCobrancaOS
 };
+

@@ -132,10 +132,56 @@ function calcularControlesInternosFrontend() {
   return anomalias;
 }
 
+function calcularDREFrontend() {
+  const movs = Array.isArray(S.movimentos) ? S.movimentos : [];
+  let recBruta = 0;
+  let despOper = 0;
+  let sup = 0;
+  let sang = 0;
+  let qtdRec = 0;
+  let qtdDesp = 0;
+
+  movs.forEach(m => {
+    if (m.estornado) return;
+    const v = Number(m.valor) || 0;
+    const nat = m.naturezaOperacao || (m.subtipo === 'sangria' ? 'sangria' : (m.subtipo === 'suprimento' ? 'suprimento' : (m.subtipo === 'estorno' || m.estornoDeId ? 'estorno' : 'operacional')));
+    if (nat === 'suprimento' || m.subtipo === 'suprimento') {
+      sup += v;
+    } else if (nat === 'sangria' || m.subtipo === 'sangria') {
+      sang += v;
+    } else if (nat === 'estorno' || m.estornoDeId || m.subtipo === 'estorno') {
+      // neutro
+    } else {
+      if (m.tipo === 'entrada' || m.tipo === 'receita') {
+        recBruta += v;
+        qtdRec++;
+      } else if (m.tipo === 'saida' || m.tipo === 'despesa') {
+        despOper += v;
+        qtdDesp++;
+      }
+    }
+  });
+
+  const lucro = +(recBruta - despOper).toFixed(2);
+  const margem = recBruta > 0 ? +((lucro / recBruta) * 100).toFixed(2) : 0;
+  return {
+    recBruta,
+    despOper,
+    lucro,
+    margem,
+    sup,
+    sang,
+    saldoTesouraria: +(sup - sang).toFixed(2),
+    qtdRec,
+    qtdDesp
+  };
+}
+
 function blocoVeronicaAnalista() {
   const caixaAberto = obterCaixaAbertoFrontend();
   const prev = calcularPrevisaoFrontend(30);
   const anomalias = calcularControlesInternosFrontend();
+  const dre = calcularDREFrontend();
   const movimentosCaixa = Array.isArray(S.movimentos) ? S.movimentos.slice(-8).reverse() : [];
 
   // Texto do Parecer para TTS
@@ -452,7 +498,51 @@ function blocoVeronicaAnalista() {
       `}
     </div>
 
-    <!-- 3. CONTROLES INTERNOS & AUDITORIA GERENCIAL -->
+    <!-- 3. DRE OPERACIONAL (VISÃO GERENCIAL) -->
+    <div class="card card-p">
+      <div class="entre" style="border-bottom:1px solid var(--aco-150);padding-bottom:10px;margin-bottom:14px">
+        <div>
+          <div style="font-weight:700;font-size:16px;color:var(--aco-900)">
+            📊 DRE Operacional (Visão Gerencial)
+          </div>
+          <div class="mini">Demonstrativo de receitas e despesas operacionais puras, expurgando aportes e sangrias de tesouraria.</div>
+        </div>
+        <span class="selo ${dre.lucro >= 0 ? 'selo-bom' : 'selo-alerta'}" style="font-size:11px">
+          ${dre.lucro >= 0 ? '🟢 Lucro Operacional' : '🔴 Prejuízo Operacional'}
+        </span>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));gap:12px;margin-bottom:12px">
+        <div style="background:rgba(16, 185, 129, 0.06);border:1px solid rgba(16, 185, 129, 0.3);border-radius:8px;padding:12px">
+          <div class="mini" style="font-weight:600;color:var(--verde)">Receita Operacional Bruta</div>
+          <div style="font-size:18px;font-weight:800;color:var(--verde)" class="num">${typeof brl === 'function' ? brl(dre.recBruta) : dre.recBruta}</div>
+          <div class="mini">${dre.qtdRec} entrada(s) operacionai(s)</div>
+        </div>
+
+        <div style="background:rgba(239, 68, 68, 0.06);border:1px solid rgba(239, 68, 68, 0.3);border-radius:8px;padding:12px">
+          <div class="mini" style="font-weight:600;color:var(--tijolo)">Despesas Operacionais</div>
+          <div style="font-size:18px;font-weight:800;color:var(--tijolo)" class="num">${typeof brl === 'function' ? brl(dre.despOper) : dre.despOper}</div>
+          <div class="mini">${dre.qtdDesp} saída(s) operacionai(s)</div>
+        </div>
+
+        <div style="background:${dre.lucro >= 0 ? 'rgba(37, 99, 235, 0.06)' : 'rgba(239, 68, 68, 0.06)'};border:1px solid ${dre.lucro >= 0 ? 'rgba(37, 99, 235, 0.3)' : 'rgba(239, 68, 68, 0.3)'};border-radius:8px;padding:12px">
+          <div class="mini" style="font-weight:600;color:${dre.lucro >= 0 ? '#1d4ed8' : 'var(--tijolo)'}">Resultado Líquido Operacional</div>
+          <div style="font-size:18px;font-weight:800;color:${dre.lucro >= 0 ? '#1d4ed8' : 'var(--tijolo)'}" class="num">${typeof brl === 'function' ? brl(dre.lucro) : dre.lucro}</div>
+          <div class="mini">Margem Operacional: <b>${dre.margem.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%</b></div>
+        </div>
+
+        <div style="background:var(--aco-50);border:1px solid var(--aco-200);border-radius:8px;padding:12px">
+          <div class="mini" style="font-weight:600;color:var(--aco-700)">🏦 Tesouraria Neutra</div>
+          <div style="font-size:13px;color:var(--aco-800);margin-top:2px">
+            Suprimentos: <b class="num" style="color:var(--verde)">+${typeof brl === 'function' ? brl(dre.sup) : dre.sup}</b><br>
+            Sangrias: <b class="num" style="color:var(--tijolo)">-${typeof brl === 'function' ? brl(dre.sang) : dre.sang}</b>
+          </div>
+          <div class="mini" style="margin-top:4px;color:var(--aco-500)">Saldo Líquido Tesouraria: ${typeof brl === 'function' ? brl(dre.saldoTesouraria) : dre.saldoTesouraria}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. CONTROLES INTERNOS & AUDITORIA GERENCIAL -->
     <div class="card card-p">
       <div class="entre" style="border-bottom:1px solid var(--aco-150);padding-bottom:10px;margin-bottom:14px">
         <div>
@@ -800,7 +890,7 @@ function falarParecerVeronica(texto) {
 /* ---------------- Radar de Liberação Financeira de Pátio & Faturamento de OS ---------------- */
 
 function calcularStatusLiberacaoOSFrontend(o) {
-  if (!o) return { status: 'retido_pendente', label: '🟡 Retido (Saldo Pendente)', cor: '#854d0e', bg: '#fef9c3', borda: '#fef08a', total: 0, totalPago: 0, saldoRestante: 0, totalFaturadoPrazo: 0, titulosOS: [] };
+  if (!o) return { status: 'retido_pendente', label: '🟡 Retido (Saldo Pendente)', cor: '#854d0e', bg: '#fef9c3', borda: '#fef08a', total: 0, totalPago: 0, saldoRestante: 0, totalFaturadoPrazo: 0, titulosOS: [], liberacaoExcepcional: null };
   const total = Number(o.total || o.valorTotal || (typeof totOS === 'function' ? totOS(o) : 0)) || 0;
   const osId = String(o.id || o.num || '');
   const osNumStr = String(o.num || o.id || '');
@@ -820,18 +910,36 @@ function calcularStatusLiberacaoOSFrontend(o) {
   const saldoRestante = Math.max(0, +(total - totalPago).toFixed(2));
 
   if (total > 0 && saldoRestante <= 0.01) {
-    return { status: 'liberado_quitado', label: '🟢 Liberado (Quitado)', cor: '#166534', bg: '#dcfce7', borda: '#bbf7d0', total, totalPago, saldoRestante, totalFaturadoPrazo, titulosOS };
+    return { status: 'liberado_quitado', label: '🟢 Liberado (Quitado)', cor: '#166534', bg: '#dcfce7', borda: '#bbf7d0', total, totalPago, saldoRestante, totalFaturadoPrazo, titulosOS, liberacaoExcepcional: o.liberacaoExcepcional || null };
   }
   if (totalFaturadoPrazo > 0 && totalFaturadoPrazo >= (saldoRestante - 0.01)) {
-    return { status: 'liberado_faturado', label: '🔵 Liberado (Faturado)', cor: '#1e40af', bg: '#dbeafe', borda: '#bfdbfe', total, totalPago, saldoRestante, totalFaturadoPrazo, titulosOS };
+    return { status: 'liberado_faturado', label: '🔵 Liberado (Faturado)', cor: '#1e40af', bg: '#dbeafe', borda: '#bfdbfe', total, totalPago, saldoRestante, totalFaturadoPrazo, titulosOS, liberacaoExcepcional: o.liberacaoExcepcional || null };
   }
-  return { status: 'retido_pendente', label: '🟡 Retido (Saldo Pendente)', cor: '#854d0e', bg: '#fef9c3', borda: '#fef08a', total, totalPago, saldoRestante, totalFaturadoPrazo, titulosOS };
+  if (o.liberacaoExcepcional || o.statusLiberacaoPatio === 'liberado_excepcional') {
+    return {
+      status: 'liberado_excepcional',
+      label: '🟣 Liberado (Exceção Auditada)',
+      cor: '#6b21a8',
+      bg: '#f3e8ff',
+      borda: '#d8b4fe',
+      total,
+      totalPago,
+      saldoRestante,
+      totalFaturadoPrazo,
+      titulosOS,
+      liberacaoExcepcional: o.liberacaoExcepcional || null
+    };
+  }
+  return { status: 'retido_pendente', label: '🟡 Retido (Saldo Pendente)', cor: '#854d0e', bg: '#fef9c3', borda: '#fef08a', total, totalPago, saldoRestante, totalFaturadoPrazo, titulosOS, liberacaoExcepcional: null };
 }
 
 function renderBadgeLiberacaoPatio(o) {
   const lib = calcularStatusLiberacaoOSFrontend(o);
-  if (lib.total <= 0) return '';
-  return `<span class="selo" style="background:${lib.bg};color:${lib.cor};border:1px solid ${lib.borda};font-size:10px;font-weight:700" title="Total: ${typeof brl === 'function' ? brl(lib.total) : lib.total} | Pago: ${typeof brl === 'function' ? brl(lib.totalPago) : lib.totalPago} | Saldo: ${typeof brl === 'function' ? brl(lib.saldoRestante) : lib.saldoRestante}">${lib.label}</span>`;
+  if (lib.total <= 0 && lib.status !== 'liberado_excepcional') return '';
+  const tooltip = (lib.status === 'liberado_excepcional' && lib.liberacaoExcepcional)
+    ? `Liberação Excepcional Auditada: ${typeof esc === 'function' ? esc(lib.liberacaoExcepcional.justificativa || 'Autorizado') : (lib.liberacaoExcepcional.justificativa || 'Autorizado')} (por ${typeof esc === 'function' ? esc(lib.liberacaoExcepcional.autorizadoPor || 'Admin') : (lib.liberacaoExcepcional.autorizadoPor || 'Admin')})`
+    : `Total: ${typeof brl === 'function' ? brl(lib.total) : lib.total} | Pago: ${typeof brl === 'function' ? brl(lib.totalPago) : lib.totalPago} | Saldo: ${typeof brl === 'function' ? brl(lib.saldoRestante) : lib.saldoRestante}`;
+  return `<span class="selo" style="background:${lib.bg};color:${lib.cor};border:1px solid ${lib.borda};font-size:10px;font-weight:700" title="${tooltip}">${lib.label}</span>`;
 }
 
 function radarLiberacaoPatioHtml() {
@@ -850,6 +958,7 @@ function radarLiberacaoPatioHtml() {
 
   const quitadas = dadosOS.filter(d => d.lib.status === 'liberado_quitado');
   const faturadas = dadosOS.filter(d => d.lib.status === 'liberado_faturado');
+  const excepcionais = dadosOS.filter(d => d.lib.status === 'liberado_excepcional');
   const retidas = dadosOS.filter(d => d.lib.status === 'retido_pendente');
   const totalRetido = retidas.reduce((a, b) => a + (b.lib.saldoRestante || 0), 0);
 
@@ -862,14 +971,15 @@ function radarLiberacaoPatioHtml() {
           </div>
           <div class="mini">Classifica as ordens de serviço quanto à quitação e faturamento formal para autorização de saída dos veículos da oficina.</div>
         </div>
-        <div style="display:flex;gap:6px">
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
           <span class="selo" style="background:#dcfce7;color:#166534;border:1px solid #bbf7d0;font-weight:700">🟢 ${quitadas.length} Quitado(s)</span>
           <span class="selo" style="background:#dbeafe;color:#1e40af;border:1px solid #bfdbfe;font-weight:700">🔵 ${faturadas.length} Faturado(s)</span>
+          <span class="selo" style="background:#f3e8ff;color:#6b21a8;border:1px solid #d8b4fe;font-weight:700">🟣 ${excepcionais.length} Exceção</span>
           <span class="selo" style="background:#fef9c3;color:#854d0e;border:1px solid #fef08a;font-weight:700">🟡 ${retidas.length} Retido(s)</span>
         </div>
       </div>
 
-      <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:12px;margin-bottom:16px">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));gap:12px;margin-bottom:16px">
         <div style="background:rgba(16, 185, 129, 0.06);border:1px solid rgba(16, 185, 129, 0.3);border-radius:8px;padding:12px">
           <div class="mini" style="font-weight:600;color:var(--verde)">Liberados à Vista / Quitados</div>
           <div style="font-size:18px;font-weight:800;color:var(--verde)" class="num">${quitadas.length} OS(s)</div>
@@ -880,10 +990,17 @@ function radarLiberacaoPatioHtml() {
           <div style="font-size:18px;font-weight:800;color:#1d4ed8" class="num">${faturadas.length} OS(s)</div>
           <div class="mini">Formalizado em títulos a receber</div>
         </div>
+        ${excepcionais.length > 0 ? `
+        <div style="background:rgba(147, 51, 234, 0.06);border:1px solid rgba(147, 51, 234, 0.3);border-radius:8px;padding:12px">
+          <div class="mini" style="font-weight:600;color:#6b21a8">Liberados por Exceção Auditada</div>
+          <div style="font-size:18px;font-weight:800;color:#6b21a8" class="num">${excepcionais.length} OS(s)</div>
+          <div class="mini">Autorização excepcional de diretoria</div>
+        </div>
+        ` : ''}
         <div style="background:rgba(234, 179, 8, 0.08);border:1px solid rgba(234, 179, 8, 0.4);border-radius:8px;padding:12px">
           <div class="mini" style="font-weight:600;color:#a16207">Retidos com Saldo Devedor</div>
           <div style="font-size:18px;font-weight:800;color:#a16207" class="num">${retidas.length} OS(s) (${typeof brl === 'function' ? brl(totalRetido) : totalRetido})</div>
-          <div class="mini">Exige quitação ou faturamento</div>
+          <div class="mini">Exige quitação, faturamento ou override</div>
         </div>
       </div>
 
@@ -919,20 +1036,39 @@ function radarLiberacaoPatioHtml() {
                   ${typeof brl === 'function' ? brl(lib.saldoRestante) : lib.saldoRestante}
                 </td>
                 <td style="text-align:center">
-                  <span class="selo" style="background:${lib.bg};color:${lib.cor};border:1px solid ${lib.borda};font-size:10px;font-weight:700">
+                  <span class="selo" style="background:${lib.bg};color:${lib.cor};border:1px solid ${lib.borda};font-size:10px;font-weight:700" title="${lib.status === 'liberado_excepcional' && lib.liberacaoExcepcional ? `Liberação Excepcional: ${esc(lib.liberacaoExcepcional.justificativa || '')} (por ${esc(lib.liberacaoExcepcional.autorizadoPor || '')})` : ''}">
                     ${lib.label}
                   </span>
                 </td>
-                <td style="text-align:center">
-                  ${podeFaturar ? `
-                    <button class="btn btn-primario btn-pequeno"
-                            onclick="abrirFolha(() => folhaFaturarOS('${os.id || os.num}'))"
-                            style="font-size:11px;padding:3px 10px;white-space:nowrap">
-                      📄 Faturar a Prazo
-                    </button>
-                  ` : `
-                    <span class="mini" style="color:var(--verde);font-weight:600">✓ Liberada</span>
-                  `}
+                <td style="text-align:center;white-space:nowrap">
+                  <div style="display:inline-flex;gap:4px;align-items:center;justify-content:center">
+                    ${podeFaturar ? `
+                      <button class="btn btn-primario btn-pequeno"
+                              onclick="abrirFolha(() => folhaFaturarOS('${os.id || os.num}'))"
+                              style="font-size:11px;padding:3px 8px;white-space:nowrap"
+                              title="Faturar saldo a prazo em Contas a Receber">
+                        📄 Faturar
+                      </button>
+                    ` : ''}
+                    ${lib.status === 'retido_pendente' ? `
+                      <button class="btn btn-secundario btn-pequeno"
+                              onclick="abrirFolha(() => folhaLiberarSaidaExcepcional('${os.id || os.num}'))"
+                              style="font-size:11px;padding:3px 8px;white-space:nowrap;color:#6b21a8;border-color:#d8b4fe"
+                              title="Autorizar liberação excepcional de pátio com justificativa auditada (apenas Dono/Admin)">
+                        🔓 Liberar c/ Justificativa
+                      </button>
+                    ` : ''}
+                    ${lib.saldoRestante > 0 ? `
+                      <button class="btn btn-secundario btn-pequeno"
+                              onclick="copiarAvisoCobranca('${os.id || os.num}')"
+                              style="font-size:11px;padding:3px 8px;white-space:nowrap"
+                              title="Copiar mensagem amigável de cobrança para WhatsApp">
+                        📲 Copiar Aviso
+                      </button>
+                    ` : (lib.status !== 'retido_pendente' ? `
+                      <span class="mini" style="color:var(--verde);font-weight:600">✓ Liberada</span>
+                    ` : '')}
+                  </div>
                 </td>
               </tr>`;
             }).join('')}
@@ -1164,11 +1300,132 @@ async function liquidarTituloApi(tituloId, meioPagamento, dataPagamento) {
   }
 }
 
+function folhaLiberarSaidaExcepcional(osId) {
+  const osList = Array.isArray(S.os) ? S.os : [];
+  const o = osList.find(x => String(x.id) === String(osId) || String(x.num) === String(osId));
+  if (!o) {
+    return `<div class="card card-p"><p>OS #${typeof esc === 'function' ? esc(osId) : osId} não encontrada.</p><button class="btn btn-secundario" onclick="fecharFolha()">Voltar</button></div>`;
+  }
+
+  const v = typeof V === 'function' ? V(o.vei) : (o.veiculo || {});
+  const c = typeof C === 'function' ? C(o.cli) : (o.cliente || {});
+  const lib = calcularStatusLiberacaoOSFrontend(o);
+
+  return `
+  <div class="card card-p" style="max-width:520px;margin:0 auto">
+    <div class="entre" style="border-bottom:1px solid var(--aco-150);padding-bottom:10px;margin-bottom:14px">
+      <h3 style="font-size:17px;font-weight:700;color:var(--aco-900)">
+        🔓 Liberação Excepcional de Pátio — OS #${typeof esc === 'function' ? esc(o.num || o.id) : (o.num || o.id)}
+      </h3>
+      <button class="btn-fechar" onclick="fecharFolha()">${typeof ico === 'function' ? ico('x', 18) : '✕'}</button>
+    </div>
+
+    <div style="background:rgba(147, 51, 234, 0.06);border:1px solid rgba(147, 51, 234, 0.3);border-radius:8px;padding:12px;margin-bottom:14px;font-size:13px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+        <span><b>Cliente:</b> ${typeof esc === 'function' ? esc(c.fantasia || c.nome || 'Geral') : (c.fantasia || c.nome || 'Geral')}</span>
+        <span><b>Veículo / Placa:</b> ${typeof esc === 'function' ? esc(v.placa || '—') : (v.placa || '—')}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;border-top:1px dashed rgba(147, 51, 234, 0.3);padding-top:6px;margin-top:6px;font-size:14px">
+        <span style="font-weight:700;color:var(--tijolo)">Saldo Pendente no Pátio:</span>
+        <span style="font-weight:800;color:var(--tijolo)" class="num">${typeof brl === 'function' ? brl(lib.saldoRestante) : lib.saldoRestante}</span>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:12px;font-size:13px">
+      <div style="background:var(--aco-50);padding:10px 12px;border-radius:6px;border:1px solid var(--aco-200);color:var(--aco-700)">
+        ⚠️ <b>Atenção RBAC:</b> Esta operação autoriza a saída física do veículo do pátio mesmo com saldo devedor. É restrita a <b>Donos e Administradores</b> e será registrada na trilha de auditoria contábil.
+      </div>
+
+      <div>
+        <label style="font-weight:600;display:block;margin-bottom:4px">Justificativa da Liberação (mínimo 5 caracteres):</label>
+        <textarea id="lib-justificativa" class="campo-texto" placeholder="Ex: Autorizado pelo gestor para faturamento mensal no dia 25" style="width:100%;height:80px;resize:vertical"></textarea>
+      </div>
+    </div>
+
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:18px;border-top:1px solid var(--aco-150);padding-top:12px">
+      <button class="btn btn-secundario" onclick="fecharFolha()">Cancelar</button>
+      <button class="btn btn-sucesso" onclick="
+        const just = document.getElementById('lib-justificativa').value;
+        liberarSaidaPatioExcepcionalApi('${o.id || o.num}', just);
+      " style="background:#6b21a8;border-color:#581c87;font-weight:700;padding:0 20px">
+        ${typeof ico === 'function' ? ico('check', 14) : '✓'} Conceder Liberação Excepcional
+      </button>
+    </div>
+  </div>`;
+}
+
+async function liberarSaidaPatioExcepcionalApi(osId, justificativa) {
+  try {
+    if (!justificativa || justificativa.trim().length < 5) {
+      alert('A justificativa para liberação excepcional deve ter no mínimo 5 caracteres.');
+      return;
+    }
+    const headers = typeof obterHeadersRequisicao === 'function'
+      ? obterHeadersRequisicao({ 'Content-Type': 'application/json' })
+      : { 'Content-Type': 'application/json' };
+    const res = await fetch(`/api/financeiro/os/${encodeURIComponent(osId)}/liberar-saida`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ forcarLiberacao: true, justificativa: justificativa.trim() })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || data.error || 'Erro ao conceder liberação excepcional');
+
+    const osList = Array.isArray(S.os) ? S.os : [];
+    const target = osList.find(x => String(x.id || x.num) === String(osId));
+    if (target) {
+      target.statusLiberacaoPatio = 'liberado_excepcional';
+      target.liberacaoExcepcional = data.liberacaoExcepcional;
+    }
+
+    if (typeof fecharFolha === 'function') fecharFolha();
+    if (typeof salvar === 'function') salvar();
+    if (typeof render === 'function') render();
+    alert(data.mensagem || 'Liberação excepcional de pátio concedida com sucesso!');
+  } catch (err) {
+    alert(`Falha na liberação excepcional: ${err.message}`);
+  }
+}
+
+function gerarTextoCobrancaFrontend(osId) {
+  const osList = Array.isArray(S.os) ? S.os : [];
+  const o = osList.find(x => String(x.id || x.num) === String(osId)) || {};
+  const v = typeof V === 'function' ? V(o.vei) : (o.veiculo || {});
+  const c = typeof C === 'function' ? C(o.cli) : (o.cliente || {});
+  const lib = calcularStatusLiberacaoOSFrontend(o);
+  const cfg = S.cfg || {};
+
+  const clienteNome = c.fantasia || c.nome || 'Cliente';
+  const veiculoInfo = [v.marca, v.modelo, (v.placa ? `Placa ${v.placa}` : '')].filter(Boolean).join(' ') || (v.placa ? `Placa ${v.placa}` : 'Veículo');
+  const nomeOficina = cfg.nomeOficina || cfg.empresa || cfg.nomeFantasia || 'Oficina';
+  const chavePix = cfg.chavePix || cfg.pix || (cfg.financeiro && cfg.financeiro.chavePix) || 'financeiro@oficina.com.br';
+
+  return `Olá, *${clienteNome}*! Aqui é da oficina *${nomeOficina}*.\n` +
+    `Constatamos pendência financeira referente à OS *#${o.num || o.id || osId}* (*${veiculoInfo}*).\n` +
+    `Valor total: ${typeof brl === 'function' ? brl(lib.total) : lib.total} | Saldo pendente: ${typeof brl === 'function' ? brl(lib.saldoRestante) : lib.saldoRestante}.\n` +
+    `Chave Pix para quitação rápida: *${chavePix}*\n` +
+    `Qualquer dúvida estamos à disposição!`;
+}
+
+function copiarAvisoCobranca(osId) {
+  const texto = gerarTextoCobrancaFrontend(osId);
+  if (navigator && navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+    navigator.clipboard.writeText(texto).then(() => {
+      alert('📲 Texto de cobrança copiado com sucesso para a área de transferência! Cole no WhatsApp do cliente.');
+    }).catch(() => {
+      prompt('Copie o texto de cobrança abaixo:', texto);
+    });
+  } else {
+    prompt('Copie o texto de cobrança abaixo:', texto);
+  }
+}
+
 // Exportações explícitas no escopo global window
 if (typeof window !== 'undefined') {
   window.obterCaixaAbertoFrontend = obterCaixaAbertoFrontend;
   window.calcularPrevisaoFrontend = calcularPrevisaoFrontend;
   window.calcularControlesInternosFrontend = calcularControlesInternosFrontend;
+  window.calcularDREFrontend = calcularDREFrontend;
   window.blocoVeronicaAnalista = blocoVeronicaAnalista;
   window.folhaAbrirCaixaVeronica = folhaAbrirCaixaVeronica;
   window.folhaLancamentoCaixaVeronica = folhaLancamentoCaixaVeronica;
@@ -1185,4 +1442,8 @@ if (typeof window !== 'undefined') {
   window.faturarOSApi = faturarOSApi;
   window.folhaBaixarTituloVeronica = folhaBaixarTituloVeronica;
   window.liquidarTituloApi = liquidarTituloApi;
+  window.folhaLiberarSaidaExcepcional = folhaLiberarSaidaExcepcional;
+  window.liberarSaidaPatioExcepcionalApi = liberarSaidaPatioExcepcionalApi;
+  window.gerarTextoCobrancaFrontend = gerarTextoCobrancaFrontend;
+  window.copiarAvisoCobranca = copiarAvisoCobranca;
 }
