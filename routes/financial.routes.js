@@ -167,6 +167,29 @@ router.post('/api/financeiro/caixa/fechar', requirePermission('financial:write',
       });
     }
 
+    // Auditoria de fechamento de caixa
+    try {
+      await recordSecurityAudit({
+        tenantId,
+        actorId: operador,
+        action: 'financeiro:caixa:fechar',
+        entity: 'caixa_turno',
+        entityId: resultado.caixaFechado?.id,
+        details: {
+          caixaId: resultado.caixaFechado?.id,
+          saldoFinal: resultado.caixaFechado?.saldoFinal,
+          totalEntradas: resultado.resumoFechamento?.totalEntradas,
+          totalSaidas: resultado.resumoFechamento?.totalSaidas,
+          diferenca: resultado.resumoFechamento?.diferenca,
+          statusConferencia: resultado.resumoFechamento?.statusConferencia,
+          resumoOrigem: resultado.resumoFechamento?.resumoOrigem,
+          operador
+        }
+      });
+    } catch (auditErr) {
+      console.warn('[Caixa Fechar Audit] Falha não-bloqueante:', auditErr.message);
+    }
+
     // Disparo orientado a eventos para WhatsApp (não bloqueia nem quebra o caixa em caso de falha)
     try {
       const dryRun = Boolean(req.body?.dryRun);

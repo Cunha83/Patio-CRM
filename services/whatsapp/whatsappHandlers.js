@@ -604,8 +604,18 @@ async function processarMensagemTexto(msg, {
     textoLower.includes('ultimas movimentacoes')
   );
 
+  const isComandoResumoCaixa = (
+    textoLower === 'resumo caixa' ||
+    textoLower === '!resumo caixa' ||
+    textoLower === 'fechamento parcial' ||
+    textoLower === '!fechamento parcial' ||
+    textoLower === 'resumo do caixa' ||
+    textoLower === 'parcial do caixa'
+  );
+
   const isComandoLeituraFinanceira = (
     isComandoExtrato ||
+    isComandoResumoCaixa ||
     textoLower === '!caixa' || textoLower === 'caixa' ||
     textoLower === '!saldo' || textoLower === 'saldo' ||
     textoLower === 'saldo do caixa' || textoLower === 'saldo de caixa' ||
@@ -1375,6 +1385,32 @@ async function processarMensagemTexto(msg, {
       comando: textoMensagem,
       resultado: 'sucesso',
       detalhes: { qtdRetornada: ultimos.length, turnoId: caixaAberto ? caixaAberto.id : null }
+    });
+    return true;
+  }
+
+  // 1.1 Resumo Caixa / Fechamento Parcial (Leitura com quebra por origem e estornos)
+  if (isComandoResumoCaixa) {
+    if (isContextOperacao || !isContextAdmin) {
+      await msg.reply('🔒 *Acesso Restrito:* Informações de resumo e fechamento de caixa são disponibilizadas exclusivamente para administradores autorizados.');
+      await auditarComandoWhatsApp({ tenantId: tenantKey, numero: senderNorm, comando: textoMensagem, resultado: 'negado_permissao' });
+      return true;
+    }
+
+    const resParcial = financialAnalystService.obterResumoFechamentoParcial(tenantState, tenantKey);
+    if (!resParcial.ok) {
+      await msg.reply('⚠️ Não há nenhum turno de caixa aberto no momento para visualização de resumo.');
+      await auditarComandoWhatsApp({ tenantId: tenantKey, numero: senderNorm, comando: textoMensagem, resultado: 'recusado_sem_caixa_aberto' });
+      return true;
+    }
+
+    await msg.reply(resParcial.resumoTextoWhatsapp);
+    await auditarComandoWhatsApp({
+      tenantId: tenantKey,
+      numero: senderNorm,
+      comando: textoMensagem,
+      resultado: 'sucesso',
+      detalhes: { acao: 'resumo_caixa', caixaId: resParcial.caixa?.id }
     });
     return true;
   }

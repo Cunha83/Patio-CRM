@@ -1127,5 +1127,81 @@ test('WhatsApp Agente Financeiro - Suíte Completa de Leitura e Escrita Controla
     assert.match(repliesComp[0], /Não é permitido estornar um lançamento compensatório/i);
     assert.equal(confirmacoesPendentes.size, 0);
   });
+
+  // ── 21. FECHAMENTO DE CAIXA AUDITADO POR ORIGEM E COMANDO RESUMO CAIXA VIA WHATSAPP ──
+  await t.test('21. Fechamento de caixa com snapshot por origem e comando resumo caixa via WhatsApp', async () => {
+    const mockState = criarEstadoMock();
+    const adminNum = '5511999998888';
+    mockState.cfg.adminFones = [adminNum];
+    mockState.caixas = [
+      {
+        id: 'cx-fechamento-1',
+        status: 'aberto',
+        aberto: true,
+        abertoPor: adminNum,
+        abertoPorNome: 'Dono WhatsApp',
+        saldoInicial: 200,
+        saldoAtual: 650,
+        totalEntradas: 500,
+        totalSaidas: 50,
+        movimentacoesIds: ['m-wpp-1', 'm-web-1']
+      }
+    ];
+    mockState.movimentos = [
+      { id: 'm-wpp-1', caixaId: 'cx-fechamento-1', tipo: 'entrada', valor: 300, desc: 'Entrada WPP', origem: 'whatsapp', canal: 'whatsapp' },
+      { id: 'm-web-1', caixaId: 'cx-fechamento-1', tipo: 'entrada', valor: 200, desc: 'Entrada Web', origem: 'web', canal: 'web' },
+      { id: 'm-wpp-2', caixaId: 'cx-fechamento-1', tipo: 'saida', valor: 50, desc: 'Saída WPP', origem: 'whatsapp', canal: 'whatsapp' }
+    ];
+    mockState.caixas[0].movimentacoesIds.push('m-wpp-2');
+
+    // 21.1 Consulta de Resumo Caixa / Fechamento Parcial
+    const repliesResumo = [];
+    await processarMensagemTexto({
+      from: `${adminNum}@c.us`,
+      author: `${adminNum}@c.us`,
+      body: 'resumo caixa',
+      reply: async (txt) => { repliesResumo.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: adminNum });
+
+    assert.equal(repliesResumo.length, 1);
+    assert.match(repliesResumo[0], /FECHAMENTO PARCIAL DE CAIXA/i);
+    assert.match(repliesResumo[0], /WhatsApp:/);
+    assert.match(repliesResumo[0], /Web \/ Balcão:/);
+    assert.match(repliesResumo[0], /650,00/);
+
+    // 21.2 Fechamento de Caixa com confirmação em 2 etapas
+    const repliesPedirFechar = [];
+    await processarMensagemTexto({
+      from: `${adminNum}@c.us`,
+      author: `${adminNum}@c.us`,
+      body: 'fechar caixa',
+      reply: async (txt) => { repliesPedirFechar.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: adminNum });
+
+    assert.equal(repliesPedirFechar.length, 1);
+    assert.match(repliesPedirFechar[0], /CONFIRMAÇÃO DE OPERAÇÃO FINANCEIRA/i);
+    assert.match(repliesPedirFechar[0], /Fechamento de Caixa/i);
+
+    // Confirmação
+    const repliesConfirmaFechar = [];
+    await processarMensagemTexto({
+      from: `${adminNum}@c.us`,
+      author: `${adminNum}@c.us`,
+      body: 'CONFIRMAR',
+      reply: async (txt) => { repliesConfirmaFechar.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: adminNum });
+
+    assert.equal(repliesConfirmaFechar.length, 1);
+    assert.match(repliesConfirmaFechar[0], /Caixa Fechado com Sucesso/i);
+
+    const cxEncerrado = mockState.caixas[0];
+    assert.equal(cxEncerrado.status, 'fechado');
+    assert.ok(cxEncerrado.fechamento);
+    assert.ok(cxEncerrado.fechamento.resumoOrigem);
+    assert.equal(cxEncerrado.fechamento.resumoOrigem.qtdWhatsapp, 2);
+    assert.equal(cxEncerrado.fechamento.resumoOrigem.qtdWeb, 1);
+    assert.ok(cxEncerrado.fechamento.resumoTextoWhatsapp);
+    assert.match(cxEncerrado.fechamento.resumoTextoWhatsapp, /BOLETIM DE FECHAMENTO DE CAIXA/);
+  });
 });
 

@@ -396,9 +396,10 @@ test('10. RBAC e Trilha de Auditoria na Rota de Estorno: Dono autoriza (200), Me
       ...base,
       tenantId,
       cfg: { ...base.cfg, saldoInicial: 1000 },
-      caixas: [{ id: 'cx_aud_1', status: 'aberto', aberto: true, saldoInicial: 1000, saldoAtual: 1000, totalEntradas: 0, totalSaidas: 0, movimentacoesIds: [] }],
+      caixas: [{ id: 'cx_aud_1', status: 'aberto', aberto: true, saldoInicial: 1000, saldoAtual: 1000, totalEntradas: 0, totalSaidas: 0, movimentacoesIds: ['mov_aud_1', 'mov_aud_2'] }],
       movimentos: [
-        { id: 'mov_aud_1', tenantId, tipo: 'entrada', valor: 250, desc: 'Entrada para estorno teste', origem: 'whatsapp' }
+        { id: 'mov_aud_1', tenantId, caixaId: 'cx_aud_1', tipo: 'entrada', valor: 250, desc: 'Entrada para estorno teste', origem: 'whatsapp' },
+        { id: 'mov_aud_2', tenantId, caixaId: 'cx_aud_1', tipo: 'entrada', valor: 150, desc: 'Segunda entrada para teste de caixa fechado', origem: 'web' }
       ]
     };
     await salvarEstado(tenantId, testState);
@@ -448,6 +449,41 @@ test('10. RBAC e Trilha de Auditoria na Rota de Estorno: Dono autoriza (200), Me
       assert.ok(estornoLog, 'Deve conter log de estorno bem-sucedido');
       assert.match(estornoLog.details_json, /mov_aud_1/);
       assert.match(estornoLog.details_json, /whatsapp/);
+
+      // 10.4 Fechamento de Caixa com Snapshot por Origem e Auditoria financeiro:caixa:fechar
+      mockContext = { role: 'dono', actorId: 'dono_audit_1', tenantId, permissions: ['*'] };
+      const resFechar = await fetch(`${baseUrl}/api/financeiro/caixa/fechar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          valoresInformados: { dinheiro: 1000 },
+          observacoes: 'Fechamento turno auditado'
+        })
+      });
+
+      assert.equal(resFechar.status, 200);
+      const jsonFechar = await resFechar.json();
+      assert.equal(jsonFechar.success, true);
+      assert.equal(jsonFechar.caixa.status, 'fechado');
+      assert.ok(jsonFechar.fechamento.resumoOrigem, 'Deve conter resumoOrigem');
+      assert.ok(jsonFechar.fechamento.resumoTextoWhatsapp, 'Deve conter resumoTextoWhatsapp');
+      assert.match(jsonFechar.fechamento.resumoTextoWhatsapp, /BOLETIM DE FECHAMENTO DE CAIXA/);
+      assert.match(jsonFechar.fechamento.resumoTextoWhatsapp, /WhatsApp:/);
+
+      // Trava de Imutabilidade: Estorno de movimentação em caixa fechado deve retornar 409 CAIXA_JA_FECHADO
+      const resEstornoCaixaFechado = await fetch(`${baseUrl}/api/financeiro/movimentacoes/mov_aud_2/estornar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ motivo: 'Tentativa em caixa fechado' })
+      });
+      assert.equal(resEstornoCaixaFechado.status, 409);
+      const jsonCaixaFechado = await resEstornoCaixaFechado.json();
+      assert.equal(jsonCaixaFechado.code, 'CAIXA_JA_FECHADO');
+
+      // Auditoria financeiro:caixa:fechar gravada
+      const auditFecharRows = await all("SELECT action, details_json FROM security_audit_log WHERE tenant_id = ? AND action = 'financeiro:caixa:fechar'", [tenantId]);
+      assert.equal(auditFecharRows.length, 1);
+      assert.match(auditFecharRows[0].details_json, /cx_aud_1/);
     } finally {
       await new Promise(r => server.close(r));
     }
