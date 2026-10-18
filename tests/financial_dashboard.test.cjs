@@ -800,6 +800,162 @@ test('14. Rota GET /api/financeiro/exportar com header X-Export-SHA256, filtros 
   }
 });
 
+test('15. Faturamento a prazo de saldo devedor de OS e cálculo de statusLiberacaoPatio', () => {
+  const financialAnalystService = require('../services/financialAnalystService.js');
+
+  const state = {
+    tenantId: 'default',
+    os: [
+      { id: '501', placa: 'XYZ9K88', cliente: 'Transportadora Silva', total: 1200, status: 'em_andamento' }
+    ],
+    movimentos: [
+      { id: 'mov_sinal_1', tipo: 'entrada', valor: 400, forma: 'pix', osId: '501', placa: 'XYZ9K88' }
+    ],
+    contas: []
+  };
+
+  // 15.1 Antes do faturamento: pago 400 de 1200 -> saldoRestante 800 -> status 'retido_pendente'
+  const resumoAntes = financialAnalystService.obterResumoFinanceiroOS(state, '501');
+  assert.equal(resumoAntes.totalOrcado, 1200);
+  assert.equal(resumoAntes.totalPago, 400);
+  assert.equal(resumoAntes.saldoRestante, 800);
+  assert.equal(resumoAntes.quitada, false);
+  assert.equal(resumoAntes.totalFaturadoPrazo, 0);
+  assert.equal(resumoAntes.statusLiberacaoPatio, 'retido_pendente');
+
+  // 15.2 Fatura o saldo restante de 800 em 2 parcelas no boleto
+  const fatRes = financialAnalystService.faturarSaldoOS(state, {
+    osId: '501',
+    parcelas: 2,
+    meioPagamento: 'boleto',
+    observacao: 'Faturamento frota 30/60 dias',
+    operador: 'dono_joao'
+  });
+
+  assert.equal(fatRes.ok, true);
+  assert.equal(fatRes.valorFaturado, 800);
+  assert.equal(fatRes.parcelas, 2);
+  assert.equal(fatRes.titulos.length, 2);
+  assert.equal(fatRes.titulos[0].valor, 400);
+  assert.equal(fatRes.titulos[1].valor, 400);
+  assert.equal(fatRes.titulos[0].forma, 'boleto');
+  assert.equal(fatRes.titulos[0].parte, 'Transportadora Silva');
+  assert.equal(fatRes.titulos[0].pago, false);
+  assert.equal(state.contas.length, 2);
+
+  // 15.3 Após faturamento: statusLiberacaoPatio passa para 'liberado_faturado'
+  const resumoDepois = financialAnalystService.obterResumoFinanceiroOS(state, '501');
+  assert.equal(resumoDepois.totalFaturadoPrazo, 800);
+  assert.equal(resumoDepois.statusLiberacaoPatio, 'liberado_faturado');
+  assert.equal(resumoDepois.titulosVinculados.length, 2);
+
+  // 15.4 Tentativa de duplo faturamento de OS já integralmente faturada -> 409 Conflict
+  const duploFat = financialAnalystService.faturarSaldoOS(state, {
+    osId: '501',
+    parcelas: 1
+  });
+  assert.equal(duploFat.ok, false);
+  assert.equal(duploFat.status, 409);
+  assert.equal(duploFat.code, 'OS_JA_QUITADA_OU_FATURADA');
+});
+
+test('16. Rota POST /api/financeiro/os/:osId/faturar: RBAC, geração de títulos e trilha de auditoria', async () => {
+  const fs = require('fs');
+  const os = require('os');
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'patio_test_fat_os_'));
+  const testDb = path.join(tempDir, 'test_fat_os.db');
+  process.env.DB_PATH = testDb;
+
+  const { initDB, closeDB, all } = require('../db');
+  await initDB();
+
+  try {
+    const express = require('express');
+    const http = require('http');
+    const financialRoutes = require('../routes/financial.routes');
+    const { salvarEstado } = require('../lib/serverContext');
+    const { getDefaultState } = require('../lib/repository/stateRepository');
+
+    const app = express();
+    app.use(express.json());
+
+    const tenantId = 'tenant_fat_route';
+    let mockContext = { role: 'dono', actorId: 'dono_fat', tenantId, permissions: ['financial:write', 'financial:manage'] };
+    app.use((req, res, next) => {
+      req.securityContext = mockContext;
+      req.headers['x-tenant-id'] = tenantId;
+      next();
+    });
+    app.use(financialRoutes);
+
+    const base = getDefaultState(tenantId);
+    const testState = {
+      ...base,
+      tenantId,
+      os: [
+        { id: '601', placa: 'GHI9J01', cliente: 'Frota Express', total: 1500, status: 'em_andamento' }
+      ],
+      movimentos: [
+        { id: 'mov_sinal_601', tenantId, tipo: 'entrada', valor: 500, forma: 'pix', osId: '601', placa: 'GHI9J01' }
+      ],
+      contas: []
+    };
+    await salvarEstado(tenantId, testState);
+
+    const server = http.createServer(app);
+    await new Promise(r => server.listen(0, '127.0.0.1', r));
+    const port = server.address().port;
+    const baseUrl = `http://127.0.0.1:${port}`;
+
+    try {
+      // 16.1 Mecânico tenta faturar -> 403 Forbidden
+      mockContext = { role: 'mecanico', actorId: 'mec_1', tenantId, permissions: ['financial:read'] };
+      const resMec = await fetch(`${baseUrl}/api/financeiro/os/601/faturar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ parcelas: 2, meioPagamento: 'boleto' })
+      });
+      assert.equal(resMec.status, 403);
+
+      // 16.2 Dono executa faturamento -> 201 Created
+      mockContext = { role: 'dono', actorId: 'dono_fat', tenantId, permissions: ['financial:write', 'financial:manage'] };
+      const resDono = await fetch(`${baseUrl}/api/financeiro/os/601/faturar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          parcelas: 2,
+          meioPagamento: 'boleto',
+          observacao: 'Faturamento Frota Express'
+        })
+      });
+
+      assert.equal(resDono.status, 201);
+      const jsonDono = await resDono.json();
+      assert.equal(jsonDono.success, true);
+      assert.equal(jsonDono.valorFaturado, 1000);
+      assert.equal(jsonDono.resumoOS.statusLiberacaoPatio, 'liberado_faturado');
+
+      // 16.3 Auditoria no banco
+      const auditRows = await all(`
+        SELECT action, details_json FROM security_audit_log
+        WHERE tenant_id = ? AND action = 'financeiro:os:faturar'
+        ORDER BY id DESC LIMIT 1
+      `, [tenantId]);
+      assert.ok(auditRows.length > 0, 'Auditoria financeiro:os:faturar deve ser registrada');
+      const details = JSON.parse(auditRows[0].details_json);
+      assert.equal(details.osId, '601');
+      assert.equal(details.valorFaturado, 1000);
+      assert.equal(details.statusLiberacaoPatio, 'liberado_faturado');
+    } finally {
+      await new Promise(r => server.close(r));
+    }
+  } finally {
+    await closeDB().catch(() => {});
+    try { fs.rmSync(tempDir, { recursive: true, force: true }); } catch (_) {}
+  }
+});
+
+
 
 
 

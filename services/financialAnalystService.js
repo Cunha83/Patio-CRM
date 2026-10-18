@@ -735,14 +735,14 @@ function obterResumoFinanceiroOS(stateOrOsId, osIdOrOptions, optionsArg) {
   let osId = null;
   let options = {};
 
-  if (typeof stateOrOsId === 'object' && stateOrOsId !== null && !('osId' in stateOrOsId) && ('movimentos' in stateOrOsId || 'caixas' in stateOrOsId)) {
+  if (typeof stateOrOsId === 'object' && stateOrOsId !== null && !('osId' in stateOrOsId) && ('movimentos' in stateOrOsId || 'caixas' in stateOrOsId || 'contas' in stateOrOsId)) {
     state = stateOrOsId;
     osId = osIdOrOptions;
     options = optionsArg || {};
   } else if (typeof stateOrOsId === 'string' || typeof stateOrOsId === 'number') {
     osId = stateOrOsId;
     if (typeof osIdOrOptions === 'object' && osIdOrOptions !== null) {
-      if ('movimentos' in osIdOrOptions || 'caixas' in osIdOrOptions) {
+      if ('movimentos' in osIdOrOptions || 'caixas' in osIdOrOptions || 'contas' in osIdOrOptions) {
         state = osIdOrOptions;
         options = optionsArg || {};
       } else {
@@ -801,8 +801,61 @@ function obterResumoFinanceiroOS(stateOrOsId, osIdOrOptions, optionsArg) {
   const saldoLiquidoOS = arredondar(totalEntradasOS - totalSaidasOS);
   const historico = movsOS.map(projetarMovimentacao);
 
+  // Consulta de dados cadastrais da OS (caso existam em state.os)
+  const osList = Array.isArray(state.os) ? state.os : [];
+  const dadosOS = osList.find(o => String(o.id || o.numero || '').replace(/^#/, '').trim() === osNorm);
+  if (dadosOS && dadosOS.placa) {
+    placasSet.add(String(dadosOS.placa).toUpperCase().trim());
+  }
+
+  const totalOrcado = Number(
+    (dadosOS && (dadosOS.total || dadosOS.valorTotal || dadosOS.totalGeral)) ||
+    options.totalOrcado ||
+    options.valorTotal ||
+    options.totalGeral ||
+    totalEntradasOS
+  );
+
+  const totalPago = totalEntradasOS;
+  const saldoRestante = arredondar(Math.max(0, totalOrcado - totalPago));
+  const quitada = totalOrcado > 0 ? (totalPago >= totalOrcado) : (totalEntradasOS > 0);
+
+  // Consulta de Títulos a Receber faturados a prazo vinculados à OS
+  const contas = Array.isArray(state.contas) ? state.contas : [];
+  const titulosVinculados = contas.filter(c => {
+    if (!c.osId) return false;
+    return String(c.osId).replace(/^#/, '').trim() === osNorm;
+  });
+
+  const totalFaturadoPrazo = arredondar(
+    titulosVinculados
+      .filter(c => c.tipo === 'receber' && !c.pago)
+      .reduce((acc, c) => acc + (Number(c.valor) || 0), 0)
+  );
+
+  // Status de liberação de pátio:
+  // - 'liberado_quitado': 100% pago
+  // - 'liberado_faturado': saldo restante está integralmente faturado a prazo com títulos emitidos
+  // - 'retido_pendente': ainda há saldo pendente sem cobertura de faturamento ou pagamento
+  let statusLiberacaoPatio = 'retido_pendente';
+  if (quitada || saldoRestante <= 0) {
+    statusLiberacaoPatio = 'liberado_quitado';
+  } else if (totalFaturadoPrazo >= saldoRestante && saldoRestante > 0) {
+    statusLiberacaoPatio = 'liberado_faturado';
+  } else {
+    statusLiberacaoPatio = 'retido_pendente';
+  }
+
   return {
     osId: osNorm,
+    cliente: (dadosOS && (dadosOS.cliente || dadosOS.clienteNome)) || options.cliente || '',
+    totalOrcado,
+    totalPago,
+    saldoRestante,
+    quitada,
+    totalFaturadoPrazo,
+    statusLiberacaoPatio,
+    titulosVinculados,
     totalEntradasOS,
     totalSaidasOS,
     saldoLiquidoOS,
@@ -810,6 +863,122 @@ function obterResumoFinanceiroOS(stateOrOsId, osIdOrOptions, optionsArg) {
     placasVinculadas: Array.from(placasSet),
     historico,
     resumoMeiosPagamento
+  };
+}
+
+/**
+ * Fatura a prazo o saldo devedor restante de uma Ordem de Serviço (OS), gerando título(s) a receber
+ */
+function faturarSaldoOS(state, payload = {}) {
+  const osId = payload.osId;
+  if (!osId) {
+    return { ok: false, status: 400, code: 'OS_ID_OBRIGATORIO', error: 'O identificador da OS (osId) é obrigatório.' };
+  }
+
+  const osNorm = String(osId).replace(/^#/, '').trim();
+  const resumoOS = obterResumoFinanceiroOS(state, osNorm, payload);
+
+  // Se a OS já estiver quitada ou já estiver integralmente faturada
+  if (resumoOS.quitada || resumoOS.saldoRestante <= 0 || resumoOS.statusLiberacaoPatio === 'liberado_faturado') {
+    return {
+      ok: false,
+      status: 409,
+      code: 'OS_JA_QUITADA_OU_FATURADA',
+      error: 'Ordem de serviço já quitada ou integralmente faturada a prazo.'
+    };
+  }
+
+  const saldoNaoFaturado = arredondar(resumoOS.saldoRestante - (resumoOS.totalFaturadoPrazo || 0));
+  if (saldoNaoFaturado <= 0) {
+    return {
+      ok: false,
+      status: 409,
+      code: 'OS_JA_QUITADA_OU_FATURADA',
+      error: 'O saldo restante desta OS já foi integralmente faturado a prazo.'
+    };
+  }
+
+  const valorTotalFaturar = Number(payload.valorFaturar || payload.valor || saldoNaoFaturado);
+  if (valorTotalFaturar <= 0) {
+    return { ok: false, status: 400, code: 'VALOR_INVALIDO', error: 'Valor a faturar inválido.' };
+  }
+
+  if (valorTotalFaturar > saldoNaoFaturado) {
+    return {
+      ok: false,
+      status: 400,
+      code: 'VALOR_EXCEDE_SALDO',
+      error: `Valor a faturar (R$ ${valorTotalFaturar.toFixed(2)}) excede o saldo pendente (R$ ${saldoNaoFaturado.toFixed(2)}).`
+    };
+  }
+
+  const parcelas = Math.max(1, parseInt(payload.parcelas, 10) || 1);
+  const meioPagamento = String(payload.meioPagamento || payload.forma || 'boleto').toLowerCase().trim();
+  const dataHoje = hojeISO();
+  const vencimentoBase = payload.vencimento || financialEngine.addDias(dataHoje, 30);
+  const operador = payload.operador || payload.actorId || 'operador';
+  const obs = payload.observacao || payload.obs || payload.descricao || '';
+  const placa = (resumoOS.placasVinculadas && resumoOS.placasVinculadas[0]) || payload.placa || '';
+  const parte = payload.cliente || payload.parte || resumoOS.cliente || `Cliente OS #${osNorm}`;
+
+  if (!Array.isArray(state.contas)) {
+    state.contas = [];
+  }
+
+  const valorBaseParcela = Math.floor((valorTotalFaturar / parcelas) * 100) / 100;
+  let somaParcelas = 0;
+  const titulosGerados = [];
+
+  for (let i = 1; i <= parcelas; i++) {
+    const valorParcela = (i === parcelas)
+      ? arredondar(valorTotalFaturar - somaParcelas)
+      : valorBaseParcela;
+    somaParcelas = arredondar(somaParcelas + valorParcela);
+
+    const vencimentoParcela = (i === 1)
+      ? vencimentoBase
+      : financialEngine.addDias(vencimentoBase, (i - 1) * 30);
+
+    const tituloId = `tit_${Date.now()}_${osNorm}_${i}_${Math.random().toString(36).slice(2, 6)}`;
+    const descricaoTitulo = parcelas > 1
+      ? `Faturamento OS #${osNorm} - Parcela ${i}/${parcelas}${obs ? ` (${obs})` : ''}`
+      : `Faturamento OS #${osNorm}${obs ? ` (${obs})` : ''}`;
+
+    const novoTitulo = {
+      id: tituloId,
+      tipo: 'receber',
+      osId: osNorm,
+      placa: placa ? String(placa).toUpperCase().trim() : '',
+      parte,
+      desc: descricaoTitulo,
+      valor: valorParcela,
+      venc: vencimentoParcela,
+      forma: meioPagamento,
+      formaPagamento: meioPagamento,
+      pago: false,
+      status: 'pendente',
+      parcela: i,
+      totalParcelas: parcelas,
+      criadoEm: new Date().toISOString(),
+      faturadoPor: operador,
+      origem: payload.origem || 'sistema'
+    };
+
+    state.contas.push(novoTitulo);
+    titulosGerados.push(novoTitulo);
+  }
+
+  const resumoAtualizado = obterResumoFinanceiroOS(state, osNorm, payload);
+
+  return {
+    ok: true,
+    sucesso: true,
+    mensagem: `Faturamento a prazo da OS #${osNorm} concluído em ${parcelas}x no ${meioPagamento.toUpperCase()}.`,
+    osId: osNorm,
+    valorFaturado: valorTotalFaturar,
+    parcelas,
+    titulos: titulosGerados,
+    resumoOS: resumoAtualizado
   };
 }
 
@@ -1518,5 +1687,6 @@ module.exports = {
   formatarBoletimFechamentoWhatsapp,
   obterResumoFechamentoParcial,
   obterResumoFinanceiroOS,
-  exportarMovimentacoesContabeis
+  exportarMovimentacoesContabeis,
+  faturarSaldoOS
 };

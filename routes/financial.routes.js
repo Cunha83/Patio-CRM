@@ -265,6 +265,75 @@ router.get('/api/financeiro/os/:osId/resumo', requirePermission('financial:read'
 });
 
 /**
+ * 4.1.1 POST /api/financeiro/os/:osId/faturar
+ * Fatura a prazo o saldo devedor restante de uma OS em Contas a Receber (com RBAC e auditoria)
+ */
+router.post('/api/financeiro/os/:osId/faturar', requirePermission('financial:write', 'financial:manage'), async (req, res) => {
+  try {
+    const tenantId = extractTenantId(req);
+    const osId = req.params.osId;
+    const operador = req.securityContext?.actorId || req.user?.username || 'operador_financeiro';
+
+    let resultado = null;
+    const saveRes = await mutateTenantState(req, (draft) => {
+      resultado = financialAnalystService.faturarSaldoOS(draft, {
+        ...req.body,
+        osId,
+        operador,
+        origem: 'web'
+      });
+
+      if (!resultado.ok) {
+        return { abort: true, status: resultado.status || 400, error: resultado.error, code: resultado.code };
+      }
+    });
+
+    if (saveRes?.aborted) {
+      return res.status(saveRes.status || 400).json({
+        success: false,
+        code: saveRes.code,
+        error: saveRes.error
+      });
+    }
+
+    if (!saveRes || !saveRes.ok) {
+      return res.status(saveRes?.status || 500).json({
+        success: false,
+        error: saveRes?.error || 'Falha ao persistir faturamento de OS.'
+      });
+    }
+
+    // Auditoria de faturamento de OS
+    try {
+      await recordSecurityAudit({
+        tenantId,
+        actorId: operador,
+        action: 'financeiro:os:faturar',
+        entity: 'ordem_servico',
+        entityId: osId,
+        details: {
+          osId,
+          valorFaturado: resultado.valorFaturado,
+          parcelas: resultado.parcelas,
+          titulosIds: resultado.titulos?.map(t => t.id),
+          statusLiberacaoPatio: resultado.resumoOS?.statusLiberacaoPatio
+        }
+      });
+    } catch (auditErr) {
+      console.warn('[Financeiro Faturar OS Audit] Falha não-bloqueante:', auditErr.message);
+    }
+
+    res.status(201).json({
+      success: true,
+      ...resultado
+    });
+  } catch (err) {
+    console.error('[API /api/financeiro/os/:osId/faturar POST] Erro:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+/**
  * 4.2 GET /api/financeiro/exportar
  * Exporta lote de movimentações contábeis em formato CSV ou JSON com assinatura SHA-256 e auditoria
  */
