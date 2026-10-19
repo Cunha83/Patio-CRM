@@ -642,6 +642,108 @@ router.post('/api/financeiro/os/:osId/liberar-box', requirePermission('os:write'
 });
 
 /**
+ * 4.1.6 GET /api/financeiro/patio/gargalos
+ * Retorna o radar consolidado de gargalos operacionais (boxes, OSs pausadas, OSs prontas retidas e produtividade)
+ */
+router.get('/api/financeiro/patio/gargalos', requirePermission('financial:read', 'os:read', 'operation:read', 'labor:read'), async (req, res) => {
+  try {
+    const state = await getOrLoadState(req);
+    const radar = financialAnalystService.obterRadarGargalosPatio(state, req.query || {});
+    res.json({
+      success: true,
+      ...radar
+    });
+  } catch (err) {
+    console.error('[API /api/financeiro/patio/gargalos GET] Erro:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+/**
+ * 4.1.7 POST /api/financeiro/os/:osId/apontamento
+ * Registra apontamento de mecânico (iniciar, pausar com gargalo, finalizar) e atualiza boxes
+ */
+router.post('/api/financeiro/os/:osId/apontamento', requirePermission('os:write', 'labor:write', 'financial:write', 'operation:manage'), async (req, res) => {
+  try {
+    const tenantId = extractTenantId(req);
+    const osId = req.params.osId;
+    const { acao, motivo, boxId, mecanico } = req.body || {};
+    const operador = req.securityContext?.fullName || req.securityContext?.actorId || 'operador';
+
+    let resultado = null;
+    const saveRes = await mutateTenantState(req, (draft) => {
+      try {
+        resultado = financialAnalystService.registrarApontamentoPatioOS(draft, {
+          osId,
+          acao,
+          motivo,
+          boxId,
+          mecanico,
+          operador: {
+            actorId: req.securityContext?.actorId,
+            nome: operador
+          }
+        });
+      } catch (err) {
+        return {
+          abort: true,
+          status: err.status || err.statusCode || 400,
+          code: err.code || 'ERRO_APONTAMENTO_PATIO',
+          error: err.message,
+          message: err.message
+        };
+      }
+    });
+
+    if (saveRes?.aborted) {
+      const mutRes = saveRes.mutatorResult || saveRes;
+      return res.status(mutRes.status || saveRes.status || 400).json({
+        success: false,
+        code: mutRes.code,
+        error: mutRes.error,
+        message: mutRes.message
+      });
+    }
+
+    if (!saveRes || !saveRes.ok) {
+      return res.status(saveRes?.status || 500).json({
+        success: false,
+        error: saveRes?.error || 'Falha ao persistir apontamento de pátio'
+      });
+    }
+
+    try {
+      await recordSecurityAudit({
+        tenantId,
+        actorId: req.securityContext?.actorId || 'operador',
+        action: 'patio:os:apontamento',
+        entity: 'ordem_servico',
+        entityId: String(osId),
+        details: {
+          osId,
+          acao: resultado?.acao,
+          etapaPatio: resultado?.etapaPatio,
+          boxId: resultado?.boxId,
+          motivoPausa: resultado?.motivoPausa,
+          mecanico: resultado?.os?.mecanico,
+          operador
+        }
+      });
+    } catch (auditErr) {
+      console.warn('[Apontamento Patio Audit] Falha não-bloqueante:', auditErr.message);
+    }
+
+    res.json({
+      success: true,
+      ...resultado
+    });
+  } catch (err) {
+    console.error('[API /api/financeiro/os/:osId/apontamento POST] Erro:', err);
+    res.status(err.status || 500).json({ success: false, code: err.code, error: err.message });
+  }
+});
+
+/**
  * 4.1.2 POST /api/financeiro/titulos/:id/liquidar
  * Realiza a liquidação (baixa) de um título a receber ou conta a pagar com geração de movimento no caixa e auditoria
  */

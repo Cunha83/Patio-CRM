@@ -1743,6 +1743,163 @@ test('21. Controle de Boxes de Pátio: Trava de Colisão (409), Alocação, Libe
   }
 });
 
+test('22. Apontamento de Mecânicos, Radar de Gargalos e Rotas de Pátio (Frente 5B)', async () => {
+  const fs = require('fs');
+  const os = require('os');
+  const express = require('express');
+  const http = require('http');
+  const financialAnalystService = require('../services/financialAnalystService.js');
+  const financialRoutes = require('../routes/financial.routes');
+  const { salvarEstado } = require('../lib/serverContext');
+  const { getDefaultState } = require('../lib/repository/stateRepository');
+  const { initDB, closeDB, all } = require('../db');
+
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'patio_gargalos_test_'));
+  const testDb = path.join(tempDir, 'test.db');
+  process.env.DB_PATH = testDb;
+
+  try {
+    await initDB();
+    const tenantId = 'tenant_gargalos_5b';
+
+    const state = {
+      tenantId,
+      boxes: [
+        { id: 'BOX-01', nome: 'Box 01' },
+        { id: 'BOX-02', nome: 'Box 02' }
+      ],
+      veiculos: [
+        { id: 'v1', placa: 'GHI9988', marca: 'Mercedes', modelo: 'Actros' },
+        { id: 'v2', placa: 'JKL7766', marca: 'Scania', modelo: 'R500' }
+      ],
+      clientes: [
+        { id: 'c1', nome: 'Transportadora TransSul' }
+      ],
+      equipe: [
+        { nome: 'João Mecânico' },
+        { nome: 'Pedro Eletricista' }
+      ],
+      os: [
+        { id: '9001', num: 9001, vei: 'v1', cli: 'c1', st: 'fila', total: 6000 },
+        { id: '9002', num: 9002, vei: 'v2', cli: 'c1', st: 'fila', total: 4000 }
+      ],
+      movimentos: [
+        { id: 'm1', osId: '9002', tipo: 'entrada', valor: 1000, estornado: false }
+      ]
+    };
+
+    // 22.1 Iniciar execução da OS 9001 com alocação no BOX-01
+    const resIni = financialAnalystService.registrarApontamentoPatioOS(state, {
+      osId: '9001',
+      acao: 'iniciar',
+      boxId: 'BOX-01',
+      mecanico: 'João Mecânico',
+      operador: 'atendente_1',
+      agora: '2026-10-19T08:00:00.000Z'
+    });
+    assert.equal(resIni.sucesso, true);
+    assert.equal(resIni.os.etapaPatio, 'em_execucao');
+    assert.equal(resIni.os.boxId, 'BOX-01');
+
+    // 22.2 Pausar execução da OS 9001 por gargalo de peça
+    const resPausa = financialAnalystService.registrarApontamentoPatioOS(state, {
+      osId: '9001',
+      acao: 'pausar',
+      motivo: 'Aguardando cruzeta do cardan',
+      operador: 'mecanico_joao',
+      agora: '2026-10-19T09:00:00.000Z'
+    });
+    assert.equal(resPausa.sucesso, true);
+    assert.equal(resPausa.os.etapaPatio, 'pausado_gargalo');
+    assert.equal(resPausa.os.motivoPausa, 'Aguardando cruzeta do cardan');
+    const box1 = state.boxes.find(b => b.id === 'BOX-01');
+    assert.equal(box1.status, 'bloqueado_peca');
+
+    // 22.3 Finalizar OS 9002 com saldo pendente (retida financeiro)
+    const resFin = financialAnalystService.registrarApontamentoPatioOS(state, {
+      osId: '9002',
+      acao: 'finalizar',
+      mecanico: 'Pedro Eletricista',
+      operador: 'mecanico_pedro',
+      agora: '2026-10-19T10:00:00.000Z'
+    });
+    assert.equal(resFin.sucesso, true);
+    assert.equal(resFin.os.etapaPatio, 'pronto_retirada');
+
+    // 22.4 Radar de Gargalos consolidado
+    const radar = financialAnalystService.obterRadarGargalosPatio(state, {
+      agora: '2026-10-19T10:30:00.000Z'
+    });
+    assert.equal(radar.sucesso, true);
+    assert.equal(radar.resumoBoxes.bloqueados, 1);
+    assert.equal(radar.osPausadasGargalo.length, 1);
+    assert.equal(radar.osPausadasGargalo[0].id, '9001');
+    assert.equal(radar.osPausadasGargalo[0].tempoPausaMinutos, 90);
+    assert.equal(radar.osPausadasGargalo[0].motivoPausa, 'Aguardando cruzeta do cardan');
+
+    assert.equal(radar.osProntasRetidasFinanceiro.length, 1);
+    assert.equal(radar.osProntasRetidasFinanceiro[0].id, '9002');
+    assert.equal(radar.osProntasRetidasFinanceiro[0].saldoRestante, 3000);
+
+    // 22.5 Rotas HTTP de Gargalos e Apontamento
+    const app = express();
+    app.use(express.json());
+    app.use((req, res, next) => {
+      req.securityContext = {
+        role: 'mecanico',
+        actorId: 'mecanico_1',
+        fullName: 'Mecânico Carlos',
+        tenantId,
+        permissions: ['os:read', 'os:write', 'labor:read', 'labor:write', 'financial:read']
+      };
+      req.headers['x-tenant-id'] = tenantId;
+      next();
+    });
+    app.use(financialRoutes);
+
+    const base = getDefaultState(tenantId);
+    await salvarEstado(tenantId, { ...base, ...state });
+
+    const server = http.createServer(app);
+    await new Promise(r => server.listen(0, '127.0.0.1', r));
+    const port = server.address().port;
+    const baseUrl = `http://127.0.0.1:${port}`;
+
+    try {
+      // GET /api/financeiro/patio/gargalos
+      const resRadarHttp = await fetch(`${baseUrl}/api/financeiro/patio/gargalos`);
+      assert.equal(resRadarHttp.status, 200);
+      const jsonRadar = await resRadarHttp.json();
+      assert.equal(jsonRadar.success, true);
+      assert.equal(jsonRadar.osPausadasGargalo.length, 1);
+      assert.equal(jsonRadar.osProntasRetidasFinanceiro.length, 1);
+
+      // POST /api/financeiro/os/9001/apontamento (Retomar execução)
+      const resApontHttp = await fetch(`${baseUrl}/api/financeiro/os/9001/apontamento`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ acao: 'iniciar' })
+      });
+      assert.equal(resApontHttp.status, 200);
+      const jsonApont = await resApontHttp.json();
+      assert.equal(jsonApont.success, true);
+      assert.equal(jsonApont.etapaPatio, 'em_execucao');
+
+      // Auditoria gravada no banco SQLite
+      const auditApont = await all(
+        "SELECT * FROM security_audit_log WHERE tenant_id = ? AND action = 'patio:os:apontamento'",
+        [tenantId]
+      );
+      assert.ok(auditApont.length >= 1, 'Deve ter gravado evento de auditoria de apontamento');
+    } finally {
+      await new Promise(r => server.close(r));
+    }
+  } finally {
+    await closeDB().catch(() => {});
+    try { fs.rmSync(tempDir, { recursive: true, force: true }); } catch (_) {}
+  }
+});
+
 
 
 

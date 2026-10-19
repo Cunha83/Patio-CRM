@@ -1917,6 +1917,130 @@ test('WhatsApp Agente Financeiro - Suíte Completa de Leitura e Escrita Controla
     assert.equal(repliesCobInexistente.length, 1);
     assert.match(repliesCobInexistente[0], /Não foi possível localizar|quitada/i);
   });
+
+  // ── 30. APONTAMENTO DE MECÂNICOS, BOXES E RADAR DE GARGALOS VIA WHATSAPP (FRENTE 5B) ──
+  await t.test('30. Comandos de Pátio para Mecânico: alocação, trava de colisão, apontamentos e radar de gargalos', async () => {
+    const mockState = criarEstadoMock({
+      comandosFinanceirosEscrita: true
+    });
+    mockState.boxes = [
+      { id: 'BOX-01', nome: 'Box 01' },
+      { id: 'BOX-02', nome: 'Box 02' }
+    ];
+    mockState.veiculos = [
+      { id: 'v101', placa: 'AAA1111', marca: 'Scania', modelo: 'R450' },
+      { id: 'v102', placa: 'BBB2222', marca: 'Volvo', modelo: 'FH460' }
+    ];
+    mockState.clientes = [
+      { id: 'c101', nome: 'Transportes ABC' }
+    ];
+    mockState.os = [
+      { id: 'os-101', num: 101, vei: 'v101', cli: 'c101', st: 'fila', total: 4000 },
+      { id: 'os-102', num: 102, vei: 'v102', cli: 'c101', st: 'fila', total: 2500 }
+    ];
+
+    const mecanicoFone = '5511955554444'; // cadastrado como mecanico em criarEstadoMock
+
+    // 30.1 Mecânico aloca OS 101 no Box 01
+    const repliesAloc = [];
+    await processarMensagemTexto({
+      from: `${mecanicoFone}@c.us`,
+      author: `${mecanicoFone}@c.us`,
+      body: 'box 1 os 101 Joao',
+      reply: async (txt) => { repliesAloc.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: mecanicoFone });
+
+    assert.equal(repliesAloc.length, 1);
+    assert.match(repliesAloc[0], /Alocação de Box Confirmada/i);
+    assert.match(repliesAloc[0], /#101/);
+    const os101 = mockState.os.find(o => o.num === 101);
+    assert.equal(os101.boxId, 'BOX-01');
+
+    // 30.2 Trava de Colisão: Outra alocação no mesmo Box 01 ocupado
+    const repliesColisao = [];
+    await processarMensagemTexto({
+      from: `${mecanicoFone}@c.us`,
+      author: `${mecanicoFone}@c.us`,
+      body: 'box 1 os 102 Marcos',
+      reply: async (txt) => { repliesColisao.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: mecanicoFone });
+
+    assert.equal(repliesColisao.length, 1);
+    assert.match(repliesColisao[0], /Box Ocupado/i);
+
+    // 30.3 Apontamento: Iniciar OS 101
+    const repliesIniciar = [];
+    await processarMensagemTexto({
+      from: `${mecanicoFone}@c.us`,
+      author: `${mecanicoFone}@c.us`,
+      body: 'iniciar os 101',
+      reply: async (txt) => { repliesIniciar.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: mecanicoFone });
+
+    assert.equal(repliesIniciar.length, 1);
+    assert.match(repliesIniciar[0], /Execução Iniciada/i);
+    assert.equal(os101.etapaPatio, 'em_execucao');
+    assert.equal(os101.st, 'executando');
+
+    // 30.4 Apontamento: Pausar OS 101 por falta de feixe de mola (Gargalo)
+    const repliesPausar = [];
+    await processarMensagemTexto({
+      from: `${mecanicoFone}@c.us`,
+      author: `${mecanicoFone}@c.us`,
+      body: 'pausar os 101 aguardando feixe de mola',
+      reply: async (txt) => { repliesPausar.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: mecanicoFone });
+
+    assert.equal(repliesPausar.length, 1);
+    assert.match(repliesPausar[0], /OS Pausada \(Gargalo Registrado\)/i);
+    assert.match(repliesPausar[0], /aguardando feixe de mola/i);
+    assert.equal(os101.etapaPatio, 'pausado_gargalo');
+    assert.equal(os101.st, 'peca');
+    const box1 = mockState.boxes.find(b => b.id === 'BOX-01');
+    assert.equal(box1.status, 'bloqueado_peca');
+
+    // 30.5 Consulta: Radar de Gargalos Operacionais
+    const repliesRadar = [];
+    await processarMensagemTexto({
+      from: `${mecanicoFone}@c.us`,
+      author: `${mecanicoFone}@c.us`,
+      body: 'gargalos',
+      reply: async (txt) => { repliesRadar.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: mecanicoFone });
+
+    assert.equal(repliesRadar.length, 1);
+    assert.match(repliesRadar[0], /RADAR OPERACIONAL DE GARGALOS & PÁTIO/i);
+    assert.match(repliesRadar[0], /OS #101/);
+    assert.match(repliesRadar[0], /aguardando feixe de mola/);
+
+    // 30.6 Apontamento: Finalizar OS 101 (libera box)
+    const repliesFinalizar = [];
+    await processarMensagemTexto({
+      from: `${mecanicoFone}@c.us`,
+      author: `${mecanicoFone}@c.us`,
+      body: 'finalizar os 101',
+      reply: async (txt) => { repliesFinalizar.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: mecanicoFone });
+
+    assert.equal(repliesFinalizar.length, 1);
+    assert.match(repliesFinalizar[0], /OS Concluída no Pátio/i);
+    assert.equal(os101.etapaPatio, 'pronto_retirada');
+    assert.equal(os101.st, 'finalizada');
+    assert.equal(os101.boxId, null);
+    assert.equal(box1.status, 'livre');
+
+    // 30.7 RBAC: Visitante / desconhecido recebe acesso negado
+    const repliesInvasor = [];
+    await processarMensagemTexto({
+      from: '5511999990000@c.us',
+      author: '5511999990000@c.us',
+      body: 'box 1 os 102',
+      reply: async (txt) => { repliesInvasor.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: '5511999990000' });
+
+    assert.equal(repliesInvasor.length, 1);
+    assert.match(repliesInvasor[0], /Acesso Negado/i);
+  });
 });
 
 
