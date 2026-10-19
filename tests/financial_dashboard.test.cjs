@@ -1900,6 +1900,167 @@ test('22. Apontamento de Mecânicos, Radar de Gargalos e Rotas de Pátio (Frente
   }
 });
 
+test('23. Gestão de Estoque, Requisição de Peças na OS e Desbloqueio Automático de Box (Frente 6A)', async () => {
+  const fs = require('fs');
+  const os = require('os');
+  const express = require('express');
+  const http = require('http');
+  const { salvarEstado } = require('../lib/serverContext');
+  const { getDefaultState } = require('../lib/repository/stateRepository');
+  const { initDB, closeDB, all } = require('../db');
+  const financialRoutes = require('../routes/financial.routes');
+  const financialAnalystService = require('../services/financialAnalystService');
+
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'patio-estoque-test-'));
+  const testDbPath = path.join(tempDir, 'test.db');
+  process.env.DB_PATH = testDbPath;
+
+  try {
+    await initDB();
+    const tenantId = 'tenant_estoque_test';
+
+    const state = {
+      tenantId,
+      estoque: [
+        { id: 'pec_mola', codigo: 'MOL-01', nome: 'Feixe de Mola Dianteiro', quantidade: 5, estoqueMinimo: 2, custoUnitario: 350, precoVenda: 580 },
+        { id: 'pec_lona', codigo: 'LON-02', nome: 'Jogo Lona Freio', quantidade: 2, estoqueMinimo: 3, custoUnitario: 140, precoVenda: 260 }
+      ],
+      boxes: [
+        { id: 'BOX-01', nome: 'Box 01 — Pesados', status: 'bloqueado_peca', osId: 'OS-801' }
+      ],
+      os: [
+        {
+          id: 'OS-801',
+          num: 801,
+          boxId: 'BOX-01',
+          box: 'BOX-01',
+          st: 'peca',
+          etapaPatio: 'pausado_gargalo',
+          motivoPausa: 'Aguardando feixe de mola',
+          pecasUtilizadas: [],
+          historicoPatio: []
+        }
+      ]
+    };
+
+    // 23.1 Teste unitário de listagem de estoque
+    const listEstoque = financialAnalystService.listarEstoquePecas(state);
+    assert.equal(listEstoque.sucesso, true);
+    assert.equal(listEstoque.pecas.length, 2);
+    assert.equal(listEstoque.resumoEstoque.totalItens, 2);
+    assert.equal(listEstoque.resumoEstoque.itensAbaixoMinimo, 1); // pec_lona (2 <= 3)
+
+    // 23.2 Teste unitário de requisição com baixa de estoque
+    const reqRes = financialAnalystService.requisitarPecaOS(state, {
+      osId: 'OS-801',
+      pecaIdOuNome: 'MOL-01',
+      quantidade: 2,
+      operador: 'Mecânico Carlos'
+    });
+    assert.equal(reqRes.sucesso, true);
+    assert.equal(reqRes.saldoEstoqueRestante, 3, 'Saldo deve diminuir de 5 para 3');
+    assert.equal(state.estoque[0].quantidade, 3);
+    assert.equal(state.os[0].pecasUtilizadas.length, 1);
+    assert.equal(state.os[0].totalPecas, 1160); // 2 * 580
+
+    // 23.3 Teste unitário de estoque insuficiente (erro 409)
+    assert.throws(() => {
+      financialAnalystService.requisitarPecaOS(state, {
+        osId: 'OS-801',
+        pecaIdOuNome: 'MOL-01',
+        quantidade: 10 // disponível: 3
+      });
+    }, (err) => {
+      assert.equal(err.statusCode || err.status, 409);
+      assert.equal(err.code, 'ESTOQUE_INSUFICIENTE');
+      return true;
+    });
+
+    // 23.4 Teste unitário de liberação de gargalo e desbloqueio de box
+    const desblRes = financialAnalystService.liberarGargaloPecaOS(state, {
+      osId: 'OS-801',
+      observacao: 'Feixe de mola entregue pelo almoxarifado',
+      operador: 'Almoxarife Beto'
+    });
+    assert.equal(desblRes.sucesso, true);
+    assert.equal(state.os[0].etapaPatio, 'em_execucao');
+    assert.equal(state.os[0].motivoPausa, null);
+    assert.equal(state.boxes[0].status, 'ocupado', 'Box deve ser restaurado de bloqueado_peca para ocupado');
+
+    // 23.5 Teste de rotas HTTP com Express e Auditoria SQLite
+    const app = express();
+    app.use(express.json());
+    app.use((req, res, next) => {
+      req.securityContext = {
+        actorId: 'almoxarife_1',
+        fullName: 'Almoxarife Roberto',
+        tenantId,
+        permissions: ['os:read', 'os:write', 'labor:read', 'labor:write', 'financial:read', 'financial:write', 'operation:manage']
+      };
+      req.headers['x-tenant-id'] = tenantId;
+      next();
+    });
+    app.use(financialRoutes);
+
+    const base = getDefaultState(tenantId);
+    await salvarEstado(tenantId, { ...base, ...state });
+
+    const server = http.createServer(app);
+    await new Promise(r => server.listen(0, '127.0.0.1', r));
+    const port = server.address().port;
+    const baseUrl = `http://127.0.0.1:${port}`;
+
+    try {
+      // GET /api/financeiro/patio/estoque
+      const resEstHttp = await fetch(`${baseUrl}/api/financeiro/patio/estoque`);
+      assert.equal(resEstHttp.status, 200);
+      const jsonEst = await resEstHttp.json();
+      assert.equal(jsonEst.success, true);
+      assert.equal(jsonEst.pecas.length, 2);
+
+      // POST /api/financeiro/os/OS-801/requisitar-peca (requisição via API)
+      const resReqHttp = await fetch(`${baseUrl}/api/financeiro/os/OS-801/requisitar-peca`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pecaIdOuNome: 'LON-02', quantidade: 1 })
+      });
+      assert.equal(resReqHttp.status, 200);
+      const jsonReq = await resReqHttp.json();
+      assert.equal(jsonReq.success, true);
+      assert.equal(jsonReq.saldoEstoqueRestante, 1);
+
+      // POST /api/financeiro/os/OS-801/liberar-gargalo-peca
+      const resLibHttp = await fetch(`${baseUrl}/api/financeiro/os/OS-801/liberar-gargalo-peca`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ observacao: 'Lonas montadas' })
+      });
+      assert.equal(resLibHttp.status, 200);
+      const jsonLib = await resLibHttp.json();
+      assert.equal(jsonLib.success, true);
+      assert.equal(jsonLib.etapaPatio, 'em_execucao');
+
+      // Auditoria no SQLite
+      const auditReq = await all(
+        "SELECT * FROM security_audit_log WHERE tenant_id = ? AND action = 'patio:os:requisitar_peca'",
+        [tenantId]
+      );
+      assert.ok(auditReq.length >= 1, 'Deve ter gravado auditoria de requisição de peças');
+
+      const auditLib = await all(
+        "SELECT * FROM security_audit_log WHERE tenant_id = ? AND action = 'patio:os:liberar_gargalo_peca'",
+        [tenantId]
+      );
+      assert.ok(auditLib.length >= 1, 'Deve ter gravado auditoria de liberação de gargalo de peças');
+    } finally {
+      await new Promise(r => server.close(r));
+    }
+  } finally {
+    await closeDB().catch(() => {});
+    try { fs.rmSync(tempDir, { recursive: true, force: true }); } catch (_) {}
+  }
+});
+
 
 
 
