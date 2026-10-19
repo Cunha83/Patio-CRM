@@ -2041,6 +2041,113 @@ test('WhatsApp Agente Financeiro - Suíte Completa de Leitura e Escrita Controla
     assert.equal(repliesInvasor.length, 1);
     assert.match(repliesInvasor[0], /Acesso Negado/i);
   });
+
+  await t.test('31. Comandos de Estoque, Requisição de Peças na OS e Desbloqueio de Gargalo via WhatsApp (Frente 6B)', async () => {
+    const mockState = criarEstadoMock();
+    const mecanicoFone = '5511977776666';
+    mockState.equipe = [
+      { id: 'eq_1', nome: 'João Mecânico', telefone: mecanicoFone, role: 'mecanico' }
+    ];
+    mockState.estoque = [
+      { id: 'pec_1', codigo: 'MOL-01', nome: 'Feixe de Mola Dianteiro', quantidade: 5, estoqueMinimo: 2, custoUnitario: 350, precoVenda: 580 },
+      { id: 'pec_2', codigo: 'LON-02', nome: 'Jogo Lona Freio', quantidade: 1, estoqueMinimo: 3, custoUnitario: 140, precoVenda: 260 }
+    ];
+    mockState.boxes = [
+      { id: 'BOX-01', nome: 'Box 01 — Mecânica', status: 'bloqueado_peca', osId: '101' }
+    ];
+    mockState.os = [
+      {
+        id: '101',
+        num: 101,
+        boxId: 'BOX-01',
+        box: 'BOX-01',
+        st: 'peca',
+        etapaPatio: 'pausado_gargalo',
+        motivoPausa: 'Aguardando feixe de mola',
+        pecasUtilizadas: [],
+        historicoPatio: []
+      }
+    ];
+
+    // 31.1 Consulta de estoque via WhatsApp (alerta de estoque crítico)
+    const repliesEstoque = [];
+    await processarMensagemTexto({
+      from: `${mecanicoFone}@c.us`,
+      author: `${mecanicoFone}@c.us`,
+      body: 'estoque',
+      reply: async (txt) => { repliesEstoque.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: mecanicoFone });
+
+    assert.equal(repliesEstoque.length, 1);
+    assert.match(repliesEstoque[0], /Catálogo de Estoque & Peças/i);
+    assert.match(repliesEstoque[0], /MOL-01/);
+    assert.match(repliesEstoque[0], /CRÍTICO/); // LON-02 tem 1 un com mínimo 3
+
+    // 31.2 Consulta com filtro por termo
+    const repliesFiltro = [];
+    await processarMensagemTexto({
+      from: `${mecanicoFone}@c.us`,
+      author: `${mecanicoFone}@c.us`,
+      body: 'consultar peca mola',
+      reply: async (txt) => { repliesFiltro.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: mecanicoFone });
+
+    assert.equal(repliesFiltro.length, 1);
+    assert.match(repliesFiltro[0], /Feixe de Mola Dianteiro/i);
+    assert.doesNotMatch(repliesFiltro[0], /LON-02/);
+
+    // 31.3 Requisição de peça na OS por mecânico
+    const repliesReq = [];
+    await processarMensagemTexto({
+      from: `${mecanicoFone}@c.us`,
+      author: `${mecanicoFone}@c.us`,
+      body: 'peca os 101 2 MOL-01',
+      reply: async (txt) => { repliesReq.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: mecanicoFone });
+
+    assert.equal(repliesReq.length, 1);
+    assert.match(repliesReq[0], /Peça Requisitada na OS/i);
+    assert.match(repliesReq[0], /Feixe de Mola Dianteiro/);
+    assert.match(repliesReq[0], /Saldo em Estoque:\* 3 un/);
+    assert.equal(mockState.estoque[0].quantidade, 3);
+    const os101 = mockState.os.find(o => o.num === 101);
+    assert.equal(os101.pecasUtilizadas.length, 1);
+
+    // 31.4 Tentativa de requisitar quantidade acima do estoque disponível
+    const repliesEstoqueInsuf = [];
+    await processarMensagemTexto({
+      from: `${mecanicoFone}@c.us`,
+      author: `${mecanicoFone}@c.us`,
+      body: 'peca os 101 10 MOL-01',
+      reply: async (txt) => { repliesEstoqueInsuf.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: mecanicoFone });
+
+    assert.equal(repliesEstoqueInsuf.length, 1);
+    assert.match(repliesEstoqueInsuf[0], /Estoque Insuficiente/i);
+
+    // 31.5 Desbloqueio e retomada da OS e box via WhatsApp
+    const repliesRetomada = [];
+    await processarMensagemTexto({
+      from: `${mecanicoFone}@c.us`,
+      author: `${mecanicoFone}@c.us`,
+      body: 'chegou peca os 101 Feixe instalado',
+      reply: async (txt) => { repliesRetomada.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: mecanicoFone });
+
+    assert.equal(repliesRetomada.length, 1);
+    assert.match(repliesRetomada[0], /Gargalo Desbloqueado! OS Retomada/i);
+    assert.equal(os101.etapaPatio, 'em_execucao');
+    assert.equal(os101.motivoPausa, null);
+    assert.equal(mockState.boxes[0].status, 'ocupado');
+
+    // 31.6 Auditoria gravada no banco de dados SQLite
+    const auditRows = await all(`
+      SELECT action, entity_id FROM security_audit_log
+      WHERE action IN ('patio:os:requisitar_peca', 'patio:os:liberar_gargalo_peca')
+      ORDER BY id ASC
+    `);
+    assert.ok(auditRows.length >= 2, 'Deve registrar auditorias de requisição e desbloqueio');
+  });
 });
 
 

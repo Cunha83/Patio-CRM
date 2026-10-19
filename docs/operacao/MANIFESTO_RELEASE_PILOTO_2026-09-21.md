@@ -3,8 +3,8 @@
 **Projeto:** Pátio CRM  
 **Versão:** `1.0.0`  
 **Fase:** Piloto Controlado em Ambiente Operacional (1 Oficina)  
-**Data de Congelamento:** 2026-10-19T23:48:56.614Z  
-**Commit Git:** `d79c3e3c2002dd3ece621050ab48716b9d1db000` (`branch: main`)  
+**Data de Congelamento:** 2026-10-19T23:51:49.463Z  
+**Commit Git:** `743b52904649a5a73d82452382b234822abd21ae` (`branch: main`)  
 **Ambiente:** Node.js `v24.21.0` em `win32-x64`  
 **Total de Arquivos Auditados:** 172  
 
@@ -210,7 +210,7 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 | `services/voiceActionEngine.js` | `963bc5843cc26320598e5f96c36f70bbb29ac4433035ebfccaf34d27bdbaff8c` |
 | `services/warrantyService.js` | `e2772f7e3d8987ebba0d4e6a97e2dfad10f3210e490616902629c68d68ebb14b` |
 | `services/whatsapp/whatsappClient.js` | `42a50ddf76c999477b7ce373bfc5bfec5511b4ae2929ca4ce0c8a047bec88654` |
-| `services/whatsapp/whatsappHandlers.js` | `11c1df95285270980da2c2132fecdb6f3cca33e4e9d1d0f346cded1f4b724153` |
+| `services/whatsapp/whatsappHandlers.js` | `49178e466adaf63753af884701e27c6d62f7f034c173629b30dd6ea88f5b9848` |
 | `services/whatsapp/whatsappScheduler.js` | `01a1ba654ab5f872d14a1ff5957083d496d979b7c0a1b5601dde2b3289e7d3a8` |
 | `services/whatsapp/whatsappState.js` | `06aad441cc77f1e5adc508fea0b1a17f0ff59cbbc4862fb0ce3ac761a51e936b` |
 | `style.css` | `ea8a3021eebbd6b45d3d56dd88958139734a39599dd9c2300be46714ec0d8297` |
