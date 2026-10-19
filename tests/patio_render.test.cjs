@@ -63,18 +63,26 @@ test('js/modules/patio_render.js: sintaxe e exportações das funções de rende
     box: 'b1',
     mecanico: 'Carlos',
     etapaPatio: 'pausado_gargalo',
-    motivoPausa: 'Aguardando feixe de mola'
+    motivoPausa: 'Aguardando feixe de mola',
+    pecasUtilizadas: [{ id: 'p1', nome: 'Feixe de Mola' }],
+    totalPecas: 580
   };
   const badgesHtml = mockGlobal.renderBadgesOperacionaisPatio(osComGargalo);
   assert.ok(badgesHtml.includes('Box 01'), 'Badge deve conter o Box associado');
   assert.ok(badgesHtml.includes('Carlos'), 'Badge deve conter o mecânico responsável');
   assert.ok(badgesHtml.includes('GARGALO: Aguardando feixe de mola'), 'Badge deve conter o gargalo e motivo');
+  assert.ok(badgesHtml.includes('1 peça(s)'), 'Badge deve conter o contador de peças');
 
   // Teste de renderização do cardOS
   const htmlCard = mockGlobal.cardOS(mockGlobal.S.os[0], mockGlobal.S.boxes[0]);
   assert.ok(htmlCard.includes('OS 1001'), 'Card deve renderizar o número da OS');
   assert.ok(htmlCard.includes('ABC1D23'), 'Card deve renderizar a placa do caminhão');
   assert.ok(htmlCard.includes('Box 01'), 'Card deve identificar o box associado');
+
+  // Teste de card com botão de retomada de gargalo
+  const htmlCardGargalo = mockGlobal.cardOS(osComGargalo, mockGlobal.S.boxes[0]);
+  assert.ok(htmlCardGargalo.includes('data-act="retomar-os-gargalo"'), 'Card com gargalo deve exibir botão de retomada');
+  assert.ok(htmlCardGargalo.includes('Retomar / Peça Chegou'), 'Texto do botão de retomada deve ser exibido');
 
   // Teste de renderização de Box Livre
   const htmlLivre = mockGlobal.cardLivre(mockGlobal.S.boxes[1]);

@@ -459,6 +459,25 @@ Os perfis `mecanico`, `atendente`, `financeiro` e `dono` podem realizar apontame
   - `⚙️ Em Execução` (trabalho mecânico ativo).
   - `⏸️ GARGALO: <motivo>` (veículo e box parados por peças/fornecedor).
   - `✅ Pronto p/ Retirada` (etapa mecânica finalizada).
+  - `🔩 X peça(s)` (peças requisitadas do estoque para a OS).
 - **Radar Operacional de Boxes & Gargalos**: Painel superior na visão de pátio consolidando o mapa de boxes, contadores em tempo real e avisos rápidos de gargalos operacionais e veículos retidos financeiramente.
+
+### I. Controle de Estoque, Requisição de Peças na OS e Desbloqueio Automático de Gargalos
+Para integrar a operação de almoxarifado ao chão de oficina e eliminar paradas ocultas:
+- **Catálogo de Peças e Alerta de Estoque Mínimo**:
+  - Cada item possui saldo físico (`quantidade`), nível de segurança (`estoqueMinimo`), custo e preço de venda.
+  - Alerta automático `⚠️ CRÍTICO` é acionado quando `quantidade <= estoqueMinimo`.
+- **Trava de Estoque Insuficiente (`ESTOQUE_INSUFICIENTE` / HTTP 409)**:
+  - A requisição de peças na OS valida o saldo disponível no almoxarifado. Se a quantidade solicitada exceder o estoque, a operação é rejeitada com código `409` impedindo furos de estoque.
+  - Toda requisição bem-sucedida abate o saldo da peça, calcula o subtotal e atualiza `os.totalPecas` e `os.pecasUtilizadas`.
+- **Comandos de Almoxarifado via WhatsApp**:
+  - `estoque [termo]` ou `consultar peca <termo>`: consulta rápida de peças com saldo e alertas críticos.
+  - `peca os <osId> <qtd> <nome_ou_codigo>` (ex.: `peca os 101 2 MOL-01`): requisita a peça diretamente para a OS, debitando o estoque.
+  - `chegou peca os <osId> [obs]` ou `retomar os <osId>`: desbloqueia o gargalo, muda a OS de `pausado_gargalo` para `em_execucao`, limpa a justificativa de parada e restaura o status do box de `bloqueado_peca` para `ocupado`.
+- **Ações Rápidas no Frontend**:
+  - Cards de OS exibem o botão `▶️ Retomar / Peça Chegou` para destravar veículos pausados por peças com 1 clique.
+  - Botão `🔩 +Peça` permite requisição imediata direto da visão de pátio ou folha da OS.
+  - Todas as movimentações geram trilha de auditoria em SQLite (`patio:os:requisitar_peca` e `patio:os:liberar_gargalo_peca`).
+
 
 

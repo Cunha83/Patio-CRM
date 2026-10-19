@@ -56,7 +56,15 @@ function folhaOS() {
         ${esc(v.marca ? v.marca + ' ' : '')}${esc(v.modelo)} · Cliente: <b>${esc(c.nome)}</b> · ${esc(b.nome)}
       </div>
     </div>
-    <div style="display:flex;gap:6px;align-items:center">
+    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+      ${(o.etapaPatio === 'pausado_gargalo' || o.st === 'peca') ? `
+        <button class="btn btn-sucesso" data-act="retomar-os-gargalo" data-id="${o.id}" style="font-size:12px;padding:5px 10px;font-weight:700" title="Peça recebida: liberar gargalo e retomar execução">
+          ▶️ Peça Chegou / Retomar
+        </button>
+      ` : ''}
+      <button class="btn btn-secundario" data-act="requisitar-peca-os" data-id="${o.id}" style="font-size:12px;padding:5px 10px" title="Requisitar peça do estoque">
+        🔩 +Peça
+      </button>
       <label class="btn btn-secundario" style="cursor:pointer;margin:0;font-size:12px;padding:5px 10px;display:flex;align-items:center;gap:4px" title="Anexar foto da placa para conciliação automática">
         📷 Foto Placa
         <input type="file" accept="image/*" data-act="upload-foto-os" data-os="${o.id}" style="display:none">

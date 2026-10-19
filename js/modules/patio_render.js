@@ -32,6 +32,13 @@ function renderBadgesOperacionaisPatio(o) {
     badges.push(`<span class="selo selo-mecanico" style="background:#f3e8ff;color:#6b21a8;border:1px solid #e9d5ff;font-size:10px;font-weight:600" title="Mecânico Responsável">👨‍🔧 ${safeEsc(o.mecanico)}</span>`);
   }
 
+  // Peças Requisitadas na OS (Frente 6C)
+  const qtdPecas = Array.isArray(o.pecasUtilizadas) ? o.pecasUtilizadas.length : 0;
+  if (qtdPecas > 0) {
+    const totalPecasTxt = o.totalPecas ? ` (R$ ${Number(o.totalPecas).toFixed(2)})` : '';
+    badges.push(`<span class="selo selo-pecas" style="background:#fef3c7;color:#92400e;border:1px solid #fde68a;font-size:10px;font-weight:600" title="Peças Requisitadas na OS: ${qtdPecas} item(ns)${totalPecasTxt}">🔩 ${qtdPecas} peça(s)</span>`);
+  }
+
   // Etapa / Gargalo
   if (o.etapaPatio === 'pausado_gargalo' || o.st === 'peca') {
     const mot = o.motivoPausa ? `: ${o.motivoPausa}` : '';
@@ -280,14 +287,17 @@ function cardOS(o, b) {
       <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">
         ${(o.box || o.boxId) && o.st !== 'finalizada' ? `
           ${(o.etapaPatio === 'pausado_gargalo' || o.st === 'peca') ? `
-            <button class="btn btn-sucesso" data-act="iniciar-box-card" data-id="${o.id}" style="font-size:11px;padding:3px 8px;border-radius:6px;height:26px;font-weight:600" title="Retomar execução mecânica">
-              ▶ Retomar
+            <button class="btn btn-sucesso" data-act="retomar-os-gargalo" data-id="${o.id}" style="font-size:11px;padding:3px 8px;border-radius:6px;height:26px;font-weight:600" title="Peça chegou: retomar execução mecânica e liberar box">
+              ▶️ Retomar / Peça Chegou
             </button>
           ` : `
             <button class="btn btn-secundario" data-act="pausar-os-gargalo" data-id="${o.id}" style="font-size:11px;padding:3px 8px;border-radius:6px;height:26px;font-weight:600;color:#b91c1c" title="Pausar por falta de peça ou gargalo operacional">
               ⏸ Pausar
             </button>
           `}
+          <button class="btn btn-secundario" data-act="requisitar-peca-os" data-id="${o.id}" style="font-size:11px;padding:3px 8px;border-radius:6px;height:26px;font-weight:600" title="Requisitar peça do estoque para esta OS">
+            🔩 +Peça
+          </button>
           <button class="btn btn-secundario" data-act="liberar-box-os" data-id="${o.id}" style="font-size:11px;padding:3px 8px;border-radius:6px;height:26px;font-weight:600" title="Liberar este box de oficina">
             🔓 Desocupar
           </button>

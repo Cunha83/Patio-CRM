@@ -431,6 +431,77 @@ document.addEventListener('click', e => {
       break;
     }
 
+    case 'retomar-os-gargalo': {
+      const osId = b.dataset.id || b.dataset.os || (o && o.id);
+      const alvo = (S.os || []).find(x => String(x.id) === String(osId));
+      if (!alvo) break;
+
+      fetch(`/api/financeiro/os/${encodeURIComponent(osId)}/liberar-gargalo-peca`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ observacao: 'Peça recebida no pátio' })
+      })
+        .then(async r => {
+          const d = await r.json().catch(() => ({}));
+          alvo.etapaPatio = 'em_execucao';
+          alvo.motivoPausa = null;
+          alvo.st = 'executando';
+          const bId = alvo.box || alvo.boxId;
+          if (bId && Array.isArray(S.boxes)) {
+            const bx = S.boxes.find(x => x.id === bId);
+            if (bx) bx.status = 'ocupado';
+          }
+          salvar();
+          render();
+          torrar(`🚀 OS ${alvo.num}: Gargalo liberado e box destravado!`, 'sucesso');
+        })
+        .catch(() => {
+          alvo.etapaPatio = 'em_execucao';
+          alvo.motivoPausa = null;
+          alvo.st = 'executando';
+          salvar();
+          render();
+          torrar(`🚀 OS ${alvo.num}: Retomada localmente.`);
+        });
+      break;
+    }
+
+    case 'requisitar-peca-os': {
+      const osId = b.dataset.id || b.dataset.os || (o && o.id);
+      const alvo = (S.os || []).find(x => String(x.id) === String(osId));
+      if (!alvo) break;
+
+      const pecaIdent = prompt(`Informe o código ou nome da peça para a OS #${alvo.num}:`, 'MOL-01');
+      if (!pecaIdent || !pecaIdent.trim()) break;
+
+      const qtdStr = prompt('Quantidade solicitada:', '1');
+      const qtd = parseFloat(qtdStr) || 1;
+      if (qtd <= 0) break;
+
+      fetch(`/api/financeiro/os/${encodeURIComponent(osId)}/requisitar-peca`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pecaIdOuNome: pecaIdent.trim(), quantidade: qtd })
+      })
+        .then(async r => {
+          const d = await r.json().catch(() => ({}));
+          if (!r.ok) {
+            torrar(d.mensagem || d.error || 'Estoque insuficiente ou peça não localizada.', 'aviso');
+            return;
+          }
+          if (!Array.isArray(alvo.pecasUtilizadas)) alvo.pecasUtilizadas = [];
+          if (d.peca) alvo.pecasUtilizadas.push(d.peca);
+          if (d.totalPecasOS != null) alvo.totalPecas = d.totalPecasOS;
+          salvar();
+          render();
+          torrar(`🔩 Peça vinculada à OS #${alvo.num} com sucesso!`, 'sucesso');
+        })
+        .catch(() => {
+          torrar('Erro de rede ao requisitar peça.', 'erro');
+        });
+      break;
+    }
+
     case 'salvar-veiculo': {
       const r = S.ui.rascVeiculo;
       if (!r || !r.placa) { torrar('Digite a placa do caminhão'); break; }
