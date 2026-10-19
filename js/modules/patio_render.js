@@ -11,6 +11,107 @@ function isPerfilMecanico() {
   return perfil === 'mecanico';
 }
 
+function renderBadgesOperacionaisPatio(o) {
+  if (!o) return '';
+  const badges = [];
+  const safeEsc = typeof esc === 'function' ? esc : (s => String(s || ''));
+
+  // Box atual
+  const boxId = o.boxId || o.box;
+  if (boxId) {
+    let nomeBox = boxId;
+    if (typeof S !== 'undefined' && Array.isArray(S && S.boxes)) {
+      const bObj = S.boxes.find(b => b.id === boxId);
+      if (bObj && bObj.nome) nomeBox = bObj.nome.split('—')[0].split('-')[0].trim();
+    }
+    badges.push(`<span class="selo selo-box" style="background:#e0f2fe;color:#0369a1;border:1px solid #bae6fd;font-size:10px;font-weight:600" title="Box Alocado">🏗️ ${safeEsc(nomeBox)}</span>`);
+  }
+
+  // Mecânico
+  if (o.mecanico) {
+    badges.push(`<span class="selo selo-mecanico" style="background:#f3e8ff;color:#6b21a8;border:1px solid #e9d5ff;font-size:10px;font-weight:600" title="Mecânico Responsável">👨‍🔧 ${safeEsc(o.mecanico)}</span>`);
+  }
+
+  // Etapa / Gargalo
+  if (o.etapaPatio === 'pausado_gargalo' || o.st === 'peca') {
+    const mot = o.motivoPausa ? `: ${o.motivoPausa}` : '';
+    badges.push(`<span class="selo selo-gargalo" style="background:#fee2e2;color:#b91c1c;border:1px solid #fecaca;font-size:10px;font-weight:700" title="${safeEsc(o.motivoPausa || 'Gargalo Operacional')}">⏸️ GARGALO${safeEsc(mot)}</span>`);
+  } else if (o.etapaPatio === 'pronto_retirada' || o.st === 'finalizada') {
+    badges.push(`<span class="selo selo-pronto" style="background:#dcfce7;color:#15803d;border:1px solid #bbf7d0;font-size:10px;font-weight:600" title="Veículo pronto para entrega">✅ Pronto p/ Retirada</span>`);
+  } else if (o.etapaPatio === 'em_execucao' || o.st === 'executando') {
+    badges.push(`<span class="selo selo-execucao" style="background:#e0e7ff;color:#3730a3;border:1px solid #c7d2fe;font-size:10px;font-weight:600" title="Em Execução Mecânica">⚙️ Em Execução</span>`);
+  }
+
+  return badges.join(' ');
+}
+
+function radarGargalosPatioHtml() {
+  const osLista = (typeof S !== 'undefined' && Array.isArray(S.os)) ? S.os : [];
+  const boxes = (typeof S !== 'undefined' && Array.isArray(S.boxes)) ? S.boxes : [];
+  const safeEsc = typeof esc === 'function' ? esc : (s => String(s || ''));
+
+  const ocupadosSet = new Set();
+  const bloqueadosPecaSet = new Set();
+
+  osLista.forEach(o => {
+    const bId = o.box || o.boxId;
+    if (bId && o.st !== 'finalizada') {
+      ocupadosSet.add(bId);
+      if (o.etapaPatio === 'pausado_gargalo' || o.st === 'peca') {
+        bloqueadosPecaSet.add(bId);
+      }
+    }
+  });
+
+  const totalBoxes = boxes.length;
+  const bloqueadosPeca = bloqueadosPecaSet.size;
+  const ocupadosExec = ocupadosSet.size - bloqueadosPeca;
+  const livres = Math.max(0, totalBoxes - ocupadosSet.size);
+
+  const osGargalos = osLista.filter(o => o.st !== 'finalizada' && (o.etapaPatio === 'pausado_gargalo' || o.st === 'peca'));
+  const osProntasRetidas = osLista.filter(o => (o.etapaPatio === 'pronto_retirada' || o.st === 'finalizada') && o.statusLiberacaoPatio === 'retido_pendente');
+
+  return `
+  <div class="card card-p" style="margin-bottom:14px;background:#f8fafc;border:1px solid var(--aco-200)">
+    <div class="entre" style="border-bottom:1px solid var(--aco-150);padding-bottom:8px;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+      <div style="display:flex;align-items:center;gap:6px">
+        <span style="font-size:16px">🚦</span>
+        <span style="font-weight:700;font-size:14px;color:var(--aco-900)">Radar Operacional de Boxes & Gargalos de Pátio</span>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <span class="selo" style="background:#e0f2fe;color:#0369a1;border:1px solid #bae6fd;font-weight:700">Total: ${totalBoxes} boxes</span>
+        <span class="selo" style="background:#dcfce7;color:#166534;border:1px solid #bbf7d0;font-weight:700">🟢 ${livres} Livre(s)</span>
+        <span class="selo" style="background:#e0e7ff;color:#3730a3;border:1px solid #c7d2fe;font-weight:700">⚙️ ${ocupadosExec} Em Execução</span>
+        <span class="selo" style="background:#fee2e2;color:#991b1b;border:1px solid #fecaca;font-weight:700">⏸️ ${bloqueadosPeca} Bloqueado(s) Peça</span>
+      </div>
+    </div>
+    ${(osGargalos.length > 0 || osProntasRetidas.length > 0) ? `
+      <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(260px, 1fr));gap:10px">
+        ${osGargalos.length > 0 ? `
+          <div style="background:#fff1f2;border:1px solid #fecdd3;border-radius:6px;padding:8px 12px">
+            <div style="font-weight:700;font-size:12px;color:#9f1239;margin-bottom:4px">⚠️ Gargalos de Peça (${osGargalos.length})</div>
+            <div class="mini" style="color:#881337">
+              ${osGargalos.slice(0, 3).map(o => `OS #${o.num || o.id} (${safeEsc(o.motivoPausa || 'Aguardando Peças')})`).join(' · ')}
+              ${osGargalos.length > 3 ? ` e mais ${osGargalos.length - 3}...` : ''}
+            </div>
+          </div>
+        ` : ''}
+        ${osProntasRetidas.length > 0 ? `
+          <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:8px 12px">
+            <div style="font-weight:700;font-size:12px;color:#92400e;margin-bottom:4px">🟡 Mecânica Pronta / Retida no Financeiro (${osProntasRetidas.length})</div>
+            <div class="mini" style="color:#78350f">
+              ${osProntasRetidas.slice(0, 3).map(o => `OS #${o.num || o.id}`).join(' · ')}
+              ${osProntasRetidas.length > 3 ? ` e mais ${osProntasRetidas.length - 3}...` : ''}
+            </div>
+          </div>
+        ` : ''}
+      </div>
+    ` : `
+      <div class="mini" style="color:var(--aco-600)">✅ Fluxo operacional equilibrado: nenhum gargalo crítico detectado nos boxes ativos.</div>
+    `}
+  </div>`;
+}
+
 function viewPatio() {
   const osLista = S.os || [];
   const filtro = S.ui.filtro || 'todos';
@@ -118,6 +219,8 @@ function viewPatio() {
     </div>
   </div>
 
+  ${typeof radarGargalosPatioHtml === 'function' ? radarGargalosPatioHtml() : ''}
+
   <div style="font-weight:700;font-size:15px;color:var(--aco-800);margin-bottom:10px;display:flex;align-items:center;gap:6px">
     ${ico('patio', 16)} <b>Boxes do Pátio</b>
   </div>
@@ -145,6 +248,7 @@ function cardOS(o, b) {
           <span class="placa" style="color:#000000;font-weight:bold">${esc(v.placa)}</span>
           <span class="selo" data-st="${o.st}">${stInfo.r}</span>
           ${(o.pendenciaCadastral || v.pendenciaCadastral || v.placa === 'SEM-PLACA') ? '<span class="selo" style="background:#fff3cd;color:#856404;border:1px solid #ffeeba;font-size:10px" title="Pendência Cadastral: Placa não confirmada">⚠️ Placa Pendente</span>' : ''}
+          ${renderBadgesOperacionaisPatio(o)}
           ${!isPerfilMecanico() && typeof renderBadgeLiberacaoPatio === 'function' ? renderBadgeLiberacaoPatio(o) : ''}
         </div>
         <div class="modelo">${esc(v.marca ? v.marca + ' ' : '')}${esc(v.modelo)}</div>
@@ -162,8 +266,8 @@ function cardOS(o, b) {
     </div>
 
     <!-- Controle Rápido de Status e Alocação de Box -->
-    <div style="margin-top:8px;padding-top:8px;border-top:1px dashed var(--aco-150);display:flex;align-items:center;justify-content:space-between;gap:6px" onclick="event.stopPropagation()">
-      <div style="display:flex;align-items:center;gap:4px;flex:1;min-width:0">
+    <div style="margin-top:8px;padding-top:8px;border-top:1px dashed var(--aco-150);display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap" onclick="event.stopPropagation()">
+      <div style="display:flex;align-items:center;gap:4px;flex:1;min-width:140px">
         <label class="mini" style="font-size:10px;font-weight:600;color:var(--aco-500)">Status:</label>
         <select class="campo-select" data-act="mudar-status-card" data-id="${o.id}" style="height:26px;font-size:11.5px;padding:0 6px;border-radius:6px;font-weight:600;background:var(--aco-050);flex:1;min-width:0">
           <option value="fila" ${o.st === 'fila' ? 'selected' : ''}>Na Fila</option>
@@ -173,11 +277,26 @@ function cardOS(o, b) {
           <option value="finalizada" ${o.st === 'finalizada' ? 'selected' : ''}>Finalizada</option>
         </select>
       </div>
-      ${!o.box && o.st !== 'finalizada' ? `
-        <button class="btn btn-sucesso" data-act="iniciar-box-card" data-id="${o.id}" style="font-size:11px;padding:3px 8px;border-radius:6px;height:26px;font-weight:600;white-space:nowrap" title="Alocar primeiro box livre e iniciar execução">
-          ▶ Ocupar Box
-        </button>
-      ` : ''}
+      <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">
+        ${(o.box || o.boxId) && o.st !== 'finalizada' ? `
+          ${(o.etapaPatio === 'pausado_gargalo' || o.st === 'peca') ? `
+            <button class="btn btn-sucesso" data-act="iniciar-box-card" data-id="${o.id}" style="font-size:11px;padding:3px 8px;border-radius:6px;height:26px;font-weight:600" title="Retomar execução mecânica">
+              ▶ Retomar
+            </button>
+          ` : `
+            <button class="btn btn-secundario" data-act="pausar-os-gargalo" data-id="${o.id}" style="font-size:11px;padding:3px 8px;border-radius:6px;height:26px;font-weight:600;color:#b91c1c" title="Pausar por falta de peça ou gargalo operacional">
+              ⏸ Pausar
+            </button>
+          `}
+          <button class="btn btn-secundario" data-act="liberar-box-os" data-id="${o.id}" style="font-size:11px;padding:3px 8px;border-radius:6px;height:26px;font-weight:600" title="Liberar este box de oficina">
+            🔓 Desocupar
+          </button>
+        ` : (!o.box && o.st !== 'finalizada' ? `
+          <button class="btn btn-sucesso" data-act="alocar-box-os" data-id="${o.id}" style="font-size:11px;padding:3px 8px;border-radius:6px;height:26px;font-weight:600;white-space:nowrap" title="Alocar box físico para esta OS">
+            🏗️ Alocar Box
+          </button>
+        ` : '')}
+      </div>
     </div>
   </div>`;
 }
@@ -206,12 +325,16 @@ function cardLivre(b) {
 // Exportações explícitas no escopo global (window e globalThis)
 if (typeof window !== 'undefined') {
   window.isPerfilMecanico = isPerfilMecanico;
+  window.renderBadgesOperacionaisPatio = renderBadgesOperacionaisPatio;
+  window.radarGargalosPatioHtml = radarGargalosPatioHtml;
   window.viewPatio = viewPatio;
   window.cardOS = cardOS;
   window.cardLivre = cardLivre;
 }
 if (typeof globalThis !== 'undefined') {
   globalThis.isPerfilMecanico = isPerfilMecanico;
+  globalThis.renderBadgesOperacionaisPatio = renderBadgesOperacionaisPatio;
+  globalThis.radarGargalosPatioHtml = radarGargalosPatioHtml;
   globalThis.viewPatio = viewPatio;
   globalThis.cardOS = cardOS;
   globalThis.cardLivre = cardLivre;

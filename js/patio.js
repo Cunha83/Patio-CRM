@@ -50,6 +50,7 @@ function folhaOS() {
         <h2 style="font-size:18px;font-weight:700">OS ${o.num} — <span class="placa">${esc(v.placa)}</span></h2>
         <span class="selo" data-st="${o.st}">${ST[o.st].r}</span>
         ${(o.pendenciaCadastral || v.pendenciaCadastral || v.placa === 'SEM-PLACA') ? '<span class="selo" style="background:#fff3cd;color:#856404;border:1px solid #ffeeba;" title="Pendência Cadastral: Placa não confirmada">⚠️ Placa Pendente</span>' : ''}
+        ${typeof renderBadgesOperacionaisPatio === 'function' ? renderBadgesOperacionaisPatio(o) : ''}
       </div>
       <div class="mini" style="margin-top:4px">
         ${esc(v.marca ? v.marca + ' ' : '')}${esc(v.modelo)} · Cliente: <b>${esc(c.nome)}</b> · ${esc(b.nome)}

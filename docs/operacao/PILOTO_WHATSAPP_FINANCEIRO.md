@@ -433,3 +433,32 @@ Para agilizar o contato com devedores e evitar atritos de cobrança:
   - No Radar de Liberação de Pátio, cada OS com saldo pendente disponibiliza o botão `📲 Copiar Aviso`.
   - O clique copia o texto estruturado para a área de transferência para colagem rápida no chat do cliente.
 
+### F. Controle de Boxes/Valetas de Oficina e Prevenção de Colisão Física
+Para gerenciar a ocupação das valetas e boxes de serviços pesados:
+- **Estrutura de Boxes**: O pátio conta com boxes identificados (ex.: `BOX-01`, `BOX-02`, etc.) e estados canônicos:
+  - `livre`: disponível para receber um novo veículo/OS.
+  - `ocupado`: veículo em atendimento mecânico ativo no box.
+  - `bloqueado_peca`: veículo aguardando peças/insumos, retendo fisicamente o box.
+- **Trava de Colisão Física (`BOX_JA_OCUPADO` / HTTP 409)**:
+  - Se um operador tentar alocar uma OS para um box já ocupado por outro veículo ativo, a operação é rejeitada com erro `409` (`BOX_JA_OCUPADO`).
+  - Se o veículo já ocupava outro box, a transferência para um novo box libera o box anterior automaticamente.
+- **Auditoria SQLite**: Todas as alocações e liberações são registradas em `security_audit_log` (`patio:os:alocar_box` e `patio:os:liberar_box`).
+
+### G. Apontamento de Mecânicos e Comandos de Pátio via WhatsApp (RBAC Chão de Oficina)
+Os perfis `mecanico`, `atendente`, `financeiro` e `dono` podem realizar apontamentos diretamente no chão de fábrica via bot do WhatsApp:
+- `box <num_box> os <id> [mecanico]` (ex.: `box 2 os 101 Joao`): aloca a OS no box especificado e define o mecânico responsável.
+- `iniciar os <id> [box <n>]` (ex.: `iniciar os 101 box 2`): marca a OS como `em_execucao`, define data/hora de início e associa ao box.
+- `pausar os <id> <motivo>` (ex.: `pausar os 101 aguardando feixe de mola`): pausa a OS com status `pausado_gargalo` e altera o box para `bloqueado_peca`.
+- `finalizar os <id>` ou `pronto os <id>`: conclui a etapa mecânica, define a OS como `pronto_retirada` e desocupa automaticamente o box.
+- `gargalos` / `radar patio` / `status boxes`: exibe o resumo completo de boxes (livres, ocupados e bloqueados por peça), a lista de gargalos operacionais e os veículos prontos aguardando liberação financeira.
+
+### H. Radar de Gargalos e Badges Operacionais no Frontend
+- **Badges Operacionais**: Exibidos em cards de pátio e na folha da OS:
+  - `🏗️ Box 01` (box alocado).
+  - `👨‍🔧 João` (mecânico responsável).
+  - `⚙️ Em Execução` (trabalho mecânico ativo).
+  - `⏸️ GARGALO: <motivo>` (veículo e box parados por peças/fornecedor).
+  - `✅ Pronto p/ Retirada` (etapa mecânica finalizada).
+- **Radar Operacional de Boxes & Gargalos**: Painel superior na visão de pátio consolidando o mapa de boxes, contadores em tempo real e avisos rápidos de gargalos operacionais e veículos retidos financeiramente.
+
+

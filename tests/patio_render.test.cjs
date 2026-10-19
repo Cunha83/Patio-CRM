@@ -53,6 +53,22 @@ test('js/modules/patio_render.js: sintaxe e exportações das funções de rende
   assert.strictEqual(typeof mockGlobal.viewPatio, 'function', 'viewPatio deve ser função');
   assert.strictEqual(typeof mockGlobal.cardOS, 'function', 'cardOS deve ser função');
   assert.strictEqual(typeof mockGlobal.cardLivre, 'function', 'cardLivre deve ser função');
+  assert.strictEqual(typeof mockGlobal.renderBadgesOperacionaisPatio, 'function', 'renderBadgesOperacionaisPatio deve ser função');
+  assert.strictEqual(typeof mockGlobal.radarGargalosPatioHtml, 'function', 'radarGargalosPatioHtml deve ser função');
+
+  // Teste de badges operacionais
+  const osComGargalo = {
+    id: 'os2',
+    num: 1002,
+    box: 'b1',
+    mecanico: 'Carlos',
+    etapaPatio: 'pausado_gargalo',
+    motivoPausa: 'Aguardando feixe de mola'
+  };
+  const badgesHtml = mockGlobal.renderBadgesOperacionaisPatio(osComGargalo);
+  assert.ok(badgesHtml.includes('Box 01'), 'Badge deve conter o Box associado');
+  assert.ok(badgesHtml.includes('Carlos'), 'Badge deve conter o mecânico responsável');
+  assert.ok(badgesHtml.includes('GARGALO: Aguardando feixe de mola'), 'Badge deve conter o gargalo e motivo');
 
   // Teste de renderização do cardOS
   const htmlCard = mockGlobal.cardOS(mockGlobal.S.os[0], mockGlobal.S.boxes[0]);
@@ -69,4 +85,5 @@ test('js/modules/patio_render.js: sintaxe e exportações das funções de rende
   const htmlView = mockGlobal.viewPatio();
   assert.ok(htmlView.includes('Boxes do Pátio'), 'viewPatio deve conter cabeçalho dos boxes');
   assert.ok(htmlView.includes('Em Atendimento'), 'viewPatio deve conter KPIs operacionais');
+  assert.ok(htmlView.includes('Radar Operacional de Boxes & Gargalos de Pátio'), 'viewPatio deve conter o Radar Operacional de Pátio');
 });

@@ -309,13 +309,125 @@ document.addEventListener('click', e => {
       const boxLivre = boxesValidos.find(bx => !boxesOcupados.has(bx.id));
       if (boxLivre) {
         alvo.box = boxLivre.id;
+        alvo.boxId = boxLivre.id;
         alvo.st = 'executando';
+        alvo.etapaPatio = 'em_execucao';
+        alvo.motivoPausa = null;
         salvar();
         render();
         torrar(`🟢 OS ${alvo.num}: Alocada no ${boxLivre.nome}! Status: Em Execução.`);
       } else {
         torrar('⚠️ Todos os boxes estão ocupados no momento!');
       }
+      break;
+    }
+
+    case 'alocar-box-os': {
+      const osId = b.dataset.id || b.dataset.os || (o && o.id);
+      const alvo = (S.os || []).find(x => String(x.id) === String(osId));
+      if (!alvo) { torrar('OS não encontrada para alocação.', 'erro'); break; }
+
+      const boxesValidos = S.boxes || [];
+      const boxesOcupados = new Set((S.os || []).filter(x => x.id !== alvo.id && x.st !== 'finalizada' && (x.box || x.boxId)).map(x => x.box || x.boxId));
+      let boxEscolhido = b.dataset.box;
+      if (!boxEscolhido) {
+        const boxLivre = boxesValidos.find(bx => !boxesOcupados.has(bx.id));
+        if (!boxLivre) {
+          torrar('⚠️ Todos os boxes estão ocupados no momento!', 'aviso');
+          break;
+        }
+        boxEscolhido = boxLivre.id;
+      }
+
+      fetch(`/api/financeiro/os/${encodeURIComponent(osId)}/alocar-box`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ boxId: boxEscolhido, mecanico: alvo.mecanico || '' })
+      })
+        .then(async r => {
+          const d = await r.json().catch(() => ({}));
+          if (!r.ok) {
+            torrar(d.mensagem || d.error || 'Box já ocupado ou indisponível.', 'aviso');
+            return;
+          }
+          alvo.box = boxEscolhido;
+          alvo.boxId = boxEscolhido;
+          alvo.st = 'executando';
+          alvo.etapaPatio = 'em_execucao';
+          alvo.motivoPausa = null;
+          salvar();
+          render();
+          const nomeBox = (boxesValidos.find(bx => bx.id === boxEscolhido) || {}).nome || boxEscolhido;
+          torrar(`🏗️ OS ${alvo.num}: Alocada no ${nomeBox}!`, 'sucesso');
+        })
+        .catch(() => {
+          alvo.box = boxEscolhido;
+          alvo.boxId = boxEscolhido;
+          alvo.st = 'executando';
+          salvar();
+          render();
+          torrar(`🏗️ OS ${alvo.num}: Box atualizado localmente.`);
+        });
+      break;
+    }
+
+    case 'pausar-os-gargalo': {
+      const osId = b.dataset.id || b.dataset.os || (o && o.id);
+      const alvo = (S.os || []).find(x => String(x.id) === String(osId));
+      if (!alvo) break;
+      const motivo = prompt('Motivo do gargalo ou parada mecânica:', alvo.motivoPausa || 'Aguardando peças');
+      if (!motivo || !motivo.trim()) break;
+
+      fetch(`/api/financeiro/os/${encodeURIComponent(osId)}/apontamento`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ acao: 'pausar', motivo: motivo.trim() })
+      })
+        .then(async r => {
+          const d = await r.json().catch(() => ({}));
+          alvo.etapaPatio = 'pausado_gargalo';
+          alvo.motivoPausa = motivo.trim();
+          alvo.st = 'peca';
+          salvar();
+          render();
+          torrar(`⏸️ OS ${alvo.num}: Pausada com gargalo (${motivo.trim()})`, 'aviso');
+        })
+        .catch(() => {
+          alvo.etapaPatio = 'pausado_gargalo';
+          alvo.motivoPausa = motivo.trim();
+          alvo.st = 'peca';
+          salvar();
+          render();
+          torrar(`⏸️ OS ${alvo.num}: Pausada localmente.`);
+        });
+      break;
+    }
+
+    case 'liberar-box-os': {
+      const osId = b.dataset.id || b.dataset.os || (o && o.id);
+      const alvo = (S.os || []).find(x => String(x.id) === String(osId));
+      if (!alvo) break;
+
+      fetch(`/api/financeiro/os/${encodeURIComponent(osId)}/liberar-box`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ boxId: alvo.box || alvo.boxId })
+      })
+        .then(async r => {
+          const d = await r.json().catch(() => ({}));
+          alvo.box = null;
+          alvo.boxId = null;
+          salvar();
+          render();
+          torrar(`🔓 OS ${alvo.num}: Box liberado com sucesso!`, 'sucesso');
+        })
+        .catch(() => {
+          alvo.box = null;
+          alvo.boxId = null;
+          salvar();
+          render();
+          torrar(`🔓 OS ${alvo.num}: Box liberado localmente.`);
+        });
       break;
     }
 
