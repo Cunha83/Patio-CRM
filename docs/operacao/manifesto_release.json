@@ -2,9 +2,9 @@
   "projeto": "Patio-CRM",
   "versao": "1.0.0",
   "fase": "Fase 3 — Piloto Controlado em Ambiente Operacional",
-  "dataGeracao": "2026-10-17T16:53:55.828Z",
+  "dataGeracao": "2026-10-19T23:16:20.058Z",
   "git": {
-    "commit": "d9730a840bbba662ed456e45f80928955015faa1",
+    "commit": "6fc526989a1cb45111280e31e10799c4753008b6",
     "branch": "main"
   },
   "ambienteExecucao": {
@@ -83,7 +83,7 @@
     "routes/billing.routes.js": "6c2c09619db18cc2a22af40f33ea308759d16ba47f07fc5d79dfa0050a9fc803",
     "routes/config.routes.js": "e6766a281cb40fd78b85ce720acdad97045d6b202be608aaaae604b92d7892aa",
     "routes/crm.routes.js": "0b57e1929f60c6961f36974877afcf55e0c474bdd9fff260283f4528ffb1ae42",
-    "routes/financial.routes.js": "1bcc918ec3c5b67cb7e0c62890aa3aa811f95e9e2631f13ecfa1f4406ece69e6",
+    "routes/financial.routes.js": "b07a4a3ecbd965687354a0aa5e380a3866e15ec637104f449fa32cc838229f21",
     "routes/health.routes.js": "881c1872d327b396e5f8785f1994bb087b6754332735b7835ce098dce21978a1",
     "routes/index.js": "ceeb33e8bfc0bdc3f7015090b9f091ec5125f9ce27160ac93832dad9b798ddc2",
     "routes/inspection.routes.js": "ca11f6322239c865c403603981e20bc832ca238a8ae344fac51635afdc96d72b",
@@ -144,7 +144,7 @@
     "services/demoDataService.js": "33ed44c377f6dd14ee9e9d414419ae4232880084bd2f77df828754cf2ba7dd01",
     "services/erpIntegrationService.js": "3c76f606c7af5831e0a413acd7e7fa5caba373d36e032c13f91c0ee629018ba4",
     "services/executiveManagerService.js": "8b32de93f464a049d6bba458f31c4af999de75f2090aec4cf83605724cf77e8c",
-    "services/financialAnalystService.js": "6dd6733a76db2d356cc1f7329d3cb80a91d85f3047597261b02085248257ff8f",
+    "services/financialAnalystService.js": "91bbfc161a34f45ae450d9317797388815fd80b13fbaf472703ad95f93a62eee",
     "services/financialEngine.js": "3ab60554bcfc333c5a006400e31728835a3c14fcb2eadadcdb65ac41c4f30d52",
     "services/fiscal/decimal.js": "5c060f6cb2308e6da4d0e4e747d52012cdaaa1964b46b02e5354b2169ff4a7f1",
     "services/fiscal/fiscalCalculationEngine.js": "d6f2c2d7d0c694774f340e0aa6547dfad50473a9caaf2e1bd0a7f224d58cfe41",

@@ -3,8 +3,8 @@
 **Projeto:** Pátio CRM  
 **Versão:** `1.0.0`  
 **Fase:** Piloto Controlado em Ambiente Operacional (1 Oficina)  
-**Data de Congelamento:** 2026-10-17T16:53:55.828Z  
-**Commit Git:** `d9730a840bbba662ed456e45f80928955015faa1` (`branch: main`)  
+**Data de Congelamento:** 2026-10-19T23:16:20.058Z  
+**Commit Git:** `6fc526989a1cb45111280e31e10799c4753008b6` (`branch: main`)  
 **Ambiente:** Node.js `v24.21.0` em `win32-x64`  
 **Total de Arquivos Auditados:** 172  
 
@@ -27,10 +27,10 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 
 | Arquivo Canônico | Hash SHA-256 |
 |---|---|
-| `server.js` | `cb4ce0f265423935421f1f33c50623bc271c7e4661e6c1b5f4a2499cbc382ef0` |
+| `server.js` | `ef93609dee47bdd39fb0ab3aac96368b8cf335b8374b396f4d4fab6c02cd208b` |
 | `db.js` | `9ed9a2aa49a78b54357683668bec399d8f92c16e34d98fd853277e20c7d9c652` |
 | `lib/tokens/securityToken.js` | `84ba877e14395e86d09df98c4edc7f27d7ebc20c4f9ac2b6b46950bac17d0f93` |
-| `lib/repository/stateRepository.js` | `1a46fdba59531ffa71ed1efda756f11b288c2912e954052d3473b5801e381c0d` |
+| `lib/repository/stateRepository.js` | `57b8e188e6f691c090cc0587c78d4e182aba012b147704dd6f24a412b14cddf4` |
 | `services/voiceActionEngine.js` | `963bc5843cc26320598e5f96c36f70bbb29ac4433035ebfccaf34d27bdbaff8c` |
 | `services/backupService.js` | `8ce2f7725dfc49e830148980b20fcd23b7efa7257ad945777c8e94766bb40031` |
 | `package.json` | `98f4de261b287afb17a53293b7b5a3986e51c6c44d014ac17f67885a35e15b65` |
@@ -49,7 +49,7 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 | `js/cadastros.js` | `1af2111643feca5171bcc488e9c01e200cf5089199682ef6668f7b9cae4f2ae1` |
 | `js/dashboard_operacional.js` | `b2f67accde1b9176ed59721380de9b4b67f0f468c1f60c03c9aba71622c993a1` |
 | `js/estoque.js` | `c4a49203354c4f32339134247ccf40a65aea90fae6a948b4bc4cbca86ce32942` |
-| `js/financeiro.js` | `8723bac2bd63f00b00080e03e69aaad05cae4f80cc5856ab2113964c156b29a8` |
+| `js/financeiro.js` | `4ae89b2e89540f74758dea6b87014b68099198dea4319c2ec111f692bbda85f7` |
 | `js/fiscal.js` | `50a75f83f18b507f2164ab05b9e10247539ea20736b321f54c312983f3db2987` |
 | `js/icons.js` | `009b9a04aa4040688f59f745fa02752a0e6a3183b81206da8da12258059b00c0` |
 | `js/modules/agent_config.js` | `292f5b76dc4f457bab8f62674fb8d7862a6fda005d41d5754f52b51c1908fe36` |
@@ -57,12 +57,12 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 | `js/modules/cadastros_forms.js` | `086fc5ea2eaeece08e80fb3ec5afc498c35c91f2a72ad93d28ad204462e310e1` |
 | `js/modules/consulta_cliente.js` | `7ece858b03b9c9beba957e34cffdca741f43d42cdfcf557dd641bec01a72b046` |
 | `js/modules/dashboard_metrics.js` | `73a3a818cbe09d3643e9703c749d903eb19ff29c078d63649741c8ddfa830a94` |
-| `js/modules/events.js` | `8078745b43de44876646e8993a6dc1b81beebbcef02b155e30b64bc8a19c063f` |
-| `js/modules/financeiro_analista.js` | `452c5ae73f3409fa0bfdcb60206e2c3da66e069b64957ac6444503794fd5eb8e` |
+| `js/modules/events.js` | `2fd83b3d8c682688042bfdacc91be059aefae787e34c07c3c7c23d5762d10652` |
+| `js/modules/financeiro_analista.js` | `e821aa972f2daf2b2739271bf0f6b626819f8b1d6cb1a70bcb8e51f68c680eda` |
 | `js/modules/integrations.js` | `772d00897136a9ff96bf16202c90bde33e16951388cf2c77795f209b1678cbcb` |
 | `js/modules/navigation.js` | `ad67b448a14525e2d4a3e257469f6b384ccb05aba5cea98d7fd13f5d895c7c7d` |
-| `js/modules/patio_render.js` | `b64cc4a367cd4271c60104feaf34474eea252863f77f329c790ecd51b141996e` |
-| `js/patio.js` | `0daa18266f23a2c55263c65c82c88cb5c3d31831569b9c4e295ae2ac2ceb02c8` |
+| `js/modules/patio_render.js` | `f97b4ae72edb0b635619bea2faeab386e91e3510096c2a1844ca002dfce8fb3a` |
+| `js/patio.js` | `8864593215c97f5d5a7b3abea6bebd85c791763e23390663394d13b0a1087083` |
 | `js/relatorios.js` | `030ca55304494adf9abcb961f24ee153993656c3f22c84ea51d347c410904614` |
 | `js/state.js` | `6edb2ab58c71a930140aa3f178ab3ef22752288be3a31524dc6a057a1d7b1857` |
 | `js/support-widget.js` | `b826a26fc0ae5a2b2b40647b59d790694e4b35c5486783f71882306abb0617e1` |
@@ -72,13 +72,13 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 | `lib/auth/context.js` | `0cfc750278b615be471bf99da6a5fcb22fd4a4a4f2c3d69c83c033d2e009710c` |
 | `lib/auth/identity.js` | `202b9268e5ae15a5e7ac583497c053d48422092ed81d9290b8b8fedffe1e8828` |
 | `lib/auth/userRepository.js` | `5867cba59944ac74b5e59b6e932ff6360734a210624a3287815f5e64400db55a` |
-| `lib/core.js` | `4a9f23e2073baf1ca9bfa89fa237bfdd67ebde7875c959180e03696175ebc31c` |
+| `lib/core.js` | `e629b2fee33b8278e6cdfe8d8f16c87650b5f942803c96360f70a3eaa322eb34` |
 | `lib/file-storage.js` | `4b29b7ccd7628ff0b787d9192142d4ebd5c947251ff5adf1803e779d07170a1e` |
 | `lib/image-cache.js` | `41e2f61fe97dfd269fa412b98d79e07d311afb1ada369a6982af8bd416c4dfcf` |
 | `lib/metrics.js` | `fdb51b8677ddaa4b4b2ab1f39fdd90f786b1d3ff3604fd65e4309430109f9a9d` |
 | `lib/outbox/scheduler.js` | `4609855e5f4b8612a17d7a9276bdb83ff1f1a084b59272f1abcf6a28160e7333` |
 | `lib/repository/migration.js` | `9fdea76f414ee9c08b14b66efc85e2cd599dde10b161ae15148d3b727bfaf999` |
-| `lib/repository/stateRepository.js` | `1a46fdba59531ffa71ed1efda756f11b288c2912e954052d3473b5801e381c0d` |
+| `lib/repository/stateRepository.js` | `57b8e188e6f691c090cc0587c78d4e182aba012b147704dd6f24a412b14cddf4` |
 | `lib/security/logSanitizer.js` | `ab4b30fe514daf11794ae702542fa5c86c92eed2b4b6b4eeb44422b1e7e0048b` |
 | `lib/security/testPaths.js` | `cf816b20d5fd71b055c75479b777db429fc8af5e0ed53cfeb4527597dff95e45` |
 | `lib/serverContext.js` | `066745f4648bef3f98a051792c907798779170d5c63e40dba563eb22ce816642` |
@@ -101,7 +101,7 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 | `routes/billing.routes.js` | `6c2c09619db18cc2a22af40f33ea308759d16ba47f07fc5d79dfa0050a9fc803` |
 | `routes/config.routes.js` | `e6766a281cb40fd78b85ce720acdad97045d6b202be608aaaae604b92d7892aa` |
 | `routes/crm.routes.js` | `0b57e1929f60c6961f36974877afcf55e0c474bdd9fff260283f4528ffb1ae42` |
-| `routes/financial.routes.js` | `1a12974e27ca9524522ee5946d63f88114b4a907f0ca2126cb3e3a23f37cc38f` |
+| `routes/financial.routes.js` | `b07a4a3ecbd965687354a0aa5e380a3866e15ec637104f449fa32cc838229f21` |
 | `routes/health.routes.js` | `881c1872d327b396e5f8785f1994bb087b6754332735b7835ce098dce21978a1` |
 | `routes/index.js` | `ceeb33e8bfc0bdc3f7015090b9f091ec5125f9ce27160ac93832dad9b798ddc2` |
 | `routes/inspection.routes.js` | `ca11f6322239c865c403603981e20bc832ca238a8ae344fac51635afdc96d72b` |
@@ -116,7 +116,7 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 | `routes/static.routes.js` | `3afda329580645f9ecc20f0da6ce5543dc18f716d83bef32235bb4da3d5d745b` |
 | `routes/team.routes.js` | `931fa9d7a283857006bc75b8db4bbbfb8dcee8b0e032006dfbd63c76e088d2ff` |
 | `routes/voice.routes.js` | `e443f6cb150e6562c3400dc136547979aa5a7f93ab163ab11e03932f716d72cf` |
-| `routes/whatsapp.routes.js` | `8ee379b0053270eb3c3e4bbe15eda07a125817a4223ddee143b5d41b9bb6c709` |
+| `routes/whatsapp.routes.js` | `90bd588234ac2febf36be7540c97c9540c4f36177ffde0708b39d6814b59ec36` |
 | `scripts/auditar_execucao_tarefa_agendada.cjs` | `47a5d3e281bfcdb4737c23f159baab0dad00520d69feb82a3a6c482f27c46d69` |
 | `scripts/build_windows_pilot.cjs` | `ace15201cd79925808194e4876ec2bb67bf1f4c968f32b8a525249aea15182de` |
 | `scripts/comprovar_restauracao_remota_host.cjs` | `23e0abf8271406e22fa0c3f65edad977a3ebdf7fcf2057ea1474d4fe3e775fb5` |
@@ -147,7 +147,7 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 | `scripts/testar_restauracao_isolada.cjs` | `7cf45d9dd9ae7d0e7bb1693a706d29fe8171595f532603a9fa3a7c902b270128` |
 | `scripts/testar_restauracao_operacional_e2e.cjs` | `53cc914ec16e21e3056976a4be7e9e4411154de2a5675bcf797ee4d4959a2b5c` |
 | `scripts/verify_e2e_journey.js` | `545d3d49def890d0ccb5acb4728bf87b5e50ed02d80074cf287290322739441c` |
-| `server.js` | `cb4ce0f265423935421f1f33c50623bc271c7e4661e6c1b5f4a2499cbc382ef0` |
+| `server.js` | `ef93609dee47bdd39fb0ab3aac96368b8cf335b8374b396f4d4fab6c02cd208b` |
 | `services/afterSalesService.js` | `6f714f5307ccb1bd44d7d29121a4372af2670130726b7165cebcae42c0632d60` |
 | `services/appointmentService.js` | `9e2217c281b96489ad08488686516f2dd0e059f51269a0834fdf9337d303ae44` |
 | `services/backupService.js` | `8ce2f7725dfc49e830148980b20fcd23b7efa7257ad945777c8e94766bb40031` |
@@ -157,13 +157,13 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 | `services/billing/platformAdminService.js` | `adaa732a1872a30cf207f3ed8a412edac73341bffe0d81052d01d18c9dad7cad` |
 | `services/billing/saasTelemetryService.js` | `4c77f3914a902e9fd6451fe7535f2b50618c32bf8f06a36971b2cd78f120e2ef` |
 | `services/consultaClienteService.js` | `8385cd7d5151c09e82ba230f3b9496e53778b74cea5fc682a3fce6e80b2ed9dc` |
-| `services/costingService.js` | `4b430fb979549212ba269afd05b57701e896c258d1da9a639705a4990281d8d2` |
+| `services/costingService.js` | `0c5f92d79340b25d53f236f1072544eb33816d501f0c90689fd7ede43fbc113e` |
 | `services/customerTimelineService.js` | `e9a01b448a583e8c5b0bf716ad5e790eea5e28f8250efb94997ceaaa53f2df1c` |
 | `services/demoDataService.js` | `33ed44c377f6dd14ee9e9d414419ae4232880084bd2f77df828754cf2ba7dd01` |
 | `services/erpIntegrationService.js` | `3c76f606c7af5831e0a413acd7e7fa5caba373d36e032c13f91c0ee629018ba4` |
 | `services/executiveManagerService.js` | `8b32de93f464a049d6bba458f31c4af999de75f2090aec4cf83605724cf77e8c` |
-| `services/financialAnalystService.js` | `5148ec73ef670e8d6d3f5858595dbb2949c4b494fb56e414afb2acee007839ac` |
-| `services/financialEngine.js` | `759a6a767f9ba676c154c6d1c2c88bf2ee434ab55d6d1c39e64714c95b0f23e5` |
+| `services/financialAnalystService.js` | `91bbfc161a34f45ae450d9317797388815fd80b13fbaf472703ad95f93a62eee` |
+| `services/financialEngine.js` | `3ab60554bcfc333c5a006400e31728835a3c14fcb2eadadcdb65ac41c4f30d52` |
 | `services/fiscal/decimal.js` | `5c060f6cb2308e6da4d0e4e747d52012cdaaa1964b46b02e5354b2169ff4a7f1` |
 | `services/fiscal/fiscalCalculationEngine.js` | `d6f2c2d7d0c694774f340e0aa6547dfad50473a9caaf2e1bd0a7f224d58cfe41` |
 | `services/fiscal/fiscalConfigService.js` | `0462c6eba5bc971fd77af0aaca20ce65c383c5283f07f513b2e505f81adcf7dc` |
@@ -193,7 +193,7 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 | `services/quotationService.js` | `2065e6288fe0f7dbdd9358a141d31345e03eaa5e7134fc0d0d70cb02d8afb024` |
 | `services/recurrenceDetector.js` | `95a254366e48a8c836c0073617d11d5391bd9f86fe55d5e1eabb1c89e693df79` |
 | `services/relationshipService.js` | `44ffdaf30bfe37203c133ffc88c52b1b22e9b90e580ff53034a94e8a1b6d3802` |
-| `services/reportGenerationService.js` | `304bafb70a9b18130e71ea5d984cc4c13def6f4c77110348982a5a15cd052e8f` |
+| `services/reportGenerationService.js` | `2f43038669a2a9631f19720a2f247752064e900d1b0bd554d42658d81e061369` |
 | `services/subscriptionService.js` | `77d4b1c183b39fa912aca685c472a64292b813d73fc904bd9b632a959fcf2ad1` |
 | `services/supplierService.js` | `74d5a2302e3b5120e447a4001291739b81b0a27e48ead149fa05bb7641517b35` |
 | `services/support/agent.js` | `22d747b95bb410295d62d51bad3eae21e718827c95110c96dc090edc2aba0975` |
@@ -210,8 +210,8 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 | `services/voiceActionEngine.js` | `963bc5843cc26320598e5f96c36f70bbb29ac4433035ebfccaf34d27bdbaff8c` |
 | `services/warrantyService.js` | `e2772f7e3d8987ebba0d4e6a97e2dfad10f3210e490616902629c68d68ebb14b` |
 | `services/whatsapp/whatsappClient.js` | `42a50ddf76c999477b7ce373bfc5bfec5511b4ae2929ca4ce0c8a047bec88654` |
-| `services/whatsapp/whatsappHandlers.js` | `0f02328e596af84d7af455305e1197b380b30082b8d4c298e8c7a0c784c47d5d` |
-| `services/whatsapp/whatsappScheduler.js` | `d91a14f2e645e5703d1007c4a5952b2f5b929a8079deec595b9ab62849f9755a` |
+| `services/whatsapp/whatsappHandlers.js` | `b99d11210c7d3856a818bbcc20527bb0908e2bf559e25cc6cb0ba59d15994f9f` |
+| `services/whatsapp/whatsappScheduler.js` | `01a1ba654ab5f872d14a1ff5957083d496d979b7c0a1b5601dde2b3289e7d3a8` |
 | `services/whatsapp/whatsappState.js` | `06aad441cc77f1e5adc508fea0b1a17f0ff59cbbc4862fb0ce3ac761a51e936b` |
 | `style.css` | `ea8a3021eebbd6b45d3d56dd88958139734a39599dd9c2300be46714ec0d8297` |
 

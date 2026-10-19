@@ -1560,6 +1560,189 @@ test('20. Geração de texto amigável de cobrança de OS e visualização de li
   }
 });
 
+test('21. Controle de Boxes de Pátio: Trava de Colisão (409), Alocação, Liberação e Rotas de API (Frente 5A)', async () => {
+  const fs = require('fs');
+  const os = require('os');
+  const express = require('express');
+  const http = require('http');
+  const financialAnalystService = require('../services/financialAnalystService.js');
+  const financialRoutes = require('../routes/financial.routes');
+  const { salvarEstado } = require('../lib/serverContext');
+  const { getDefaultState } = require('../lib/repository/stateRepository');
+  const { initDB, closeDB, all } = require('../db');
+
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'patio_box_test_'));
+  const testDb = path.join(tempDir, 'test.db');
+  process.env.DB_PATH = testDb;
+
+  try {
+    await initDB();
+    const tenantId = 'tenant_boxes_5a';
+
+    const state = {
+      tenantId,
+      boxes: [
+        { id: 'BOX-01', nome: 'Box 01' },
+        { id: 'BOX-02', nome: 'Box 02' }
+      ],
+      veiculos: [
+        { id: 'v1', placa: 'ABC1234', marca: 'Scania', modelo: 'R450' },
+        { id: 'v2', placa: 'XYZ9876', marca: 'Volvo', modelo: 'FH540' }
+      ],
+      os: [
+        { id: '8001', num: 8001, vei: 'v1', st: 'executando', total: 5000 },
+        { id: '8002', num: 8002, vei: 'v2', st: 'fila', total: 3200 }
+      ]
+    };
+
+    // 21.1 Listar ocupação inicial
+    const ocupInicial = financialAnalystService.listarOcupacaoBoxes(state);
+    assert.equal(ocupInicial.resumoBoxes.total, 2);
+    assert.equal(ocupInicial.resumoBoxes.livres, 2);
+    assert.equal(ocupInicial.resumoBoxes.ocupados, 0);
+
+    // 21.2 Alocar OS 8001 no BOX-01 com sucesso
+    const aloc1 = financialAnalystService.alocarBoxOS(state, {
+      osId: '8001',
+      boxId: 'BOX-01',
+      mecanico: 'Carlos Mecânico',
+      operador: 'atendente_1',
+      agora: '2026-10-19T10:00:00.000Z'
+    });
+    assert.equal(aloc1.sucesso, true);
+    assert.equal(aloc1.os.boxId, 'BOX-01');
+    assert.equal(aloc1.os.mecanico, 'Carlos Mecânico');
+    assert.equal(aloc1.resumoBoxes.ocupados, 1);
+    assert.equal(aloc1.resumoBoxes.livres, 1);
+    assert.ok(aloc1.os.historicoPatio.some(h => h.tipo === 'alocacao_box' && h.boxId === 'BOX-01'));
+
+    // 21.3 Trava de Colisão: Tentar alocar OS 8002 no mesmo BOX-01 ocupado
+    assert.throws(() => {
+      financialAnalystService.alocarBoxOS(state, {
+        osId: '8002',
+        boxId: 'BOX-01',
+        mecanico: 'João Freios',
+        operador: 'atendente_1'
+      });
+    }, (err) => {
+      assert.equal(err.status, 409);
+      assert.equal(err.code, 'BOX_JA_OCUPADO');
+      assert.ok(err.message.includes('BOX-01') || err.message.includes('Box 01'));
+      return true;
+    });
+
+    // 21.4 Transferência automática de box: Alocar OS 8001 para BOX-02
+    const alocTransf = financialAnalystService.alocarBoxOS(state, {
+      osId: '8001',
+      boxId: 'BOX-02',
+      operador: 'atendente_1',
+      agora: '2026-10-19T11:00:00.000Z'
+    });
+    assert.equal(alocTransf.sucesso, true);
+    assert.equal(alocTransf.os.boxId, 'BOX-02');
+    // BOX-01 deve ter ficado livre
+    const box1AposTransf = state.boxes.find(b => b.id === 'BOX-01');
+    assert.equal(box1AposTransf.status, 'livre');
+    assert.ok(alocTransf.os.historicoPatio.some(h => h.tipo === 'transferencia_box' && h.deBox === 'BOX-01' && h.paraBox === 'BOX-02'));
+
+    // 21.5 Liberação de Box da OS 8001
+    const lib = financialAnalystService.liberarBoxOS(state, {
+      osId: '8001',
+      motivo: 'teste_concluido',
+      operador: 'gerente_1',
+      agora: '2026-10-19T11:30:00.000Z'
+    });
+    assert.equal(lib.sucesso, true);
+    assert.equal(lib.os.boxId, null);
+    assert.equal(lib.tempoPermanenciaMinutos, 30); // 11:00 às 11:30
+    assert.equal(lib.resumoBoxes.livres, 2);
+    assert.equal(lib.resumoBoxes.ocupados, 0);
+
+    // 21.6 Servidor Real HTTP: Endpoints de Boxes e Alocação
+    const app = express();
+    app.use(express.json());
+    app.use((req, res, next) => {
+      req.securityContext = {
+        role: 'dono',
+        actorId: 'dono_1',
+        fullName: 'Dono Oficina',
+        tenantId,
+        permissions: ['financial:read', 'financial:write', 'os:read', 'os:write', 'labor:read', 'labor:write', 'operation:manage']
+      };
+      req.headers['x-tenant-id'] = tenantId;
+      next();
+    });
+    app.use(financialRoutes);
+
+    const base = getDefaultState(tenantId);
+    await salvarEstado(tenantId, { ...base, ...state });
+
+    const server = http.createServer(app);
+    await new Promise(r => server.listen(0, '127.0.0.1', r));
+    const port = server.address().port;
+    const baseUrl = `http://127.0.0.1:${port}`;
+
+    try {
+      // GET /api/financeiro/patio/boxes
+      const resBoxes = await fetch(`${baseUrl}/api/financeiro/patio/boxes`);
+      assert.equal(resBoxes.status, 200);
+      const jsonBoxes = await resBoxes.json();
+      assert.equal(jsonBoxes.success, true);
+      assert.equal(jsonBoxes.resumoBoxes.total, 2);
+      assert.equal(jsonBoxes.resumoBoxes.livres, 2);
+
+      // POST /api/financeiro/os/8001/alocar-box (Sucesso)
+      const resAloc = await fetch(`${baseUrl}/api/financeiro/os/8001/alocar-box`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ boxId: 'BOX-01', mecanico: 'Marcos Mecânico' })
+      });
+      assert.equal(resAloc.status, 200);
+      const jsonAloc = await resAloc.json();
+      assert.equal(jsonAloc.success, true);
+      assert.equal(jsonAloc.os.boxId, 'BOX-01');
+      assert.equal(jsonAloc.resumoBoxes.ocupados, 1);
+
+      // POST /api/financeiro/os/8002/alocar-box no mesmo box (Colisão 409)
+      const resColisao = await fetch(`${baseUrl}/api/financeiro/os/8002/alocar-box`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ boxId: 'BOX-01', mecanico: 'Outro Mecânico' })
+      });
+      assert.equal(resColisao.status, 409);
+      const jsonColisao = await resColisao.json();
+      assert.equal(jsonColisao.success, false);
+      assert.equal(jsonColisao.code, 'BOX_JA_OCUPADO');
+
+      // POST /api/financeiro/os/8001/liberar-box
+      const resLib = await fetch(`${baseUrl}/api/financeiro/os/8001/liberar-box`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ motivo: 'Serviço em bancada' })
+      });
+      assert.equal(resLib.status, 200);
+      const jsonLib = await resLib.json();
+      assert.equal(jsonLib.success, true);
+      assert.equal(jsonLib.boxId, 'BOX-01');
+      assert.equal(jsonLib.resumoBoxes.livres, 2);
+
+      // Verificar registro de auditoria no SQLite
+      const auditRows = await all(
+        "SELECT * FROM security_audit_log WHERE tenant_id = ? AND action LIKE 'patio:os:%' ORDER BY id ASC",
+        [tenantId]
+      );
+      assert.ok(auditRows.length >= 2, 'Deve ter gravado eventos de auditoria de alocação e liberação');
+      assert.ok(auditRows.some(r => r.action === 'patio:os:alocar_box'));
+      assert.ok(auditRows.some(r => r.action === 'patio:os:liberar_box'));
+    } finally {
+      await new Promise(r => server.close(r));
+    }
+  } finally {
+    await closeDB().catch(() => {});
+    try { fs.rmSync(tempDir, { recursive: true, force: true }); } catch (_) {}
+  }
+});
+
 
 
 

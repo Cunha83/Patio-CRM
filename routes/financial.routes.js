@@ -459,6 +459,189 @@ router.get('/api/financeiro/os/:osId/cobranca', requirePermission('financial:rea
 });
 
 /**
+ * 4.1.3 GET /api/financeiro/patio/boxes
+ * Retorna o mapa de ocupação física de boxes/valetas e contadores de resumo
+ */
+router.get('/api/financeiro/patio/boxes', requirePermission('financial:read', 'os:read', 'operation:read', 'labor:read'), async (req, res) => {
+  try {
+    const state = await getOrLoadState(req);
+    const resultado = financialAnalystService.listarOcupacaoBoxes(state, req.query || {});
+    res.json({
+      success: true,
+      boxes: resultado.boxes || resultado,
+      resumoBoxes: resultado.resumoBoxes
+    });
+  } catch (err) {
+    console.error('[API /api/financeiro/patio/boxes GET] Erro:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+/**
+ * 4.1.4 POST /api/financeiro/os/:osId/alocar-box
+ * Aloca a OS em um box com trava de colisão (409) e auditoria
+ */
+router.post('/api/financeiro/os/:osId/alocar-box', requirePermission('os:write', 'labor:write', 'financial:write', 'operation:manage'), async (req, res) => {
+  try {
+    const tenantId = extractTenantId(req);
+    const osId = req.params.osId;
+    const { boxId, mecanico } = req.body || {};
+    const operador = req.securityContext?.fullName || req.securityContext?.actorId || 'operador';
+
+    let resultado = null;
+    const saveRes = await mutateTenantState(req, (draft) => {
+      try {
+        resultado = financialAnalystService.alocarBoxOS(draft, {
+          osId,
+          boxId,
+          mecanico,
+          operador: {
+            actorId: req.securityContext?.actorId,
+            nome: operador
+          }
+        });
+      } catch (err) {
+        return {
+          abort: true,
+          status: err.status || err.statusCode || 400,
+          code: err.code || 'ERRO_ALOCACAO_BOX',
+          error: err.message,
+          message: err.message
+        };
+      }
+    });
+
+    if (saveRes?.aborted) {
+      const mutRes = saveRes.mutatorResult || saveRes;
+      return res.status(mutRes.status || saveRes.status || 400).json({
+        success: false,
+        code: mutRes.code,
+        error: mutRes.error,
+        message: mutRes.message
+      });
+    }
+
+    if (!saveRes || !saveRes.ok) {
+      return res.status(saveRes?.status || 500).json({
+        success: false,
+        error: saveRes?.error || 'Falha ao persistir alocação de box'
+      });
+    }
+
+    try {
+      await recordSecurityAudit({
+        tenantId,
+        actorId: req.securityContext?.actorId || 'operador',
+        action: 'patio:os:alocar_box',
+        entity: 'ordem_servico',
+        entityId: String(osId),
+        details: {
+          osId,
+          boxId: resultado?.box?.id || boxId,
+          mecanico: resultado?.os?.mecanico,
+          operador
+        }
+      });
+    } catch (auditErr) {
+      console.warn('[Alocar Box Audit] Falha não-bloqueante:', auditErr.message);
+    }
+
+    res.json({
+      success: true,
+      os: resultado.os,
+      box: resultado.box,
+      resumoBoxes: resultado.resumoBoxes
+    });
+  } catch (err) {
+    console.error('[API /api/financeiro/os/:osId/alocar-box POST] Erro:', err);
+    res.status(err.status || 500).json({ success: false, code: err.code, error: err.message });
+  }
+});
+
+/**
+ * 4.1.5 POST /api/financeiro/os/:osId/liberar-box
+ * Libera o box ocupado pela OS calculando tempo de permanência e registrando auditoria
+ */
+router.post('/api/financeiro/os/:osId/liberar-box', requirePermission('os:write', 'labor:write', 'financial:write', 'operation:manage'), async (req, res) => {
+  try {
+    const tenantId = extractTenantId(req);
+    const osId = req.params.osId;
+    const { boxId, motivo } = req.body || {};
+    const operador = req.securityContext?.fullName || req.securityContext?.actorId || 'operador';
+
+    let resultado = null;
+    const saveRes = await mutateTenantState(req, (draft) => {
+      try {
+        resultado = financialAnalystService.liberarBoxOS(draft, {
+          osId,
+          boxId,
+          motivo,
+          operador: {
+            actorId: req.securityContext?.actorId,
+            nome: operador
+          }
+        });
+      } catch (err) {
+        return {
+          abort: true,
+          status: err.status || err.statusCode || 400,
+          code: err.code || 'ERRO_LIBERACAO_BOX',
+          error: err.message,
+          message: err.message
+        };
+      }
+    });
+
+    if (saveRes?.aborted) {
+      const mutRes = saveRes.mutatorResult || saveRes;
+      return res.status(mutRes.status || saveRes.status || 400).json({
+        success: false,
+        code: mutRes.code,
+        error: mutRes.error,
+        message: mutRes.message
+      });
+    }
+
+    if (!saveRes || !saveRes.ok) {
+      return res.status(saveRes?.status || 500).json({
+        success: false,
+        error: saveRes?.error || 'Falha ao persistir liberação de box'
+      });
+    }
+
+    try {
+      await recordSecurityAudit({
+        tenantId,
+        actorId: req.securityContext?.actorId || 'operador',
+        action: 'patio:os:liberar_box',
+        entity: 'ordem_servico',
+        entityId: String(osId),
+        details: {
+          osId,
+          boxId: resultado?.boxId,
+          tempoPermanenciaMinutos: resultado?.tempoPermanenciaMinutos,
+          motivo: motivo || 'liberacao_manual',
+          operador
+        }
+      });
+    } catch (auditErr) {
+      console.warn('[Liberar Box Audit] Falha não-bloqueante:', auditErr.message);
+    }
+
+    res.json({
+      success: true,
+      os: resultado.os,
+      boxId: resultado.boxId,
+      tempoPermanenciaMinutos: resultado.tempoPermanenciaMinutos,
+      resumoBoxes: resultado.resumoBoxes
+    });
+  } catch (err) {
+    console.error('[API /api/financeiro/os/:osId/liberar-box POST] Erro:', err);
+    res.status(err.status || 500).json({ success: false, code: err.code, error: err.message });
+  }
+});
+
+/**
  * 4.1.2 POST /api/financeiro/titulos/:id/liquidar
  * Realiza a liquidação (baixa) de um título a receber ou conta a pagar com geração de movimento no caixa e auditoria
  */
