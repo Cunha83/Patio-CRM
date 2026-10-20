@@ -2257,6 +2257,112 @@ test('WhatsApp Agente Financeiro - Suíte Completa de Leitura e Escrita Controla
     `);
     assert.ok(auditRows.length >= 1, 'Deve registrar auditoria de estorno/devolução de peça');
   });
+
+  // ── 33. CHECKLIST TÉCNICO PESADO (SUSPENSÃO & FREIOS) E LAUDO DE VISTORIA VIA WHATSAPP (FRENTE 8B) ──
+  await t.test('33. Comandos de Vistoria, Trava de Conclusão e Laudo de Qualidade via WhatsApp Bot', async () => {
+    const mockState = criarEstadoMock({
+      comandosFinanceirosEscrita: true
+    });
+    const mecanicoFone = '5511977776666';
+
+    mockState.boxes = [
+      { id: 'BOX-01', nome: 'Box 01', status: 'ocupado' }
+    ];
+
+    mockState.os = [
+      {
+        id: '303',
+        numero: '303',
+        num: 303,
+        st: 'executando',
+        etapaPatio: 'em_execucao',
+        boxId: 'BOX-01',
+        mecanico: 'Mecânico Valter',
+        placa: 'SCN9900',
+        historicoPatio: []
+      }
+    ];
+
+    // 33.1 Reprovação de checklist via WhatsApp
+    const repliesReprovar = [];
+    await processarMensagemTexto({
+      from: `${mecanicoFone}@c.us`,
+      author: `${mecanicoFone}@c.us`,
+      body: 'checklist os 303 falha vazamento valvula pedal',
+      reply: async (txt) => { repliesReprovar.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: mecanicoFone });
+
+    assert.equal(repliesReprovar.length, 1);
+    assert.match(repliesReprovar[0], /VISTORIA TÉCNICA REPROVADA/i);
+    assert.match(repliesReprovar[0], /REPROVADO CRÍTICO/);
+    assert.match(repliesReprovar[0], /vazamento valvula pedal/);
+    assert.equal(mockState.os[0].statusChecklist, 'reprovado_critico');
+
+    // 33.2 Bloqueio de finalização com checklist reprovado
+    const repliesFinalizarTravado = [];
+    await processarMensagemTexto({
+      from: `${mecanicoFone}@c.us`,
+      author: `${mecanicoFone}@c.us`,
+      body: 'finalizar os 303',
+      reply: async (txt) => { repliesFinalizarTravado.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: mecanicoFone });
+
+    assert.equal(repliesFinalizarTravado.length, 1);
+    assert.match(repliesFinalizarTravado[0], /Falha ao finalizar OS/i);
+    assert.match(repliesFinalizarTravado[0], /checklist técnico reprovado com falha crítica/i);
+    assert.equal(mockState.os[0].etapaPatio, 'em_execucao', 'OS deve continuar em execução mecânica');
+
+    // 33.3 Aprovação de checklist via WhatsApp
+    const repliesAprovar = [];
+    await processarMensagemTexto({
+      from: `${mecanicoFone}@c.us`,
+      author: `${mecanicoFone}@c.us`,
+      body: 'checklist os 303 ok valvula pedal substituida',
+      reply: async (txt) => { repliesAprovar.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: mecanicoFone });
+
+    assert.equal(repliesAprovar.length, 1);
+    assert.match(repliesAprovar[0], /VISTORIA TÉCNICA APROVADA/i);
+    assert.match(repliesAprovar[0], /100% Aprovado nos 5 itens/i);
+    assert.equal(mockState.os[0].statusChecklist, 'aprovado');
+
+    // 33.4 Consulta de laudo técnico completo via WhatsApp
+    const repliesLaudo = [];
+    await processarMensagemTexto({
+      from: `${mecanicoFone}@c.us`,
+      author: `${mecanicoFone}@c.us`,
+      body: 'laudo os 303',
+      reply: async (txt) => { repliesLaudo.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: mecanicoFone });
+
+    assert.equal(repliesLaudo.length, 1);
+    assert.match(repliesLaudo[0], /LAUDO DE VISTORIA TÉCNICA PESADA/i);
+    assert.match(repliesLaudo[0], /Torque\/Reaperto de Grampos e Feixe de Molas/);
+    assert.match(repliesLaudo[0], /Estanqueidade Pneumática, Cuícas e Catracas de Freio/);
+    assert.match(repliesLaudo[0], /APROVADO/);
+
+    // 33.5 Agora com vistoria aprovada, finalização deve concluir com sucesso
+    const repliesFinalizarOk = [];
+    await processarMensagemTexto({
+      from: `${mecanicoFone}@c.us`,
+      author: `${mecanicoFone}@c.us`,
+      body: 'finalizar os 303',
+      reply: async (txt) => { repliesFinalizarOk.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: mecanicoFone });
+
+    assert.equal(repliesFinalizarOk.length, 1);
+    assert.match(repliesFinalizarOk[0], /OS Concluída no Pátio/i);
+    assert.equal(mockState.os[0].etapaPatio, 'pronto_retirada');
+    assert.equal(mockState.boxes[0].status, 'livre');
+
+    // 33.6 Auditoria gravada no banco de dados SQLite
+    const auditRows = await all(`
+      SELECT action, entity_id FROM security_audit_log
+      WHERE action = 'patio:os:checklist_tecnico'
+      ORDER BY id ASC
+    `);
+    assert.ok(auditRows.length >= 2, 'Deve registrar auditorias de reprovação e aprovação de checklist');
+  });
 });
 
 
