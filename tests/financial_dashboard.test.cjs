@@ -2641,6 +2641,179 @@ test('27. Rastreamento de Garantia por Placa (90 dias) e Vínculo de Retorno em 
   }
 });
 
+test('28. Motor de Produtividade de Boxes/Mecânicos com Filtros Semanal/Mensal e Comissões (Frente 10A)', async () => {
+  const fs = require('fs');
+  const os = require('os');
+  const express = require('express');
+  const http = require('http');
+  const { salvarEstado } = require('../lib/serverContext');
+  const { getDefaultState } = require('../lib/repository/stateRepository');
+  const financialRouter = require('../routes/financial.routes');
+  const financialAnalystService = require('../services/financialAnalystService');
+  const financialEngine = require('../services/financialEngine');
+  const tenantId = 'tenant_produtividade_bi_test';
+  const agoraSP = financialEngine.obterAgoraSP();
+  const dHoje = agoraSP.dataISO;
+  const d20DiasAtras = financialEngine.addDias(dHoje, -20);
+
+  const state = {
+    tenantId,
+    boxes: [
+      { id: 'BOX-01', nome: 'Box 01 — Linha Pesada' },
+      { id: 'BOX-02', nome: 'Box 02 — Freios & Suspensão' },
+      { id: 'BOX-03', nome: 'Box 03 — Molas & Eixos' }
+    ],
+    mecanicos: [
+      { id: 'm1', nome: 'Carlos', ativo: true },
+      { id: 'm2', nome: 'João', ativo: true }
+    ],
+    os: [
+      {
+        id: 'OS-201',
+        num: 201,
+        mecanico: 'Carlos',
+        box: 'BOX-01',
+        st: 'finalizada',
+        concluidoEm: `${dHoje}T10:00:00`,
+        tempoOcupacaoMinutos: 120,
+        servicos: [{ id: 's1', nome: 'Reaperto Feixe de Molas', valor: 1000 }],
+        totalPecas: 500
+      },
+      {
+        id: 'OS-202',
+        num: 202,
+        mecanico: 'Carlos',
+        box: 'BOX-01',
+        st: 'finalizada',
+        concluidoEm: `${dHoje}T14:00:00`,
+        tempoOcupacaoMinutos: 60,
+        isRetornoGarantia: true,
+        osOrigemGarantiaId: 201,
+        servicos: [{ id: 's2', nome: 'Ajuste de Grampo em Garantia', valor: 400 }],
+        totalPecas: 0
+      },
+      {
+        id: 'OS-203',
+        num: 203,
+        mecanico: 'João',
+        box: 'BOX-02',
+        st: 'finalizada',
+        concluidoEm: `${dHoje}T16:00:00`,
+        tempoOcupacaoMinutos: 180,
+        servicos: [{ id: 's3', nome: 'Troca Cuíca de Freio', valor: 1500 }],
+        totalPecas: 800
+      },
+      {
+        id: 'OS-204',
+        num: 204,
+        mecanico: 'João',
+        box: 'BOX-02',
+        st: 'finalizada',
+        concluidoEm: `${d20DiasAtras}T11:00:00`,
+        tempoOcupacaoMinutos: 240,
+        servicos: [{ id: 's4', nome: 'Embucha Balança', valor: 2000 }],
+        totalPecas: 1000
+      }
+    ]
+  };
+
+  // 28.1 Cálculo Semanal (últimos 7 dias): OS-204 (de 20 dias atrás) deve ser excluída
+  const biSemanal = financialAnalystService.calcularProdutividadeEComissoes(state, {
+    periodo: 'semanal',
+    dataRef: dHoje
+  });
+
+  assert.equal(biSemanal.resumo.totalOSConcluidas, 3, 'Na semana devem constar 3 OSs concluídas');
+  assert.equal(biSemanal.resumo.totalMaoDeObra, 2900, 'Mão de obra semanal: 1000 + 400 + 1500 = 2900');
+  assert.equal(biSemanal.resumo.totalPecas, 1300, 'Peças semanais: 500 + 800 = 1300');
+  assert.equal(biSemanal.resumo.faturamentoTotal, 4200, 'Faturamento total semanal: 2900 + 1300 = 4200');
+
+  // Validação crítica de comissões e exclusão de garantia:
+  // Carlos: 1000 (normal) + 400 (garantia) -> comissão deve incidir apenas sobre 1000 (20% = 200)
+  const carlosSemanal = biSemanal.produtividadeMecanicos.find(m => m.mecanico === 'Carlos');
+  assert.ok(carlosSemanal, 'Carlos deve estar na lista de mecânicos');
+  assert.equal(carlosSemanal.totalOS, 2);
+  assert.equal(carlosSemanal.totalMaoDeObra, 1400);
+  assert.equal(carlosSemanal.maoDeObraComissionavel, 1000, 'Base comissionável de Carlos deve expurgar garantia (1000)');
+  assert.equal(carlosSemanal.valorComissao, 200, 'Comissão de Carlos (20% de 1000) deve ser 200');
+  assert.equal(carlosSemanal.totalGarantias, 1);
+  assert.equal(carlosSemanal.taxaRetrabalhoGarantia, 50, 'Taxa de garantia de Carlos: 1 de 2 = 50%');
+
+  // João na semana: 1 OS de 1500 -> 20% = 300
+  const joaoSemanal = biSemanal.produtividadeMecanicos.find(m => m.mecanico === 'João');
+  assert.ok(joaoSemanal, 'João deve estar na lista de mecânicos');
+  assert.equal(joaoSemanal.totalOS, 1);
+  assert.equal(joaoSemanal.totalMaoDeObra, 1500);
+  assert.equal(joaoSemanal.valorComissao, 300);
+  assert.equal(biSemanal.resumo.totalComissoes, 500, 'Total de comissões semanais: 200 + 300 = 500');
+
+  // Box mais produtivo na semana
+  assert.equal(biSemanal.resumo.boxMaisProdutivo.id, 'BOX-01', 'Box 01 teve 2 atendimentos na semana');
+
+  // 28.2 Cálculo com filtro customizado incluindo os 20 dias atrás
+  const biCustom = financialAnalystService.calcularProdutividadeEComissoes(state, {
+    customDe: d20DiasAtras,
+    customAte: dHoje
+  });
+  assert.equal(biCustom.resumo.totalOSConcluidas, 4, 'Com filtro customizado incluindo 20 dias atrás, constam 4 OSs');
+  const joaoCustom = biCustom.produtividadeMecanicos.find(m => m.mecanico === 'João');
+  assert.equal(joaoCustom.totalOS, 2);
+  assert.equal(joaoCustom.totalMaoDeObra, 3500);
+  assert.equal(joaoCustom.valorComissao, 700, 'Comissão de João sobre 3500 deve ser 700');
+
+  // 28.3 Rota HTTP GET /api/financeiro/patio/produtividade e Auditoria SQLite
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'patio-bi-test-'));
+  const testDbPath = path.join(tempDir, 'test_patio_bi.db');
+  process.env.DB_PATH = testDbPath;
+  const { initDB, closeDB, all } = require('../db');
+  await initDB();
+
+  try {
+    const app = express();
+    app.use(express.json());
+    app.use((req, res, next) => {
+      req.securityContext = {
+        tenantId,
+        actorId: 'gerente_operacional',
+        role: 'dono',
+        permissions: ['financial:read', 'os:read'],
+        fullName: 'Gerente da Oficina'
+      };
+      next();
+    });
+    app.use(financialRouter);
+
+    const base = getDefaultState(tenantId);
+    await salvarEstado(tenantId, { ...base, ...state });
+
+    const server = http.createServer(app);
+    await new Promise(r => server.listen(0, '127.0.0.1', r));
+    const port = server.address().port;
+    const baseUrl = `http://127.0.0.1:${port}`;
+
+    try {
+      const resBi = await fetch(`${baseUrl}/api/financeiro/patio/produtividade?periodo=semanal`);
+      assert.equal(resBi.status, 200);
+      const jsonBi = await resBi.json();
+      assert.equal(jsonBi.success, true);
+      assert.equal(jsonBi.resumo.totalOSConcluidas, 3);
+      assert.equal(jsonBi.resumo.totalComissoes, 500);
+
+      // Auditoria no SQLite
+      const auditRows = await all(
+        "SELECT * FROM security_audit_log WHERE tenant_id = ? AND action = 'patio:relatorio:produtividade_bi'",
+        [tenantId]
+      );
+      assert.ok(auditRows.length >= 1, 'Deve registrar auditoria da emissão de relatório de produtividade BI');
+    } finally {
+      await new Promise(r => server.close(r));
+    }
+  } finally {
+    await closeDB().catch(() => {});
+    try { fs.rmSync(tempDir, { recursive: true, force: true }); } catch (_) {}
+  }
+});
+
 
 
 

@@ -1229,6 +1229,45 @@ router.post('/api/financeiro/os/:osId/retorno-garantia', requirePermission('os:w
 });
 
 /**
+ * 4.1.18 GET /api/financeiro/patio/produtividade
+ * Retorna métricas de BI e produtividade de boxes/mecânicos com filtros semanal/mensal e comissões
+ */
+router.get('/api/financeiro/patio/produtividade', requirePermission('financial:read', 'os:read'), async (req, res) => {
+  try {
+    const tenantId = extractTenantId(req);
+    const state = await getOrLoadState(req);
+    const resultado = financialAnalystService.calcularProdutividadeEComissoes(state, req.query || {});
+
+    try {
+      await recordSecurityAudit({
+        tenantId,
+        actorId: req.securityContext?.actorId || 'operador',
+        action: 'patio:relatorio:produtividade_bi',
+        entity: 'patio_bi',
+        entityId: String(req.query?.periodo || 'mensal'),
+        details: {
+          periodo: req.query?.periodo || 'mensal',
+          totalOSConcluidas: resultado?.resumo?.totalOSConcluidas,
+          totalMaoDeObra: resultado?.resumo?.totalMaoDeObra,
+          totalComissoes: resultado?.resumo?.totalComissoes,
+          solicitante: req.securityContext?.fullName || req.securityContext?.actorId || 'operador'
+        }
+      });
+    } catch (auditErr) {
+      console.warn('[Produtividade BI Audit] Falha não-bloqueante:', auditErr.message);
+    }
+
+    res.json({
+      success: true,
+      ...resultado
+    });
+  } catch (err) {
+    console.error('[API /api/financeiro/patio/produtividade GET] Erro:', err);
+    res.status(err.status || 500).json({ success: false, code: err.code, error: err.message });
+  }
+});
+
+/**
  * 4.1.2 POST /api/financeiro/titulos/:id/liquidar
  * Realiza a liquidação (baixa) de um título a receber ou conta a pagar com geração de movimento no caixa e auditoria
  */
