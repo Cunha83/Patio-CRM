@@ -2344,6 +2344,155 @@ test('25. DRE Operacional Integrado e Aviso de Cobrança/Retirada ao Cliente (Fr
   }
 });
 
+test('26. Checklist Técnico Pesado (Suspensão & Freios) e Trava de Qualidade na OS (Frente 8A)', async () => {
+  const fs = require('fs');
+  const os = require('os');
+  const express = require('express');
+  const http = require('http');
+  const { salvarEstado } = require('../lib/serverContext');
+  const { getDefaultState } = require('../lib/repository/stateRepository');
+  const { initDB, closeDB, all } = require('../db');
+  const financialRoutes = require('../routes/financial.routes');
+  const financialAnalystService = require('../services/financialAnalystService');
+
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'patio-checklist-test-'));
+  const testDbPath = path.join(tempDir, 'test.db');
+  process.env.DB_PATH = testDbPath;
+
+  try {
+    await initDB();
+    const tenantId = 'tenant_chk_8a';
+
+    const state = {
+      tenantId,
+      boxes: [{ id: 'BOX-01', nome: 'Box 01', status: 'ocupado' }],
+      os: [
+        {
+          id: 'OS-901',
+          num: 901,
+          st: 'executando',
+          etapaPatio: 'em_execucao',
+          boxId: 'BOX-01',
+          mecanico: 'Mecânico Valter',
+          placa: 'TRC8899',
+          historicoPatio: []
+        }
+      ]
+    };
+
+    // 26.1 Obter checklist inicializado com 5 itens canônicos
+    const chkInicial = financialAnalystService.obterChecklistTecnicoOS(state, 'OS-901');
+    assert.equal(chkInicial.sucesso, true);
+    assert.equal(chkInicial.statusChecklist, 'pendente');
+    assert.equal(chkInicial.itens.length, 5);
+    assert.equal(chkInicial.itens[0].id, 'grampos_feixe_molas');
+    assert.equal(chkInicial.itens[3].id, 'sistema_pneumatico_freio');
+
+    // 26.2 Registrar reprovação crítica de vistoria
+    const chkReprovado = financialAnalystService.registrarChecklistTecnicoOS(state, {
+      osId: 'OS-901',
+      modo: 'reprovar',
+      itemFalha: 'sistema_pneumatico_freio',
+      observacao: 'Vazamento de ar na cuíca dupla do 2º eixo',
+      operador: 'Inspetor Carlos'
+    });
+    assert.equal(chkReprovado.statusChecklist, 'reprovado_critico');
+    assert.equal(state.os[0].statusChecklist, 'reprovado_critico');
+    const itemFalha = chkReprovado.itens.find(i => i.id === 'sistema_pneumatico_freio');
+    assert.equal(itemFalha.status, 'falha');
+
+    // 26.3 Trava de Qualidade: Tentativa de finalizar OS com checklist reprovado deve lançar erro 409
+    assert.throws(() => {
+      financialAnalystService.registrarApontamentoPatioOS(state, {
+        osId: 'OS-901',
+        acao: 'finalizar',
+        operador: 'Inspetor Carlos'
+      });
+    }, (err) => {
+      assert.equal(err.status, 409);
+      assert.equal(err.code, 'CHECKLIST_TECNICO_REPROVADO');
+      return true;
+    });
+
+    // 26.4 Aprovação completa do checklist
+    const chkAprovado = financialAnalystService.registrarChecklistTecnicoOS(state, {
+      osId: 'OS-901',
+      modo: 'aprovar_todos',
+      observacao: 'Cuíca substituída e sistema 100% estanque',
+      operador: 'Inspetor Carlos'
+    });
+    assert.equal(chkAprovado.statusChecklist, 'aprovado');
+    assert.equal(state.os[0].statusChecklist, 'aprovado');
+    assert.ok(chkAprovado.itens.every(i => i.status === 'ok'));
+
+    // 26.5 Com checklist aprovado, finalização deve prosseguir com sucesso
+    const resFinalizar = financialAnalystService.registrarApontamentoPatioOS(state, {
+      osId: 'OS-901',
+      acao: 'finalizar',
+      operador: 'Inspetor Carlos'
+    });
+    assert.equal(resFinalizar.sucesso, true);
+    assert.equal(state.os[0].etapaPatio, 'pronto_retirada');
+    assert.equal(state.boxes[0].status, 'livre');
+
+    // 26.6 Rotas HTTP GET e POST /api/financeiro/os/:osId/checklist e auditoria SQLite
+    const app = express();
+    app.use(express.json());
+    app.use((req, res, next) => {
+      req.securityContext = {
+        actorId: 'inspetor_1',
+        fullName: 'Inspetor Carlos',
+        tenantId,
+        permissions: ['os:read', 'os:write', 'labor:read', 'labor:write', 'financial:read', 'financial:write', 'operation:manage']
+      };
+      req.headers['x-tenant-id'] = tenantId;
+      next();
+    });
+    app.use(financialRoutes);
+
+    const base = getDefaultState(tenantId);
+    await salvarEstado(tenantId, { ...base, ...state });
+
+    const server = http.createServer(app);
+    await new Promise(r => server.listen(0, '127.0.0.1', r));
+    const port = server.address().port;
+    const baseUrl = `http://127.0.0.1:${port}`;
+
+    try {
+      const resGet = await fetch(`${baseUrl}/api/financeiro/os/OS-901/checklist`);
+      assert.equal(resGet.status, 200);
+      const jsonGet = await resGet.json();
+      assert.equal(jsonGet.statusChecklist, 'aprovado');
+      assert.equal(jsonGet.itens.length, 5);
+
+      const resPost = await fetch(`${baseUrl}/api/financeiro/os/OS-901/checklist`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          modo: 'aprovar_todos',
+          observacao: 'Conferido via painel de vistoria'
+        })
+      });
+      assert.equal(resPost.status, 200);
+      const jsonPost = await resPost.json();
+      assert.equal(jsonPost.success, true);
+      assert.equal(jsonPost.statusChecklist, 'aprovado');
+
+      // Auditoria no SQLite
+      const auditRows = await all(
+        "SELECT * FROM security_audit_log WHERE tenant_id = ? AND action = 'patio:os:checklist_tecnico'",
+        [tenantId]
+      );
+      assert.ok(auditRows.length >= 1, 'Deve registrar auditoria do checklist técnico');
+    } finally {
+      await new Promise(r => server.close(r));
+    }
+  } finally {
+    await closeDB().catch(() => {});
+    try { fs.rmSync(tempDir, { recursive: true, force: true }); } catch (_) {}
+  }
+});
+
 
 
 
