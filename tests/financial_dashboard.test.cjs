@@ -2218,6 +2218,132 @@ test('24. Reabertura Bidirecional de Títulos no Estorno e Devolução de Peças
   }
 });
 
+test('25. DRE Operacional Integrado e Aviso de Cobrança/Retirada ao Cliente (Frente 7B)', async () => {
+  const fs = require('fs');
+  const os = require('os');
+  const express = require('express');
+  const http = require('http');
+  const { salvarEstado } = require('../lib/serverContext');
+  const { getDefaultState } = require('../lib/repository/stateRepository');
+  const { initDB, closeDB } = require('../db');
+  const financialRoutes = require('../routes/financial.routes');
+  const financialAnalystService = require('../services/financialAnalystService');
+  const financialEngine = require('../services/financialEngine');
+
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'patio-dre-aviso-test-'));
+  const testDbPath = path.join(tempDir, 'test.db');
+  process.env.DB_PATH = testDbPath;
+
+  try {
+    await initDB();
+    const tenantId = 'tenant_dre_aviso_7b';
+    const agoraSP = financialEngine.obterAgoraSP();
+    const dHoje = agoraSP.dataISO;
+
+    const state = {
+      tenantId,
+      cfg: {
+        nomeOficina: 'Auto Mecânica Express',
+        chavePix: 'pix@express.com.br'
+      },
+      clientes: [
+        { id: 'cli_dre_1', nome: 'Transportadora Continental', fantasia: 'Continental Log' }
+      ],
+      veiculos: [
+        { id: 'vei_dre_1', placa: 'ABC1D23', marca: 'Volvo', modelo: 'FH 540' }
+      ],
+      caixas: [{ id: 'cx_dre', aberto: true, saldoAtual: 5000, totalEntradas: 0, totalSaidas: 0 }],
+      movimentos: [
+        { id: 'm_rec_1', tipo: 'entrada', subtipo: 'receita', valor: 6000, data: dHoje },
+        { id: 'm_desp_1', tipo: 'saida', subtipo: 'despesa', valor: 2500, data: dHoje },
+        { id: 'm_sup_1', tipo: 'entrada', subtipo: 'suprimento', naturezaOperacao: 'suprimento', valor: 1000, data: dHoje },
+        { id: 'm_sang_1', tipo: 'saida', subtipo: 'sangria', naturezaOperacao: 'sangria', valor: 800, data: dHoje }
+      ],
+      os: [
+        {
+          id: 'OS-801',
+          num: 801,
+          st: 'executando',
+          cli: 'cli_dre_1',
+          vei: 'vei_dre_1',
+          total: 4500,
+          statusLiberacaoPatio: 'retido_pendente',
+          pecasUtilizadas: [
+            { id: 'pec_1', nome: 'Pastilha de Freio', quantidade: 2, valorUnitario: 150, subtotal: 300 }
+          ],
+          totalPecas: 300
+        }
+      ]
+    };
+
+    // 25.1 Cálculo de DRE Operacional com isolamento de tesouraria
+    const dre = financialAnalystService.calcularDREOperacional(state, { filtro: '30d' });
+    assert.equal(dre.sucesso, true);
+    assert.equal(dre.receitaOperacionalBruta, 6000);
+    assert.equal(dre.despesasOperacionais, 2500);
+    assert.equal(dre.custoPecasAplicadasOS, 300);
+    assert.equal(dre.resultadoOperacionalLiquido, 3500); // 6000 - 2500 (sem ser distorcido por sangria/suprimento)
+    assert.equal(dre.tesourariaNeutra.totalSuprimentos, 1000);
+    assert.equal(dre.tesourariaNeutra.totalSangrias, 800);
+
+    // 25.2 Geração de Aviso ao Cliente para OS
+    const aviso = financialAnalystService.gerarAvisoClienteOS(state, 'OS-801');
+    assert.equal(aviso.sucesso, true);
+    assert.equal(aviso.num, 801);
+    assert.equal(aviso.placa, 'ABC1D23');
+    assert.equal(aviso.cliente, 'Continental Log');
+    assert.equal(aviso.veiculoInfo, 'Volvo FH 540');
+    assert.match(aviso.textoWhatsapp, /Auto Mecânica Express/);
+    assert.match(aviso.textoWhatsapp, /Continental Log/);
+    assert.match(aviso.textoWhatsapp, /4\.500,00/);
+    assert.match(aviso.textoWhatsapp, /pix@express\.com\.br/);
+
+    // 25.3 Rotas HTTP GET /api/financeiro/dre e GET /api/financeiro/os/:osId/aviso-cliente
+    const app = express();
+    app.use(express.json());
+    app.use((req, res, next) => {
+      req.securityContext = {
+        actorId: 'gerente_1',
+        fullName: 'Gerente Operacional',
+        tenantId,
+        permissions: ['os:read', 'os:write', 'financial:read', 'financial:write']
+      };
+      req.headers['x-tenant-id'] = tenantId;
+      next();
+    });
+    app.use(financialRoutes);
+
+    const base = getDefaultState(tenantId);
+    await salvarEstado(tenantId, { ...base, ...state });
+
+    const server = http.createServer(app);
+    await new Promise(r => server.listen(0, '127.0.0.1', r));
+    const port = server.address().port;
+    const baseUrl = `http://127.0.0.1:${port}`;
+
+    try {
+      const resDRE = await fetch(`${baseUrl}/api/financeiro/dre`);
+      assert.equal(resDRE.status, 200);
+      const jsonDRE = await resDRE.json();
+      assert.equal(jsonDRE.receitaOperacionalBruta, 6000);
+      assert.equal(jsonDRE.custoPecasAplicadasOS, 300);
+      assert.equal(jsonDRE.tesourariaNeutra.totalSangrias, 800);
+
+      const resAviso = await fetch(`${baseUrl}/api/financeiro/os/OS-801/aviso-cliente`);
+      assert.equal(resAviso.status, 200);
+      const jsonAviso = await resAviso.json();
+      assert.equal(jsonAviso.sucesso, true);
+      assert.equal(jsonAviso.cliente, 'Continental Log');
+      assert.match(jsonAviso.textoWhatsapp, /pix@express\.com\.br/);
+    } finally {
+      await new Promise(r => server.close(r));
+    }
+  } finally {
+    await closeDB().catch(() => {});
+    try { fs.rmSync(tempDir, { recursive: true, force: true }); } catch (_) {}
+  }
+});
+
 
 
 

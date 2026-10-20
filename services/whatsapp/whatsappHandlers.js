@@ -655,7 +655,7 @@ async function processarMensagemTexto(msg, {
     textoLower === '!boxes' || textoLower === 'boxes'
   );
 
-  // Comandos de Almoxarifado / Peças / Desbloqueio (Frente 6B)
+  // Comandos de Almoxarifado / Peças / Desbloqueio (Frente 6B e 7B)
   const matchEstoque = textoLower.match(/^!?(?:consultar\s+pe[çc]a|estoque)(?:\s+(.+))?$/i);
   const isComandoConsultaEstoque = Boolean(matchEstoque);
 
@@ -665,7 +665,10 @@ async function processarMensagemTexto(msg, {
   const matchLiberarGargalo = textoLower.match(/^!?(?:chegou\s+pe[çc]a\s+os|retomar\s+os)\s*#?\s*([a-zA-Z0-9_\-]+)(?:\s+(.+))?$/i);
   const isComandoLiberarGargalo = Boolean(matchLiberarGargalo);
 
-  const isComandoOperacionalPatio = isComandoBoxOS || isComandoIniciarOS || isComandoPausarOS || isComandoFinalizarOS || isComandoRadarGargalos || isComandoConsultaEstoque || isComandoRequisitarPeca || isComandoLiberarGargalo;
+  const matchDevolverPeca = textoLower.match(/^!?devolver\s+pe[çc]a\s+os\s*#?\s*([a-zA-Z0-9_\-]+)\s+(.+)$/i);
+  const isComandoDevolverPeca = Boolean(matchDevolverPeca);
+
+  const isComandoOperacionalPatio = isComandoBoxOS || isComandoIniciarOS || isComandoPausarOS || isComandoFinalizarOS || isComandoRadarGargalos || isComandoConsultaEstoque || isComandoRequisitarPeca || isComandoLiberarGargalo || isComandoDevolverPeca;
 
   const matchComandoOS = textoLower.match(/(?:extrato|financeiro|saldo)\s+(?:da\s+|de\s+)?(?:os|o\.s\.)\s*#?\s*([a-zA-Z0-9_\-]+)/i) ||
                          textoLower.match(/(?:os|o\.s\.)\s*#?\s*([a-zA-Z0-9_\-]+)\s+(?:financeiro|extrato|saldo)/i) ||
@@ -693,6 +696,9 @@ async function processarMensagemTexto(msg, {
 
   const isComandoDRE = /^(?:!dre|dre|resultado\s+operacional|demonstrativo\s+dre)\b/i.test(textoLower);
 
+  const matchAvisoRetiradaOS = textoLower.match(/^!?(?:aviso\s+retirada|aviso\s+cliente)(?:\s+os)?\s+([#a-zA-Z0-9_\-]+)$/i);
+  const isComandoAvisoRetiradaOS = Boolean(matchAvisoRetiradaOS);
+
   const matchCobrancaOS = textoLower.match(/^(?:!cobranca|!cobrança|cobranca|cobrança|aviso\s+vencimento|lembrete\s+cobranca|lembrete\s+cobrança)(?:\s+os)?\s+([#a-zA-Z0-9_\-]+)$/i);
   const isComandoCobrancaOS = Boolean(matchCobrancaOS);
 
@@ -701,6 +707,7 @@ async function processarMensagemTexto(msg, {
     isComandoExtrato ||
     isComandoResumoCaixa ||
     isComandoDRE ||
+    isComandoAvisoRetiradaOS ||
     isComandoCobrancaOS ||
     textoLower === '!caixa' || textoLower === 'caixa' ||
     textoLower === '!saldo' || textoLower === 'saldo' ||
@@ -1596,6 +1603,67 @@ async function processarMensagemTexto(msg, {
         return true;
       } catch (err) {
         await msg.reply(`⚠️ *Falha ao liberar gargalo da OS:* ${err.message}`);
+        await auditarComandoWhatsApp({
+          tenantId: tenantKey,
+          numero: senderNorm,
+          comando: textoMensagem,
+          resultado: 'falha',
+          detalhes: { erro: err.message }
+        });
+        return true;
+      }
+    }
+
+    // 9. Comando: devolver peca os <osId> <nome_ou_codigo> (Frente 7B)
+    if (isComandoDevolverPeca && matchDevolverPeca) {
+      const osParam = matchDevolverPeca[1].trim();
+      const pecaParam = matchDevolverPeca[2].trim();
+
+      try {
+        const resEstorno = financialAnalystService.estornarPecaOS(tenantState, {
+          osId: osParam,
+          itemIndexOuPecaId: pecaParam,
+          motivo: 'Devolução solicitada via WhatsApp',
+          operador: {
+            actorId: `whatsapp:${senderNorm}`,
+            nome: `WhatsApp (${senderNorm})`
+          }
+        });
+
+        try {
+          await salvarEstado(tenantKey, tenantState);
+        } catch (errPersist) {
+          console.warn('[WhatsApp Handlers] Falha ao persistir estorno de peça:', errPersist.message);
+        }
+
+        try {
+          await recordSecurityAudit({
+            tenantId: tenantKey,
+            actorId: `whatsapp:${senderNorm}`,
+            actorType: 'whatsapp_sender',
+            action: 'patio:os:estornar_peca',
+            entity: 'ordem_servico',
+            entityId: String(resEstorno.osId),
+            details: {
+              osId: resEstorno.osId,
+              pecaDevolvida: resEstorno.pecaDevolvida,
+              origem: 'whatsapp'
+            }
+          });
+        } catch (_) {}
+
+        const msgSucesso = `↩️ *Peça Devolvida ao Estoque!* 📦\n\n• *OS:* #${resEstorno.osNum}\n• *Item:* ${resEstorno.pecaDevolvida?.nome || pecaParam} (${resEstorno.pecaDevolvida?.quantidade || 1} un)\n• *Saldo Estoque Atual:* ${resEstorno.saldoEstoqueRestante != null ? `${resEstorno.saldoEstoqueRestante} un` : 'N/A'}\n• *Novo Total Peças da OS:* ${financialEngine.formatarMoeda(resEstorno.totalPecasOS)}`;
+        await msg.reply(msgSucesso);
+        await auditarComandoWhatsApp({
+          tenantId: tenantKey,
+          numero: senderNorm,
+          comando: textoMensagem,
+          resultado: 'sucesso',
+          detalhes: { osId: resEstorno.osId, item: pecaParam }
+        });
+        return true;
+      } catch (err) {
+        await msg.reply(`⚠️ *Falha ao devolver peça:* ${err.message}`);
         await auditarComandoWhatsApp({
           tenantId: tenantKey,
           numero: senderNorm,
@@ -2694,14 +2762,14 @@ async function processarMensagemTexto(msg, {
     return true;
   }
 
-  // 3.1 Demonstrativo de Resultado Operacional (DRE Simplificado)
+  // 3.1 Demonstrativo de Resultado Operacional (DRE Operacional)
   if (isComandoDRE) {
     if (isContextOperacao || !isContextAdmin) {
       await msg.reply('🔒 *Acesso Restrito:* O Demonstrativo de Resultado Operacional (DRE) é disponibilizado exclusivamente para administradores autorizados.');
       await auditarComandoWhatsApp({ tenantId: tenantKey, numero: (msg.author || msg.from || '').split('@')[0], comando: textoMensagem, resultado: 'negado_permissao' });
       return true;
     }
-    const dre = financialEngine.calcularDRESimplificado(tenantState, { filtro: '30d' });
+    const dre = financialAnalystService.calcularDREOperacional(tenantState, { filtro: '30d' });
     const msgDRE = financialEngine.formatarDREWhatsapp(dre, tenantState);
     await msg.reply(msgDRE);
     await auditarComandoWhatsApp({
@@ -2712,7 +2780,40 @@ async function processarMensagemTexto(msg, {
       detalhes: {
         receitaOperacionalBruta: dre.receitaOperacionalBruta,
         despesasOperacionais: dre.despesasOperacionais,
+        custoPecasAplicadasOS: dre.custoPecasAplicadasOS,
         resultadoOperacionalLiquido: dre.resultadoOperacionalLiquido
+      }
+    });
+    return true;
+  }
+
+  // 3.1.2 Aviso de Retirada / Comunicação de OS ao Cliente via WhatsApp (Frente 7B)
+  if (isComandoAvisoRetiradaOS && matchAvisoRetiradaOS) {
+    const osIdParam = String(matchAvisoRetiradaOS[1]).replace(/^#/, '').trim();
+    const avisoResult = financialAnalystService.gerarAvisoClienteOS(tenantState, osIdParam);
+
+    if (!avisoResult.sucesso && !avisoResult.ok) {
+      await msg.reply(`⚠️ *Falha ao gerar aviso:* Não foi possível localizar a OS #${osIdParam}.`);
+      await auditarComandoWhatsApp({
+        tenantId: tenantKey,
+        numero: (msg.author || msg.from || '').split('@')[0],
+        comando: textoMensagem,
+        resultado: 'falha_nao_encontrado'
+      });
+      return true;
+    }
+
+    await msg.reply(avisoResult.textoWhatsapp);
+    await auditarComandoWhatsApp({
+      tenantId: tenantKey,
+      numero: (msg.author || msg.from || '').split('@')[0],
+      comando: textoMensagem,
+      resultado: 'sucesso',
+      detalhes: {
+        osId: osIdParam,
+        cliente: avisoResult.cliente,
+        saldoRestante: avisoResult.saldoRestante,
+        statusLiberacaoPatio: avisoResult.statusLiberacaoPatio
       }
     });
     return true;

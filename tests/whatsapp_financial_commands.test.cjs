@@ -2148,6 +2148,115 @@ test('WhatsApp Agente Financeiro - Suíte Completa de Leitura e Escrita Controla
     `);
     assert.ok(auditRows.length >= 2, 'Deve registrar auditorias de requisição e desbloqueio');
   });
+
+  // ── 32. DEMONSTRATIVO DRE OPERACIONAL, AVISO DE RETIRADA E DEVOLUÇÃO DE PEÇA VIA WHATSAPP (FRENTE 7B) ──
+  await t.test('32. DRE Operacional, Aviso de Retirada/Cobrança e Devolução de Peça via WhatsApp', async () => {
+    const mockState = criarEstadoMock({
+      comandosFinanceirosEscrita: true
+    });
+    const adminNum = '5511999998888';
+    const mecanicoFone = '5511977776666';
+    mockState.cfg.adminFones = [adminNum];
+    mockState.cfg.nomeOficina = 'Truck Center Brasil';
+    mockState.cfg.chavePix = 'pix@truckcenter.com.br';
+
+    mockState.clientes = [
+      { id: 'cli_zap_7b', nome: 'Transportes Brasil Central', fantasia: 'Brasil Central' }
+    ];
+    mockState.veiculos = [
+      { id: 'vei_zap_7b', placa: 'BRC1A22', marca: 'Mercedes-Benz', modelo: 'Actros 2651' }
+    ];
+
+    const agoraSP = financialEngine.obterAgoraSP();
+    const dHoje = agoraSP.dataISO;
+
+    mockState.movimentos = [
+      { id: 'm_op_rec', tipo: 'entrada', subtipo: 'receita', valor: 8000, data: dHoje },
+      { id: 'm_op_desp', tipo: 'saida', subtipo: 'despesa', valor: 3000, data: dHoje },
+      { id: 'm_tes_sup', tipo: 'entrada', subtipo: 'suprimento', naturezaOperacao: 'suprimento', valor: 1500, data: dHoje },
+      { id: 'm_tes_sang', tipo: 'saida', subtipo: 'sangria', naturezaOperacao: 'sangria', valor: 500, data: dHoje }
+    ];
+
+    mockState.estoque = [
+      { id: 'pec_valvula', codigo: 'VALV-99', nome: 'Válvula Reguladora de Pressão', quantidade: 5, estoqueMinimo: 2, custoUnitario: 180, precoVenda: 350 }
+    ];
+
+    mockState.os = [
+      {
+        id: '202',
+        numero: '202',
+        num: 202,
+        cli: 'cli_zap_7b',
+        vei: 'vei_zap_7b',
+        total: 4200,
+        statusLiberacaoPatio: 'retido_pendente',
+        pecasUtilizadas: [
+          { id: 'pec_valvula', codigo: 'VALV-99', nome: 'Válvula Reguladora de Pressão', quantidade: 2, valorUnitario: 350, subtotal: 700 }
+        ],
+        totalPecas: 700,
+        historicoPatio: []
+      }
+    ];
+
+    // 32.1 Consulta DRE com custo de peças ativas e tesouraria neutra
+    const repliesDRE = [];
+    await processarMensagemTexto({
+      from: `${adminNum}@c.us`,
+      author: `${adminNum}@c.us`,
+      body: 'resultado operacional',
+      reply: async (txt) => { repliesDRE.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: adminNum });
+
+    assert.equal(repliesDRE.length, 1);
+    assert.match(repliesDRE[0], /DEMONSTRATIVO DE RESULTADO OPERACIONAL/i);
+    assert.match(repliesDRE[0], /8\.000,00/); // Receita
+    assert.match(repliesDRE[0], /3\.000,00/); // Despesa
+    assert.match(repliesDRE[0], /700,00/);   // Peças em OSs
+    assert.match(repliesDRE[0], /5\.000,00/); // Resultado líquido (8000 - 3000)
+    assert.match(repliesDRE[0], /1\.500,00/); // Suprimento
+    assert.match(repliesDRE[0], /500,00/);   // Sangria
+
+    // 32.2 Aviso de Retirada / Comunicação de OS ao cliente
+    const repliesAviso = [];
+    await processarMensagemTexto({
+      from: `${adminNum}@c.us`,
+      author: `${adminNum}@c.us`,
+      body: 'aviso retirada os 202',
+      reply: async (txt) => { repliesAviso.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: adminNum });
+
+    assert.equal(repliesAviso.length, 1);
+    assert.match(repliesAviso[0], /COMUNICADO DE ORDEM DE SERVIÇO/i);
+    assert.match(repliesAviso[0], /Brasil Central/);
+    assert.match(repliesAviso[0], /Truck Center Brasil/);
+    assert.match(repliesAviso[0], /Actros 2651/);
+    assert.match(repliesAviso[0], /BRC1A22/);
+    assert.match(repliesAviso[0], /pix@truckcenter\.com\.br/);
+
+    // 32.3 Devolução de peça da OS para o estoque via WhatsApp
+    const repliesDev = [];
+    await processarMensagemTexto({
+      from: `${mecanicoFone}@c.us`,
+      author: `${mecanicoFone}@c.us`,
+      body: 'devolver peca os 202 VALV-99',
+      reply: async (txt) => { repliesDev.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: mecanicoFone });
+
+    assert.equal(repliesDev.length, 1);
+    assert.match(repliesDev[0], /Peça Devolvida ao Estoque/i);
+    assert.match(repliesDev[0], /Válvula Reguladora de Pressão/);
+    assert.equal(mockState.estoque[0].quantidade, 7, 'Estoque deve voltar de 5 para 7');
+    assert.equal(mockState.os[0].pecasUtilizadas.length, 0);
+    assert.equal(mockState.os[0].totalPecas, 0);
+
+    // 32.4 Verificação de auditoria SQLite
+    const auditRows = await all(`
+      SELECT action, entity_id FROM security_audit_log
+      WHERE action = 'patio:os:estornar_peca'
+      ORDER BY id ASC
+    `);
+    assert.ok(auditRows.length >= 1, 'Deve registrar auditoria de estorno/devolução de peça');
+  });
 });
 
 

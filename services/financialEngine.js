@@ -1156,6 +1156,7 @@ function formatarDREWhatsapp(dre, state = {}) {
   const sup = formatarMoeda(dre.movimentacaoTesourariaNeutra.totalSuprimentos);
   const sang = formatarMoeda(dre.movimentacaoTesourariaNeutra.totalSangrias);
   const iconeResultado = dre.lucro ? '🟢 *LUCRO OPERACIONAL*' : '🔴 *PREJUÍZO OPERACIONAL*';
+  const linhaPecas = (Number(dre.custoPecasAplicadasOS) > 0) ? `📦 *Custo de Peças em OSs Ativas:* ${formatarMoeda(dre.custoPecasAplicadasOS)}\n` : '';
 
   return `📊 *DEMONSTRATIVO DE RESULTADO OPERACIONAL (DRE)*\n` +
     `🤖 *Assistente:* ${nomeAssistente}\n` +
@@ -1163,6 +1164,7 @@ function formatarDREWhatsapp(dre, state = {}) {
     `════════════════════════════\n\n` +
     `➕ *Receita Operacional Bruta:* ${rec} (${dre.qtdReceitas} entradas)\n` +
     `➖ *Despesas Operacionais:* ${desp} (${dre.qtdDespesas} saídas)\n` +
+    linhaPecas +
     `────────────────────────────\n` +
     `${iconeResultado}: *${res}*\n` +
     `📈 *Margem Operacional:* *${margem}*\n\n` +

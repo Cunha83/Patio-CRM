@@ -36,7 +36,7 @@ router.get('/api/financeiro/resumo', requirePermission('financial:read'), async 
       },
       indicadores: kpis,
       resumoOrigem: kpis.resumoOrigem || null,
-      dreOperacional: financialEngine.calcularDRESimplificado(state, { filtro: req.query?.filtro || '30d' }),
+      dreOperacional: financialAnalystService.calcularDREOperacional(state, req.query || {}),
       previsao: {
         saldoAtual: previsao30d.saldoAtual,
         em7Dias: previsao30d.marcos.em7Dias,
@@ -1000,6 +1000,36 @@ router.post('/api/financeiro/os/:osId/estornar-peca', requirePermission('os:writ
   } catch (err) {
     console.error('[API /api/financeiro/os/:osId/estornar-peca POST] Erro:', err);
     res.status(err.status || 500).json({ success: false, code: err.code, error: err.message });
+  }
+});
+
+/**
+ * 4.1.12 GET /api/financeiro/dre
+ * Retorna demonstrativo do resultado operacional (DRE) com isolamento de tesouraria
+ */
+router.get('/api/financeiro/dre', requirePermission('financial:read'), async (req, res) => {
+  try {
+    const state = await getOrLoadState(req);
+    const dre = financialAnalystService.calcularDREOperacional(state, req.query || {});
+    res.json(dre);
+  } catch (err) {
+    console.error('[API /api/financeiro/dre GET] Erro:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+/**
+ * 4.1.13 GET /api/financeiro/os/:osId/aviso-cliente
+ * Retorna dados consolidados e texto estruturado de aviso/cobrança para WhatsApp do cliente
+ */
+router.get('/api/financeiro/os/:osId/aviso-cliente', requirePermission('financial:read', 'os:read'), async (req, res) => {
+  try {
+    const state = await getOrLoadState(req);
+    const aviso = financialAnalystService.gerarAvisoClienteOS(state, req.params.osId);
+    res.json(aviso);
+  } catch (err) {
+    console.error('[API /api/financeiro/os/:osId/aviso-cliente GET] Erro:', err);
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 

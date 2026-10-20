@@ -2,9 +2,9 @@
   "projeto": "Patio-CRM",
   "versao": "1.0.0",
   "fase": "Fase 3 — Piloto Controlado em Ambiente Operacional",
-  "dataGeracao": "2026-10-20T00:03:45.602Z",
+  "dataGeracao": "2026-10-20T00:11:57.634Z",
   "git": {
-    "commit": "2bf72bb2766f4d2d58f86faa90343e9aad918a71",
+    "commit": "f4c311933c7f76d5a863285971bfc44c9f5d2b12",
     "branch": "main"
   },
   "ambienteExecucao": {
@@ -83,7 +83,7 @@
     "routes/billing.routes.js": "6c2c09619db18cc2a22af40f33ea308759d16ba47f07fc5d79dfa0050a9fc803",
     "routes/config.routes.js": "e6766a281cb40fd78b85ce720acdad97045d6b202be608aaaae604b92d7892aa",
     "routes/crm.routes.js": "0b57e1929f60c6961f36974877afcf55e0c474bdd9fff260283f4528ffb1ae42",
-    "routes/financial.routes.js": "98891fd97a8f07ed619e4ec033ab31cc620902785f851edfae490905d4dc59b0",
+    "routes/financial.routes.js": "f72c1613cb6abc7d774f2cd126c6c52e5eb78ea5ac2daa25de10aa10fde4575c",
     "routes/health.routes.js": "881c1872d327b396e5f8785f1994bb087b6754332735b7835ce098dce21978a1",
     "routes/index.js": "ceeb33e8bfc0bdc3f7015090b9f091ec5125f9ce27160ac93832dad9b798ddc2",
     "routes/inspection.routes.js": "ca11f6322239c865c403603981e20bc832ca238a8ae344fac51635afdc96d72b",
@@ -144,8 +144,8 @@
     "services/demoDataService.js": "33ed44c377f6dd14ee9e9d414419ae4232880084bd2f77df828754cf2ba7dd01",
     "services/erpIntegrationService.js": "3c76f606c7af5831e0a413acd7e7fa5caba373d36e032c13f91c0ee629018ba4",
     "services/executiveManagerService.js": "8b32de93f464a049d6bba458f31c4af999de75f2090aec4cf83605724cf77e8c",
-    "services/financialAnalystService.js": "5babe658400ea7913692d156bfdada5b24f9912182f506f92e338eec4ab7df3c",
-    "services/financialEngine.js": "3ab60554bcfc333c5a006400e31728835a3c14fcb2eadadcdb65ac41c4f30d52",
+    "services/financialAnalystService.js": "f7d9e43d71609f2654e56fb876d2c572fc12d28721e3a33559d07f6b67a41016",
+    "services/financialEngine.js": "5d8372836fe7dfc5b74fd54a87a49dcae97aedf49020d88ea72b180c6d19bfe8",
     "services/fiscal/decimal.js": "5c060f6cb2308e6da4d0e4e747d52012cdaaa1964b46b02e5354b2169ff4a7f1",
     "services/fiscal/fiscalCalculationEngine.js": "d6f2c2d7d0c694774f340e0aa6547dfad50473a9caaf2e1bd0a7f224d58cfe41",
     "services/fiscal/fiscalConfigService.js": "0462c6eba5bc971fd77af0aaca20ce65c383c5283f07f513b2e505f81adcf7dc",
@@ -192,7 +192,7 @@
     "services/voiceActionEngine.js": "963bc5843cc26320598e5f96c36f70bbb29ac4433035ebfccaf34d27bdbaff8c",
     "services/warrantyService.js": "e2772f7e3d8987ebba0d4e6a97e2dfad10f3210e490616902629c68d68ebb14b",
     "services/whatsapp/whatsappClient.js": "42a50ddf76c999477b7ce373bfc5bfec5511b4ae2929ca4ce0c8a047bec88654",
-    "services/whatsapp/whatsappHandlers.js": "49178e466adaf63753af884701e27c6d62f7f034c173629b30dd6ea88f5b9848",
+    "services/whatsapp/whatsappHandlers.js": "5db9e39c02a5a17ec3bef58ba819cf4131f0ac1c7339a986177d2b35552b434b",
     "services/whatsapp/whatsappScheduler.js": "01a1ba654ab5f872d14a1ff5957083d496d979b7c0a1b5601dde2b3289e7d3a8",
     "services/whatsapp/whatsappState.js": "06aad441cc77f1e5adc508fea0b1a17f0ff59cbbc4862fb0ce3ac761a51e936b",
     "style.css": "ea8a3021eebbd6b45d3d56dd88958139734a39599dd9c2300be46714ec0d8297"
