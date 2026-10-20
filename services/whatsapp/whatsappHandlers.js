@@ -678,7 +678,14 @@ async function processarMensagemTexto(msg, {
   const matchConsultaLaudo = textoLower.match(/^!?(?:laudo\s+os|laudo|checklist\s+os|vistoria\s+os)\s*#?\s*([a-zA-Z0-9_\-]+)$/i);
   const isComandoConsultaLaudo = !isComandoChecklistOk && !isComandoChecklistFalha && Boolean(matchConsultaLaudo);
 
-  const isComandoOperacionalPatio = isComandoBoxOS || isComandoIniciarOS || isComandoPausarOS || isComandoFinalizarOS || isComandoRadarGargalos || isComandoConsultaEstoque || isComandoRequisitarPeca || isComandoLiberarGargalo || isComandoDevolverPeca || isComandoChecklistOk || isComandoChecklistFalha || isComandoConsultaLaudo;
+  // Comandos de Rastreamento de Garantia e Dossiê por Placa (Frente 9B)
+  const matchGarantiaPlaca = textoLower.match(/^!?(?:garantia\s+placa|hist[oó]rico\s+placa|consultar\s+placa)\s+([a-zA-Z0-9_\-]+)$/i);
+  const isComandoGarantiaPlaca = Boolean(matchGarantiaPlaca);
+
+  const matchVinculoGarantiaOS = textoLower.match(/^!?garantia\s+os\s*#?\s*([a-zA-Z0-9_\-]+)\s+origem\s*#?\s*([a-zA-Z0-9_\-]+)(?:\s+(.+))?$/i);
+  const isComandoVinculoGarantiaOS = Boolean(matchVinculoGarantiaOS);
+
+  const isComandoOperacionalPatio = isComandoBoxOS || isComandoIniciarOS || isComandoPausarOS || isComandoFinalizarOS || isComandoRadarGargalos || isComandoConsultaEstoque || isComandoRequisitarPeca || isComandoLiberarGargalo || isComandoDevolverPeca || isComandoChecklistOk || isComandoChecklistFalha || isComandoConsultaLaudo || isComandoGarantiaPlaca || isComandoVinculoGarantiaOS;
 
   const matchComandoOS = textoLower.match(/(?:extrato|financeiro|saldo)\s+(?:da\s+|de\s+)?(?:os|o\.s\.)\s*#?\s*([a-zA-Z0-9_\-]+)/i) ||
                          textoLower.match(/(?:os|o\.s\.)\s*#?\s*([a-zA-Z0-9_\-]+)\s+(?:financeiro|extrato|saldo)/i) ||
@@ -1828,6 +1835,98 @@ async function processarMensagemTexto(msg, {
         return true;
       } catch (err) {
         await msg.reply(`⚠️ *Não foi possível consultar o laudo da OS:* ${err.message}`);
+        await auditarComandoWhatsApp({
+          tenantId: tenantKey,
+          numero: senderNorm,
+          comando: textoMensagem,
+          resultado: 'falha',
+          detalhes: { erro: err.message }
+        });
+        return true;
+      }
+    }
+
+    // 13. Comando: garantia placa <placa> ou historico placa <placa>
+    if (isComandoGarantiaPlaca && matchGarantiaPlaca) {
+      const placaParam = matchGarantiaPlaca[1].trim();
+
+      try {
+        const dossie = financialAnalystService.obterHistoricoGarantiaPlaca(tenantState, placaParam);
+        await msg.reply(dossie.dossieTextoWhatsapp);
+        await auditarComandoWhatsApp({
+          tenantId: tenantKey,
+          numero: senderNorm,
+          comando: textoMensagem,
+          resultado: 'sucesso',
+          detalhes: { placa: placaParam, emGarantiaAtiva: dossie.emGarantiaAtiva, totalOS: dossie.totalOS }
+        });
+        return true;
+      } catch (err) {
+        await msg.reply(`⚠️ *Não foi possível consultar o histórico da placa:* ${err.message}`);
+        await auditarComandoWhatsApp({
+          tenantId: tenantKey,
+          numero: senderNorm,
+          comando: textoMensagem,
+          resultado: 'falha',
+          detalhes: { erro: err.message }
+        });
+        return true;
+      }
+    }
+
+    // 14. Comando: garantia os <osId> origem <osOrigemId> <motivo>
+    if (isComandoVinculoGarantiaOS && matchVinculoGarantiaOS) {
+      const osParam = matchVinculoGarantiaOS[1].trim();
+      const origemParam = matchVinculoGarantiaOS[2].trim();
+      const motivoParam = (matchVinculoGarantiaOS[3] || '').trim() || 'Retorno para reparo coberto por garantia';
+
+      try {
+        const resGarantia = financialAnalystService.registrarRetornoGarantiaOS(tenantState, {
+          osId: osParam,
+          osOrigemId: origemParam,
+          motivoGarantia: motivoParam,
+          isentarCobranca: true,
+          operador: {
+            actorId: `whatsapp:${senderNorm}`,
+            nome: `WhatsApp (${senderNorm})`
+          }
+        });
+
+        try {
+          await salvarEstado(tenantKey, tenantState);
+        } catch (errPersist) {
+          console.warn('[WhatsApp Handlers] Falha ao persistir retorno em garantia:', errPersist.message);
+        }
+
+        try {
+          await recordSecurityAudit({
+            tenantId: tenantKey,
+            actorId: `whatsapp:${senderNorm}`,
+            actorType: 'whatsapp_sender',
+            action: 'patio:os:retorno_garantia',
+            entity: 'ordem_servico',
+            entityId: String(resGarantia.osId),
+            details: {
+              osId: resGarantia.osId,
+              osOrigemId: resGarantia.osOrigemGarantiaId,
+              motivoGarantia: resGarantia.motivoGarantia,
+              origem: 'whatsapp'
+            }
+          });
+        } catch (_) {}
+
+        const msgSucesso = `🛡️ *RETORNO EM GARANTIA VINCULADO!* 🔄\n\n• *OS Atual:* #${resGarantia.num}\n• *OS Origem:* #${resGarantia.osOrigemGarantiaId}\n• *Placa:* ${resGarantia.placa}\n• *Motivo:* ${resGarantia.motivoGarantia}\n• *Status de Liberação:* 🛡️ Liberado (Garantia)\n• *Cobrança:* Isenta na Portaria`;
+        await msg.reply(msgSucesso);
+        await auditarComandoWhatsApp({
+          tenantId: tenantKey,
+          numero: senderNorm,
+          comando: textoMensagem,
+          resultado: 'sucesso',
+          detalhes: { osId: resGarantia.osId, osOrigemId: resGarantia.osOrigemGarantiaId }
+        });
+        return true;
+      } catch (err) {
+        await msg.reply(`⚠️ *Falha ao vincular retorno em garantia:* ${err.message}`);
         await auditarComandoWhatsApp({
           tenantId: tenantKey,
           numero: senderNorm,

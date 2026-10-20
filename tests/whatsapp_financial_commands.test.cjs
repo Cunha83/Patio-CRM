@@ -2363,6 +2363,84 @@ test('WhatsApp Agente Financeiro - Suíte Completa de Leitura e Escrita Controla
     `);
     assert.ok(auditRows.length >= 2, 'Deve registrar auditorias de reprovação e aprovação de checklist');
   });
+
+  // ── 34. RASTREAMENTO DE GARANTIA POR PLACA E VÍNCULO DE RETORNO VIA WHATSAPP (FRENTE 9B) ──
+  await t.test('34. Comandos de Consulta de Garantia por Placa e Registro de Retorno via WhatsApp Bot', async () => {
+    const mockState = criarEstadoMock({
+      comandosFinanceirosEscrita: true
+    });
+    const mecanicoFone = '5511977776666';
+    const agoraSP = financialEngine.obterAgoraSP();
+    const dHoje = agoraSP.dataISO;
+    const dPassado15 = financialEngine.addDias(dHoje, -15);
+
+    mockState.os = [
+      {
+        id: '401',
+        numero: '401',
+        num: 401,
+        st: 'finalizada',
+        etapaPatio: 'finalizada',
+        placa: 'KMT5544',
+        mecanico: 'Mecânico Carlos',
+        total: 2800,
+        concluidoExecucaoEm: `${dPassado15}T14:00:00.000Z`,
+        pecasUtilizadas: [
+          { id: 'pec_pino', nome: 'Pino de Centro 1/2', quantidade: 2, subtotal: 180 }
+        ],
+        historicoPatio: []
+      },
+      {
+        id: '404',
+        numero: '404',
+        num: 404,
+        st: 'executando',
+        etapaPatio: 'em_execucao',
+        placa: 'KMT5544',
+        total: 0,
+        historicoPatio: []
+      }
+    ];
+
+    // 34.1 Consulta de garantia e histórico por placa
+    const repliesDossie = [];
+    await processarMensagemTexto({
+      from: `${mecanicoFone}@c.us`,
+      author: `${mecanicoFone}@c.us`,
+      body: 'garantia placa KMT5544',
+      reply: async (txt) => { repliesDossie.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: mecanicoFone });
+
+    assert.equal(repliesDossie.length, 1);
+    assert.match(repliesDossie[0], /DOSSIÊ HISTÓRICO & GARANTIA POR PLACA/i);
+    assert.match(repliesDossie[0], /GARANTIA ATIVA \(90 DIAS\)/);
+    assert.match(repliesDossie[0], /Mecânico Carlos/);
+    assert.match(repliesDossie[0], /Pino de Centro/);
+
+    // 34.2 Vínculo de retorno em garantia na OS atual
+    const repliesGarantia = [];
+    await processarMensagemTexto({
+      from: `${mecanicoFone}@c.us`,
+      author: `${mecanicoFone}@c.us`,
+      body: 'garantia os 404 origem 401 folga de pino recorrente',
+      reply: async (txt) => { repliesGarantia.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: mecanicoFone });
+
+    assert.equal(repliesGarantia.length, 1);
+    assert.match(repliesGarantia[0], /RETORNO EM GARANTIA VINCULADO/i);
+    assert.match(repliesGarantia[0], /OS Origem:\* #401/);
+    assert.match(repliesGarantia[0], /Liberado \(Garantia\)/);
+    assert.equal(mockState.os[1].isRetornoGarantia, true);
+    assert.equal(mockState.os[1].osOrigemGarantiaId, '401');
+
+    // 34.3 Auditoria no banco SQLite
+    const auditRows = await all(`
+      SELECT action, entity_id FROM security_audit_log
+      WHERE action = 'patio:os:retorno_garantia'
+      ORDER BY id ASC
+    `);
+    assert.ok(auditRows.length >= 1, 'Deve registrar auditoria do retorno de garantia');
+  });
 });
 
 
