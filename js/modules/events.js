@@ -554,6 +554,44 @@ document.addEventListener('click', e => {
       break;
     }
 
+    case 'historico-placa-os': {
+      const osId = b.dataset.osId || b.dataset.id || (o && o.id);
+      let placa = b.dataset.placa;
+      if (!placa) {
+        const alvo = (S.os || []).find(x => String(x.id) === String(osId));
+        if (alvo) {
+          const v = typeof V === 'function' ? V(alvo.vei) : null;
+          placa = alvo.placa || (v && v.placa) || '';
+        }
+      }
+      if (!placa) {
+        torrar('Placa não identificada para esta OS.', 'aviso');
+        break;
+      }
+
+      fetch(`/api/financeiro/patio/placa/${encodeURIComponent(placa)}/historico`)
+        .then(async r => {
+          const d = await r.json().catch(() => ({}));
+          if (!r.ok) {
+            torrar(d.mensagem || d.error || 'Erro ao consultar histórico da placa.', 'aviso');
+            return;
+          }
+          const garantiaTxt = d.emGarantiaAtiva ? '🛡️ EM GARANTIA ATIVA (90 dias)' : '⚪ Fora da garantia';
+          const pecasResumo = Array.isArray(d.pecasAplicadasHistorico) && d.pecasAplicadasHistorico.length > 0
+            ? d.pecasAplicadasHistorico.map(p => `${p.nome} (qtd: ${p.quantidadeTotal})`).join(', ')
+            : 'Nenhuma peça registrada';
+          const msg = `Dossiê Placa ${d.placa}:\n- Status: ${garantiaTxt}\n- Total de OSs: ${d.totalOS || 0}\n- OSs Concluídas: ${d.totalConcluidas || 0}\n- Peças Históricas: ${pecasResumo}`;
+          if (typeof alert === 'function') {
+            alert(msg);
+          }
+          torrar(`🔍 Placa ${d.placa}: ${d.totalOS || 0} OS(s) | ${garantiaTxt}`, d.emGarantiaAtiva ? 'sucesso' : 'neutro');
+        })
+        .catch(() => {
+          torrar('Erro de rede ao consultar histórico da placa.', 'erro');
+        });
+      break;
+    }
+
     case 'salvar-veiculo': {
       const r = S.ui.rascVeiculo;
       if (!r || !r.placa) { torrar('Digite a placa do caminhão'); break; }

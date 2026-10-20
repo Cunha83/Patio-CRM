@@ -3,8 +3,8 @@
 **Projeto:** Pátio CRM  
 **Versão:** `1.0.0`  
 **Fase:** Piloto Controlado em Ambiente Operacional (1 Oficina)  
-**Data de Congelamento:** 2026-10-20T16:28:38.401Z  
-**Commit Git:** `6c0d7edc02274459df9f2738893a66ac415885b4` (`branch: main`)  
+**Data de Congelamento:** 2026-10-20T16:34:57.019Z  
+**Commit Git:** `3e053815317c955b7f6e880f3926de172ccb424d` (`branch: main`)  
 **Ambiente:** Node.js `v24.21.0` em `win32-x64`  
 **Total de Arquivos Auditados:** 172  
 
@@ -57,11 +57,11 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 | `js/modules/cadastros_forms.js` | `086fc5ea2eaeece08e80fb3ec5afc498c35c91f2a72ad93d28ad204462e310e1` |
 | `js/modules/consulta_cliente.js` | `7ece858b03b9c9beba957e34cffdca741f43d42cdfcf557dd641bec01a72b046` |
 | `js/modules/dashboard_metrics.js` | `73a3a818cbe09d3643e9703c749d903eb19ff29c078d63649741c8ddfa830a94` |
-| `js/modules/events.js` | `fc6d78800bca63f06fb73a261de686c57241c80ed9b4f62ecaf9754856282554` |
-| `js/modules/financeiro_analista.js` | `8e6584c986fec57187085285d32d56950a3de13fbcbb1554e72d48454d712d7d` |
+| `js/modules/events.js` | `49090ce084fb6128c3ed26d8f26c2f57e0ba3ef8bf6b8059c8ecda02c93d581e` |
+| `js/modules/financeiro_analista.js` | `0073fd91151577f3eb805679caf5970af8031e4470b223058fa18c4d561947cc` |
 | `js/modules/integrations.js` | `772d00897136a9ff96bf16202c90bde33e16951388cf2c77795f209b1678cbcb` |
 | `js/modules/navigation.js` | `ad67b448a14525e2d4a3e257469f6b384ccb05aba5cea98d7fd13f5d895c7c7d` |
-| `js/modules/patio_render.js` | `4c4118483be31677a54c6ce02273b509fce49207b14f1b695a864064b50eb397` |
+| `js/modules/patio_render.js` | `744c29bd9ea40eaca09065e0c92c1fbd1ccad69e90ba1daf76a877813e898352` |
 | `js/patio.js` | `345bdc70b6d6ee4483119267c1848bd521cb6481be684eb4e802de5fc45d1ba2` |
 | `js/relatorios.js` | `030ca55304494adf9abcb961f24ee153993656c3f22c84ea51d347c410904614` |
 | `js/state.js` | `6edb2ab58c71a930140aa3f178ab3ef22752288be3a31524dc6a057a1d7b1857` |

@@ -949,16 +949,33 @@ function calcularStatusLiberacaoOSFrontend(o) {
       liberacaoExcepcional: o.liberacaoExcepcional || null
     };
   }
+  if (o.isRetornoGarantia || o.statusLiberacaoPatio === 'liberado_garantia') {
+    return {
+      status: 'liberado_garantia',
+      label: '🛡️ Liberado (Garantia)',
+      cor: '#0e7490',
+      bg: '#cffafe',
+      borda: '#a5f3fc',
+      total,
+      totalPago,
+      saldoRestante: 0,
+      totalFaturadoPrazo,
+      titulosOS,
+      liberacaoExcepcional: null
+    };
+  }
   return { status: 'retido_pendente', label: '🟡 Retido (Saldo Pendente)', cor: '#854d0e', bg: '#fef9c3', borda: '#fef08a', total, totalPago, saldoRestante, totalFaturadoPrazo, titulosOS, liberacaoExcepcional: null };
 }
 
 function renderBadgeLiberacaoPatio(o) {
   const lib = calcularStatusLiberacaoOSFrontend(o);
-  if (lib.total <= 0 && lib.status !== 'liberado_excepcional') return '';
+  if (lib.total <= 0 && lib.status !== 'liberado_excepcional' && lib.status !== 'liberado_garantia') return '';
   const tooltip = (lib.status === 'liberado_excepcional' && lib.liberacaoExcepcional)
     ? `Liberação Excepcional Auditada: ${typeof esc === 'function' ? esc(lib.liberacaoExcepcional.justificativa || 'Autorizado') : (lib.liberacaoExcepcional.justificativa || 'Autorizado')} (por ${typeof esc === 'function' ? esc(lib.liberacaoExcepcional.autorizadoPor || 'Admin') : (lib.liberacaoExcepcional.autorizadoPor || 'Admin')})`
-    : `Total: ${typeof brl === 'function' ? brl(lib.total) : lib.total} | Pago: ${typeof brl === 'function' ? brl(lib.totalPago) : lib.totalPago} | Saldo: ${typeof brl === 'function' ? brl(lib.saldoRestante) : lib.saldoRestante}`;
-  return `<span class="selo" style="background:${lib.bg};color:${lib.cor};border:1px solid ${lib.borda};font-size:10px;font-weight:700" title="${tooltip}">${lib.label}</span>`;
+    : (lib.status === 'liberado_garantia'
+      ? `Retorno de Garantia (Isento): OS Origem #${o.osOrigemGarantiaId || 'N/A'}`
+      : `Total: ${typeof brl === 'function' ? brl(lib.total) : lib.total} | Pago: ${typeof brl === 'function' ? brl(lib.totalPago) : lib.totalPago} | Saldo: ${typeof brl === 'function' ? brl(lib.saldoRestante) : lib.saldoRestante}`);
+  return `<span class="selo ${lib.status === 'liberado_garantia' ? 'selo-liberado-garantia' : ''}" style="background:${lib.bg};color:${lib.cor};border:1px solid ${lib.borda};font-size:10px;font-weight:700" title="${tooltip}">${lib.label}</span>`;
 }
 
 function radarLiberacaoPatioHtml() {
@@ -978,6 +995,7 @@ function radarLiberacaoPatioHtml() {
   const quitadas = dadosOS.filter(d => d.lib.status === 'liberado_quitado');
   const faturadas = dadosOS.filter(d => d.lib.status === 'liberado_faturado');
   const excepcionais = dadosOS.filter(d => d.lib.status === 'liberado_excepcional');
+  const garantias = dadosOS.filter(d => d.lib.status === 'liberado_garantia');
   const retidas = dadosOS.filter(d => d.lib.status === 'retido_pendente');
   const totalRetido = retidas.reduce((a, b) => a + (b.lib.saldoRestante || 0), 0);
 
@@ -994,6 +1012,7 @@ function radarLiberacaoPatioHtml() {
           <span class="selo" style="background:#dcfce7;color:#166534;border:1px solid #bbf7d0;font-weight:700">🟢 ${quitadas.length} Quitado(s)</span>
           <span class="selo" style="background:#dbeafe;color:#1e40af;border:1px solid #bfdbfe;font-weight:700">🔵 ${faturadas.length} Faturado(s)</span>
           <span class="selo" style="background:#f3e8ff;color:#6b21a8;border:1px solid #d8b4fe;font-weight:700">🟣 ${excepcionais.length} Exceção</span>
+          ${garantias.length > 0 ? `<span class="selo" style="background:#cffafe;color:#0e7490;border:1px solid #a5f3fc;font-weight:700">🛡️ ${garantias.length} Garantia</span>` : ''}
           <span class="selo" style="background:#fef9c3;color:#854d0e;border:1px solid #fef08a;font-weight:700">🟡 ${retidas.length} Retido(s)</span>
         </div>
       </div>
@@ -1014,6 +1033,13 @@ function radarLiberacaoPatioHtml() {
           <div class="mini" style="font-weight:600;color:#6b21a8">Liberados por Exceção Auditada</div>
           <div style="font-size:18px;font-weight:800;color:#6b21a8" class="num">${excepcionais.length} OS(s)</div>
           <div class="mini">Autorização excepcional de diretoria</div>
+        </div>
+        ` : ''}
+        ${garantias.length > 0 ? `
+        <div style="background:rgba(14, 116, 144, 0.06);border:1px solid rgba(14, 116, 144, 0.3);border-radius:8px;padding:12px">
+          <div class="mini" style="font-weight:600;color:#0e7490">Liberados em Garantia</div>
+          <div style="font-size:18px;font-weight:800;color:#0e7490" class="num">${garantias.length} OS(s)</div>
+          <div class="mini">Retorno sem custo de portaria</div>
         </div>
         ` : ''}
         <div style="background:rgba(234, 179, 8, 0.08);border:1px solid rgba(234, 179, 8, 0.4);border-radius:8px;padding:12px">

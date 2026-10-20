@@ -82,6 +82,19 @@ test('js/modules/patio_render.js: sintaxe e exportações das funções de rende
   const badgesReprovada = mockGlobal.renderBadgesOperacionaisPatio(osReprovada);
   assert.ok(badgesReprovada.includes('⚠️ Falha Vistoria'), 'Badge deve conter selo de falha na vistoria');
 
+  // Testes de badges de retorno de garantia e liberação (Frente 9C)
+  const osGarantia = {
+    ...osComGargalo,
+    isRetornoGarantia: true,
+    osOrigemGarantiaId: 990,
+    statusLiberacaoPatio: 'liberado_garantia'
+  };
+  const badgesGarantia = mockGlobal.renderBadgesOperacionaisPatio(osGarantia);
+  assert.ok(badgesGarantia.includes('🔄 Garantia (OS #990)'), 'Badge deve conter selo de retorno de garantia com OS de origem');
+  assert.ok(badgesGarantia.includes('selo-garantia'), 'Badge de garantia deve ter a classe selo-garantia');
+  assert.ok(badgesGarantia.includes('🛡️ Liberado (Garantia)'), 'Badge deve conter selo de liberado garantia');
+  assert.ok(badgesGarantia.includes('selo-liberado-garantia'), 'Badge de liberado garantia deve ter a classe selo-liberado-garantia');
+
   // Teste de renderização do cardOS
   const htmlCard = mockGlobal.cardOS(mockGlobal.S.os[0], mockGlobal.S.boxes[0]);
   assert.ok(htmlCard.includes('OS 1001'), 'Card deve renderizar o número da OS');
@@ -89,6 +102,9 @@ test('js/modules/patio_render.js: sintaxe e exportações das funções de rende
   assert.ok(htmlCard.includes('Box 01'), 'Card deve identificar o box associado');
   assert.ok(htmlCard.includes('data-act="copiar-aviso-os"'), 'Card deve exibir ação rápida copiar aviso OS');
   assert.ok(htmlCard.includes('Copiar Aviso'), 'Texto de copiar aviso deve estar presente');
+  assert.ok(htmlCard.includes('data-act="historico-placa-os"'), 'Card deve exibir ação rápida consultar histórico da placa');
+  assert.ok(htmlCard.includes('Histórico Placa'), 'Texto do botão de histórico da placa deve estar presente');
+  assert.ok(htmlCard.includes('data-placa="ABC1D23"'), 'Botão de histórico deve conter atributo data-placa');
   assert.ok(htmlCard.includes('data-act="aprovar-checklist-os"'), 'Card deve exibir ação rápida aprovar checklist');
   assert.ok(htmlCard.includes('Checklist OK'), 'Texto de aprovar checklist deve estar presente');
 

@@ -57,6 +57,14 @@ function renderBadgesOperacionaisPatio(o) {
     badges.push(`<span class="selo selo-vistoria-falha" style="background:#fef2f2;color:#b91c1c;border:1px solid #fecaca;font-size:10px;font-weight:700" title="Falha Crítica na Vistoria Técnica: Liberação Bloqueada">⚠️ Falha Vistoria</span>`);
   }
 
+  // Retorno de Garantia e Liberação Isenta (Frente 9C)
+  if (o.isRetornoGarantia) {
+    badges.push(`<span class="selo selo-garantia" title="Veículo em retorno de garantia">🔄 Garantia (OS #${safeEsc(o.osOrigemGarantiaId || 'origem')})</span>`);
+  }
+  if (o.statusLiberacaoPatio === 'liberado_garantia') {
+    badges.push(`<span class="selo selo-liberado-garantia" style="background:#cffafe;color:#0e7490;border:1px solid #a5f3fc;font-size:10px;font-weight:700" title="Veículo liberado por retorno de garantia">🛡️ Liberado (Garantia)</span>`);
+  }
+
   return badges.join(' ');
 }
 
@@ -250,6 +258,8 @@ function cardOS(o, b) {
   const total = totOS(o);
   const stInfo = ST[o.st] || ST.fila;
   const qtdItens = (o.servicos ? o.servicos.length : 0) + (o.pecas ? o.pecas.length : 0);
+  const safeEsc = typeof esc === 'function' ? esc : (s => String(s || ''));
+  const placaVal = o.placa || (v && v.placa) || '';
 
   return `
   <div class="box card" data-act="abrir-os" data-id="${o.id}" data-st="${o.st}">
@@ -316,6 +326,9 @@ function cardOS(o, b) {
         ` : '')}
         <button class="btn btn-secundario" data-act="copiar-aviso-os" data-id="${o.id}" style="font-size:11px;padding:3px 8px;border-radius:6px;height:26px;font-weight:600" title="Copiar aviso pronto para WhatsApp do cliente">
           📲 Copiar Aviso
+        </button>
+        <button type="button" class="btn btn-sm btn-outline-info" data-act="historico-placa-os" data-os-id="${safeEsc(o.id)}" data-placa="${safeEsc(placaVal)}" title="Consultar histórico de manutenções e garantia desta placa" style="font-size:11px;padding:3px 8px;border-radius:6px;height:26px;font-weight:600">
+          🔍 Histórico Placa
         </button>
         ${o.statusChecklist !== 'aprovado' && o.st !== 'finalizada' ? `
           <button class="btn btn-sucesso" data-act="aprovar-checklist-os" data-id="${o.id}" style="font-size:11px;padding:3px 8px;border-radius:6px;height:26px;font-weight:600" title="Aprovar Vistoria Técnica de Freios e Suspensão">

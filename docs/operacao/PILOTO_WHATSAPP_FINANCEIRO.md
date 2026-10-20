@@ -550,6 +550,42 @@ Mecânicos e inspetores podem registrar e consultar o laudo de vistoria diretame
 - **Trilha de Auditoria**:
   - Todas as aprovações e reprovações de checklist são registradas no SQLite (`patio:os:checklist_tecnico`).
 
+---
+
+## 14. Rastreamento de Garantia por Placa (90 dias), Retorno em Garantia e Dossiê Operacional
+
+### A. Regra da Janela de Garantia (90 Dias Canônicos)
+Para frotistas e transportadoras de linha pesada, a confiabilidade de peças e serviços de molas, suspensão e freios é crítica.
+- **Janela Padrão**: 90 dias corridos a partir da data de entrega/conclusão de qualquer Ordem de Serviço anterior.
+- **Dossiê Unificado**: A busca por placa unifica todo o histórico de manutenções, peças aplicadas, datas de intervenção e alertas de garantia ativa.
+
+### B. Liberação Isenta de Portaria (`liberado_garantia`)
+Quando um caminhão retorna à oficina em garantia:
+- A OS atual é vinculada formalmente à OS de origem (`isRetornoGarantia: true`, `osOrigemGarantiaId`, `motivoGarantia`).
+- O status de liberação do veículo é definido como `liberado_garantia`.
+- **Portaria Inteligente**: Veículos em retorno de garantia são autorizados a sair do pátio sem exigência de quitação financeira ou faturamento a prazo, evitando paradas indevidas na guarita.
+- **Aviso ao Cliente**: Os avisos gerados pelo WhatsApp destacam a isenção de custos decorrente da cobertura de garantia.
+
+### C. Comandos do WhatsApp Bot
+1. **Consulta de Histórico e Garantia por Placa**:
+   - `garantia placa <placa>` ou `historico placa <placa>` ou `consultar placa <placa>`
+   - Exemplo: `garantia placa ABC1D23`
+   - Retorna dossiê com total de OSs, indicador se o veículo está em garantia ativa de 90 dias, data da última entrega e relação consolidada de peças aplicadas.
+2. **Vinculação de Retorno de Garantia na OS**:
+   - `garantia os <osId> origem <osOrigemId> <motivo>`
+   - Exemplo: `garantia os 105 origem 101 mola quebrou novamente`
+   - Vincula a OS atual à OS de origem, marca o serviço como isento, atribui o status `liberado_garantia` e notifica o canal operacional.
+
+### D. Indicadores Visuais e Dossiê no Frontend
+- **Badges no Card da OS**:
+  - `🔄 Garantia (OS #<origem>)`: destaca imediatamente para os mecânicos e pátio que o serviço se trata de um retrabalho coberto.
+  - `🛡️ Liberado (Garantia)`: identifica que a liberação na portaria está autorizada sem pendência financeira.
+- **Ação Rápida no Pátio**:
+  - Botão `🔍 Histórico Placa` (`data-act="historico-placa-os"`): permite que qualquer operador consulte o dossiê completo de manutenções e peças daquele cavalo mecânico com 1 clique direto no card.
+- **Trilha de Auditoria**:
+  - Toda vinculação de retorno de garantia é persistida e auditada no SQLite (`patio:os:retorno_garantia`).
+
+
 
 
 
