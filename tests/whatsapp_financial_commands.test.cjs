@@ -2441,6 +2441,109 @@ test('WhatsApp Agente Financeiro - Suíte Completa de Leitura e Escrita Controla
     `);
     assert.ok(auditRows.length >= 1, 'Deve registrar auditoria do retorno de garantia');
   });
+
+  // ── 35. COMANDOS DE RELATÓRIO PERIÓDICO E PRODUTIVIDADE VIA BOT (FRENTE 10B) ──
+  await t.test('35. Comandos de Relatório Semanal, Mensal e Produtividade via WhatsApp Bot', async () => {
+    const mockState = criarEstadoMock({
+      comandosFinanceirosEscrita: true
+    });
+    const mecanicoFone = '5511966665555';
+    const donoFone = '5511999998888';
+    const agoraSP = financialEngine.obterAgoraSP();
+    const dHoje = agoraSP.dataISO;
+
+    mockState.mecanicos.push({
+      id: 'mec-carlos',
+      nome: 'Mecânico Carlos',
+      fone: mecanicoFone
+    });
+    mockState.boxes = [
+      { id: 'BOX-01', nome: 'Box 01 — Linha Pesada' },
+      { id: 'BOX-02', nome: 'Box 02 — Freios' }
+    ];
+    mockState.os = [
+      {
+        id: '501',
+        num: 501,
+        st: 'finalizada',
+        mecanico: 'Mecânico Carlos',
+        box: 'BOX-01',
+        concluidoEm: `${dHoje}T11:00:00`,
+        tempoOcupacaoMinutos: 90,
+        servicos: [{ id: 's1', nome: 'Troca de Mola', valor: 1200 }],
+        totalPecas: 400
+      },
+      {
+        id: '502',
+        num: 502,
+        st: 'finalizada',
+        mecanico: 'Mecânico Carlos',
+        box: 'BOX-01',
+        concluidoEm: `${dHoje}T15:00:00`,
+        tempoOcupacaoMinutos: 60,
+        isRetornoGarantia: true,
+        servicos: [{ id: 's2', nome: 'Ajuste Garantia', valor: 300 }],
+        totalPecas: 0
+      }
+    ];
+
+    // 35.1 Comando: relatorio semanal
+    const repliesSemanal = [];
+    await processarMensagemTexto({
+      from: `${donoFone}@c.us`,
+      author: `${donoFone}@c.us`,
+      body: 'relatorio semanal',
+      reply: async (txt) => { repliesSemanal.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: donoFone });
+
+    assert.equal(repliesSemanal.length, 1);
+    assert.match(repliesSemanal[0], /BOLETIM DE PRODUTIVIDADE & BI \(SEMANAL\)/i);
+    assert.match(repliesSemanal[0], /Faturamento Mão de Obra/i);
+    assert.match(repliesSemanal[0], /Mecânico Destaque/i);
+    assert.match(repliesSemanal[0], /Mecânico Carlos/);
+    assert.match(repliesSemanal[0], /Box 01/);
+
+    // 35.2 Comando: relatorio mensal
+    const repliesMensal = [];
+    await processarMensagemTexto({
+      from: `${donoFone}@c.us`,
+      author: `${donoFone}@c.us`,
+      body: 'relatorio mensal',
+      reply: async (txt) => { repliesMensal.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: donoFone });
+
+    assert.equal(repliesMensal.length, 1);
+    assert.match(repliesMensal[0], /BOLETIM DE PRODUTIVIDADE & BI \(MENSAL\)/i);
+    assert.match(repliesMensal[0], /Total de Comissões/i);
+
+    // 35.3 Comando: minha comissao (enviado pelo próprio mecânico)
+    const repliesMinhaComissao = [];
+    await processarMensagemTexto({
+      from: `${mecanicoFone}@c.us`,
+      author: `${mecanicoFone}@c.us`,
+      body: 'minha comissao',
+      reply: async (txt) => { repliesMinhaComissao.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: mecanicoFone });
+
+    assert.equal(repliesMinhaComissao.length, 1);
+    assert.match(repliesMinhaComissao[0], /EXTRATO DE COMISSÃO — MECÂNICO CARLOS/i);
+    assert.match(repliesMinhaComissao[0], /Base Comissionável/i);
+    // Comissão sobre 1200 (excluindo 300 de garantia): 20% de 1200 = 240
+    assert.match(repliesMinhaComissao[0], /240,00/);
+
+    // 35.4 Comando: comissoes (enviado pelo gestor / dono da oficina)
+    const repliesComissoesGeral = [];
+    await processarMensagemTexto({
+      from: `${donoFone}@c.us`,
+      author: `${donoFone}@c.us`,
+      body: 'comissoes',
+      reply: async (txt) => { repliesComissoesGeral.push(txt); }
+    }, { tenantKey: 'default', tenantState: mockState, fromNumber: donoFone });
+
+    assert.equal(repliesComissoesGeral.length, 1);
+    assert.match(repliesComissoesGeral[0], /EXTRATO DE COMISSÕES — FECHAMENTO MENSAL/i);
+    assert.match(repliesComissoesGeral[0], /Mecânico Carlos/);
+  });
 });
 
 

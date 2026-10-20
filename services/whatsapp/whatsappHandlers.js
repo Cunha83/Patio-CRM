@@ -685,7 +685,12 @@ async function processarMensagemTexto(msg, {
   const matchVinculoGarantiaOS = textoLower.match(/^!?garantia\s+os\s*#?\s*([a-zA-Z0-9_\-]+)\s+origem\s*#?\s*([a-zA-Z0-9_\-]+)(?:\s+(.+))?$/i);
   const isComandoVinculoGarantiaOS = Boolean(matchVinculoGarantiaOS);
 
-  const isComandoOperacionalPatio = isComandoBoxOS || isComandoIniciarOS || isComandoPausarOS || isComandoFinalizarOS || isComandoRadarGargalos || isComandoConsultaEstoque || isComandoRequisitarPeca || isComandoLiberarGargalo || isComandoDevolverPeca || isComandoChecklistOk || isComandoChecklistFalha || isComandoConsultaLaudo || isComandoGarantiaPlaca || isComandoVinculoGarantiaOS;
+  // Comandos de BI, Produtividade Periódica e Comissões (Frente 10B)
+  const isComandoRelatorioSemanal = /(?:^|\b)(?:!relat[oó]rio\s+semanal|relat[oó]rio\s+semanal|!produtividade\s+semana(?:l)?|produtividade\s+semana(?:l)?|boletim\s+semanal)\b/i.test(textoLower);
+  const isComandoRelatorioMensal = /(?:^|\b)(?:!relat[oó]rio\s+mensal|relat[oó]rio\s+mensal|fechamento\s+m[eê]s|!fechamento\s+m[eê]s|!produtividade\s+m[eê]s(?:al)?|produtividade\s+m[eê]s(?:al)?|boletim\s+mensal)\b/i.test(textoLower);
+  const isComandoComissoes = /(?:^|\b)(?:minhas?\s+comiss[oõ]es|!minha\s+comiss[aã]o|minha\s+comiss[aã]o|!comiss[oõ]es|comiss[oõ]es|comiss[aã]o|extrato\s+comiss[aã]o)\b/i.test(textoLower);
+
+  const isComandoOperacionalPatio = isComandoBoxOS || isComandoIniciarOS || isComandoPausarOS || isComandoFinalizarOS || isComandoRadarGargalos || isComandoConsultaEstoque || isComandoRequisitarPeca || isComandoLiberarGargalo || isComandoDevolverPeca || isComandoChecklistOk || isComandoChecklistFalha || isComandoConsultaLaudo || isComandoGarantiaPlaca || isComandoVinculoGarantiaOS || isComandoRelatorioSemanal || isComandoRelatorioMensal || isComandoComissoes;
 
   const matchComandoOS = textoLower.match(/(?:extrato|financeiro|saldo)\s+(?:da\s+|de\s+)?(?:os|o\.s\.)\s*#?\s*([a-zA-Z0-9_\-]+)/i) ||
                          textoLower.match(/(?:os|o\.s\.)\s*#?\s*([a-zA-Z0-9_\-]+)\s+(?:financeiro|extrato|saldo)/i) ||
@@ -1936,6 +1941,99 @@ async function processarMensagemTexto(msg, {
         });
         return true;
       }
+    }
+
+    // 15. Comando: relatorio semanal / produtividade semana (Frente 10B)
+    if (isComandoRelatorioSemanal) {
+      const agoraSP = financialEngine.obterAgoraSP();
+      const biSemanal = financialAnalystService.calcularProdutividadeEComissoes(tenantState, {
+        periodo: 'semanal',
+        dataRef: agoraSP.dataISO
+      });
+      const textoBoletim = financialAnalystService.formatarBoletimProdutividadeWhatsapp(biSemanal);
+      await msg.reply(textoBoletim);
+      await auditarComandoWhatsApp({
+        tenantId: tenantKey,
+        numero: senderNorm,
+        comando: textoMensagem,
+        resultado: 'sucesso',
+        detalhes: { tipo: 'bi_relatorio_semanal', totalOSConcluidas: biSemanal.resumo?.totalOSConcluidas, totalMaoDeObra: biSemanal.resumo?.totalMaoDeObra }
+      });
+      return true;
+    }
+
+    // 16. Comando: relatorio mensal / fechamento mes (Frente 10B)
+    if (isComandoRelatorioMensal) {
+      const agoraSP = financialEngine.obterAgoraSP();
+      const biMensal = financialAnalystService.calcularProdutividadeEComissoes(tenantState, {
+        periodo: 'mensal',
+        dataRef: agoraSP.dataISO
+      });
+      const textoBoletim = financialAnalystService.formatarBoletimProdutividadeWhatsapp(biMensal);
+      await msg.reply(textoBoletim);
+      await auditarComandoWhatsApp({
+        tenantId: tenantKey,
+        numero: senderNorm,
+        comando: textoMensagem,
+        resultado: 'sucesso',
+        detalhes: { tipo: 'bi_relatorio_mensal', totalOSConcluidas: biMensal.resumo?.totalOSConcluidas, totalMaoDeObra: biMensal.resumo?.totalMaoDeObra }
+      });
+      return true;
+    }
+
+    // 17. Comando: comissoes / minha comissao (Frente 10B)
+    if (isComandoComissoes) {
+      const agoraSP = financialEngine.obterAgoraSP();
+      const bi = financialAnalystService.calcularProdutividadeEComissoes(tenantState, {
+        periodo: 'mensal',
+        dataRef: agoraSP.dataISO
+      });
+
+      // Tenta localizar o mecânico associado ao número do remetente
+      const workersList = Array.isArray(tenantState?.workers) ? tenantState.workers : (Array.isArray(tenantState?.mecanicos) ? tenantState.mecanicos : []);
+      const senderWorker = workersList.find(w => {
+        const fone = normalizePhone(w.fone || w.telefone || w.phone || '');
+        return fone === senderNorm;
+      });
+
+      const nomeAlvo = senderWorker ? (senderWorker.nome || senderWorker.name) : (perfil?.nome || perfil?.fullName || '');
+      let mecDados = null;
+      if (nomeAlvo) {
+        mecDados = bi.produtividadeMecanicos.find(m =>
+          m.mecanico.toLowerCase().includes(nomeAlvo.toLowerCase()) ||
+          nomeAlvo.toLowerCase().includes(m.mecanico.toLowerCase())
+        );
+      }
+
+      if (mecDados) {
+        const textoExtrato = financialAnalystService.formatarExtratoComissaoWhatsapp(mecDados, bi.periodo);
+        await msg.reply(textoExtrato);
+      } else {
+        let txtComissoes = `🤝 *EXTRATO DE COMISSÕES — FECHAMENTO MENSAL* 💰\n`;
+        const deBR = financialEngine.formatarDataBR(bi.periodo.de);
+        const ateBR = financialEngine.formatarDataBR(bi.periodo.ate);
+        txtComissoes += `📅 *Período:* ${deBR} a ${ateBR}\n\n`;
+
+        if (bi.produtividadeMecanicos.length === 0) {
+          txtComissoes += `Nenhum mecânico com comissão apurada no período.`;
+        } else {
+          bi.produtividadeMecanicos.forEach((m, idx) => {
+            txtComissoes += `${idx + 1}. *${m.mecanico}*: ${financialEngine.formatarMoeda(m.valorComissao)} (${m.percentualComissao}%)\n`;
+            txtComissoes += `   └ Base: ${financialEngine.formatarMoeda(m.maoDeObraComissionavel)} em ${m.totalOSConcluidas} OS(s) finalizada(s)\n`;
+          });
+          txtComissoes += `\n💵 *Total de Comissões da Equipe:* ${financialEngine.formatarMoeda(bi.resumo.totalComissoes)}`;
+        }
+        await msg.reply(txtComissoes.trim());
+      }
+
+      await auditarComandoWhatsApp({
+        tenantId: tenantKey,
+        numero: senderNorm,
+        comando: textoMensagem,
+        resultado: 'sucesso',
+        detalhes: { tipo: 'bi_consulta_comissoes', totalComissoes: bi.resumo.totalComissoes }
+      });
+      return true;
     }
   }
 

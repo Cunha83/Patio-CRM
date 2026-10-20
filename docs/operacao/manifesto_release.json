@@ -2,9 +2,9 @@
   "projeto": "Patio-CRM",
   "versao": "1.0.0",
   "fase": "Fase 3 — Piloto Controlado em Ambiente Operacional",
-  "dataGeracao": "2026-10-20T17:13:44.183Z",
+  "dataGeracao": "2026-10-20T17:18:15.270Z",
   "git": {
-    "commit": "a8863236e64ff4023748ead284838779adca73db",
+    "commit": "4fa8e653b4c21bf39eba17ac37df7dee6d8dfb7a",
     "branch": "main"
   },
   "ambienteExecucao": {
@@ -192,7 +192,7 @@
     "services/voiceActionEngine.js": "963bc5843cc26320598e5f96c36f70bbb29ac4433035ebfccaf34d27bdbaff8c",
     "services/warrantyService.js": "e2772f7e3d8987ebba0d4e6a97e2dfad10f3210e490616902629c68d68ebb14b",
     "services/whatsapp/whatsappClient.js": "42a50ddf76c999477b7ce373bfc5bfec5511b4ae2929ca4ce0c8a047bec88654",
-    "services/whatsapp/whatsappHandlers.js": "447513a64387a207afbf70a27508634445b5ffa0b508eec8f60ad4cca0c7e261",
+    "services/whatsapp/whatsappHandlers.js": "ed53ff81bc357b3ee0a71931787630c6226ec82d69a2238d6f113a37fb6e15c1",
     "services/whatsapp/whatsappScheduler.js": "01a1ba654ab5f872d14a1ff5957083d496d979b7c0a1b5601dde2b3289e7d3a8",
     "services/whatsapp/whatsappState.js": "06aad441cc77f1e5adc508fea0b1a17f0ff59cbbc4862fb0ce3ac761a51e936b",
     "style.css": "ea8a3021eebbd6b45d3d56dd88958139734a39599dd9c2300be46714ec0d8297"
