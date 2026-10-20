@@ -2493,6 +2493,154 @@ test('26. Checklist Técnico Pesado (Suspensão & Freios) e Trava de Qualidade n
   }
 });
 
+test('27. Rastreamento de Garantia por Placa (90 dias) e Vínculo de Retorno em Garantia (Frente 9A)', async () => {
+  const fs = require('fs');
+  const os = require('os');
+  const express = require('express');
+  const http = require('http');
+  const { salvarEstado } = require('../lib/serverContext');
+  const { getDefaultState } = require('../lib/repository/stateRepository');
+  const { initDB, closeDB, all } = require('../db');
+  const financialRoutes = require('../routes/financial.routes');
+  const financialAnalystService = require('../services/financialAnalystService');
+  const financialEngine = require('../services/financialEngine');
+
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'patio-garantia-test-'));
+  const testDbPath = path.join(tempDir, 'test.db');
+  process.env.DB_PATH = testDbPath;
+
+  try {
+    await initDB();
+    const tenantId = 'tenant_garantia_9a';
+    const agoraSP = financialEngine.obterAgoraSP();
+    const dHoje = agoraSP.dataISO;
+    const dPassado20 = financialEngine.addDias(dHoje, -20);
+
+    const state = {
+      tenantId,
+      veiculos: [
+        { id: 'vei_gar_1', placa: 'GVR1234', marca: 'Scania', modelo: 'R440' }
+      ],
+      os: [
+        {
+          id: 'OS-100',
+          num: 100,
+          placa: 'GVR1234',
+          vei: 'vei_gar_1',
+          st: 'finalizada',
+          etapaPatio: 'finalizada',
+          mecanico: 'Mecânico Valter',
+          total: 3500,
+          concluidoExecucaoEm: `${dPassado20}T10:00:00.000Z`,
+          pecasUtilizadas: [
+            { id: 'pec_1', nome: 'Grampo de Mola 3/4', quantidade: 4, subtotal: 320 }
+          ],
+          historicoPatio: []
+        },
+        {
+          id: 'OS-101',
+          num: 101,
+          placa: 'GVR1234',
+          vei: 'vei_gar_1',
+          st: 'executando',
+          etapaPatio: 'em_execucao',
+          total: 0,
+          historicoPatio: []
+        }
+      ]
+    };
+
+    // 27.1 Consultar histórico por placa: deve apontar garantia ativa de 90 dias
+    const dossie = financialAnalystService.obterHistoricoGarantiaPlaca(state, 'GVR1234');
+    assert.equal(dossie.sucesso, true);
+    assert.equal(dossie.placa, 'GVR1234');
+    assert.equal(dossie.emGarantiaAtiva, true);
+    assert.equal(dossie.osRecentesGarantia.length, 1);
+    assert.equal(dossie.osRecentesGarantia[0].num, 100);
+    assert.equal(dossie.ultimoMecanico, 'Mecânico Valter');
+    assert.equal(dossie.pecasAplicadasHistorico.length, 1);
+    assert.match(dossie.dossieTextoWhatsapp, /GARANTIA ATIVA \(90 DIAS\)/);
+
+    // 27.2 Registrar retorno em garantia para a OS-101 vinculada à OS-100
+    const resRetorno = financialAnalystService.registrarRetornoGarantiaOS(state, {
+      osId: 'OS-101',
+      osOrigemId: '100',
+      motivoGarantia: 'Quebra de grampo aplicado na garantia',
+      isentarCobranca: true,
+      operador: 'Inspetor Roberto'
+    });
+    assert.equal(resRetorno.sucesso, true);
+    assert.equal(resRetorno.isRetornoGarantia, true);
+    assert.equal(resRetorno.osOrigemGarantiaId, '100');
+    assert.equal(resRetorno.statusLiberacaoPatio, 'liberado_garantia');
+
+    // 27.3 Verificar se a saída na portaria reconhece 'liberado_garantia'
+    const resSaida = financialAnalystService.validarOuAutorizarSaidaPatioOS(state, {
+      osId: 'OS-101'
+    });
+    assert.equal(resSaida.ok, true);
+    assert.equal(resSaida.autorizado, true);
+    assert.equal(resSaida.statusLiberacaoPatio, 'liberado_garantia');
+
+    // 27.4 Rotas HTTP GET histórico e POST retorno-garantia + auditoria SQLite
+    const app = express();
+    app.use(express.json());
+    app.use((req, res, next) => {
+      req.securityContext = {
+        actorId: 'gerente_1',
+        fullName: 'Gerente Roberto',
+        tenantId,
+        permissions: ['os:read', 'os:write', 'labor:read', 'labor:write', 'financial:read', 'financial:write', 'operation:manage']
+      };
+      req.headers['x-tenant-id'] = tenantId;
+      next();
+    });
+    app.use(financialRoutes);
+
+    const base = getDefaultState(tenantId);
+    await salvarEstado(tenantId, { ...base, ...state });
+
+    const server = http.createServer(app);
+    await new Promise(r => server.listen(0, '127.0.0.1', r));
+    const port = server.address().port;
+    const baseUrl = `http://127.0.0.1:${port}`;
+
+    try {
+      const resGetHist = await fetch(`${baseUrl}/api/financeiro/patio/placa/GVR1234/historico`);
+      assert.equal(resGetHist.status, 200);
+      const jsonHist = await resGetHist.json();
+      assert.equal(jsonHist.emGarantiaAtiva, true);
+      assert.equal(jsonHist.totalOS, 2);
+
+      const resPostGarantia = await fetch(`${baseUrl}/api/financeiro/os/OS-101/retorno-garantia`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          osOrigemId: '100',
+          motivoGarantia: 'Ajuste de tensor em garantia',
+          isentarCobranca: true
+        })
+      });
+      assert.equal(resPostGarantia.status, 200);
+      const jsonRetorno = await resPostGarantia.json();
+      assert.equal(jsonRetorno.success, true);
+      assert.equal(jsonRetorno.statusLiberacaoPatio, 'liberado_garantia');
+
+      // Auditoria no SQLite
+      const auditRows = await all(
+        "SELECT * FROM security_audit_log WHERE tenant_id = ? AND action = 'patio:os:retorno_garantia'",
+        [tenantId]
+      );
+      assert.ok(auditRows.length >= 1, 'Deve registrar auditoria do retorno de garantia');
+    } finally {
+      await new Promise(r => server.close(r));
+    }
+  } finally {
+    await closeDB().catch(() => {});
+    try { fs.rmSync(tempDir, { recursive: true, force: true }); } catch (_) {}
+  }
+});
+
 
 
 
