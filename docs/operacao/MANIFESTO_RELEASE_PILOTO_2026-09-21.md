@@ -3,8 +3,8 @@
 **Projeto:** Pátio CRM  
 **Versão:** `1.0.0`  
 **Fase:** Piloto Controlado em Ambiente Operacional (1 Oficina)  
-**Data de Congelamento:** 2026-10-20T17:23:42.022Z  
-**Commit Git:** `a23679f08fe5d7e3c592de2613e57885ee53f7ce` (`branch: main`)  
+**Data de Congelamento:** 2026-10-20T17:45:21.096Z  
+**Commit Git:** `551a1d4623ded63ff8d28c3fc39962b60320425a` (`branch: main`)  
 **Ambiente:** Node.js `v24.21.0` em `win32-x64`  
 **Total de Arquivos Auditados:** 172  
 
