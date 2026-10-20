@@ -615,6 +615,46 @@ Disponíveis para perfis autorizados (`mecanico`, `atendente`, `financeiro`, `do
 ### E. Consolidação da Release v1.0.0
 Com a conclusão da Frente 10 (10A, 10B e 10C), o Patio-CRM atinge o marco **v1.0.0**, com todas as rotinas operacionais (boxes, pátio, apontamento, almoxarifado, checklist pesado, garantias por placa, DRE operacional e BI de comissões) totalmente integradas, auditadas no SQLite e validadas criptograficamente pelo Manifesto de Release.
 
+---
+
+## 16. Checklist de Homologação, Homologação E2E e Critérios de Aceite para Produção
+
+### A. Matriz de Homologação e Critérios de Aceite (Go/No-Go)
+Para a liberação definitiva em ambiente operacional de produção, o sistema deve atender rigorosamente aos seguintes critérios inegociáveis:
+1. **Segurança RBAC Estrita**: Bloqueio compulsório com HTTP `403 Forbidden` para tentativas de acesso a endpoints financeiros críticos (`sangria`, `suprimento`, `estorno`, `faturamento`) por perfis não autorizados (`mecanico`, `atendente`).
+2. **Resiliência e Idempotência**: Travas de colisão em nível de domínio (`BOX_JA_OCUPADO`, `MOVIMENTO_JA_ESTORNADO`, `CAIXA_JA_FECHADO`, `ESTOQUE_INSUFICIENTE`) respondendo com HTTP `409 Conflict` e sem corrupção de estado.
+3. **Auditoria Transacional no SQLite**: Registro persistente e assíncrono de todos os eventos de mutação em `security_audit_log` (`patio:*` e `financeiro:*`).
+4. **Integridade do Banco de Dados**: Execução sem falhas de `PRAGMA integrity_check` retornando status `ok`.
+5. **Cobertura de Testes**: 100% de aprovação na bateria de suítes de teste executadas com `--test-concurrency=1`.
+6. **Integridade Criptográfica**: Todos os arquivos do repositório validados contra seus respectivos hashes SHA-256 no Manifesto de Release.
+
+### B. Suíte E2E da Jornada Completa de Linha Pesada (`tests/homologacao_e2e.test.cjs`)
+Valida a simulação ponta a ponta do fluxo real de atendimento de veículos pesados:
+1. **Etapa 1 — Entrada e Alocação de Box**: Registro da OS vinculada à placa e ocupação do box físico (`BOX-01`), com bloqueio automático contra sobreposição.
+2. **Etapa 2 — Início e Baixa de Peças**: Apontamento de início de serviço pelo mecânico e requisição de componentes de suspensão com dedução imediata no estoque.
+3. **Etapa 3 — Gestão de Gargalo Operacional**: Pausa do atendimento por falta de peça e desbloqueio/retomada com registro histórico de gargalo.
+4. **Etapa 4 — Vistoria Técnica e Qualidade**: Preenchimento e aprovação compulsória do Checklist Técnico de Linha Pesada (torque de grampos de mola, buchas e freios) antes da conclusão.
+5. **Etapa 5 — Pagamento Misto e Faturamento**: Recebimento de sinal via Pix no caixa ativo e faturamento do saldo residual a prazo via Boleto Bancário gerando títulos em Contas a Receber.
+6. **Etapa 6 — Portaria e Produtividade**: Validação da saída autorizada (`liberado_faturado`), desocupação do box e apuração de produtividade com cálculo de comissões expurgando ordens de retorno em garantia.
+
+### C. Blindagem de Segurança RBAC e Trilha de Auditoria SQLite (`tests/security_rbac_hardening.test.cjs`)
+- Valida o isolamento de privilégios com base no perfil autenticado (`req.securityContext`).
+- Injeção de payloads de teste de intrusão e caracteres especiais comprovando que o middleware de permissões aborta a requisição antes da camada de persistência.
+- Trilha de auditoria no SQLite gravando tentativas negadas e execuções autorizadas.
+
+### D. Estabilidade de Concorrência, Transações Atômicas e Travas de Idempotência (`tests/concurrency_stability.test.cjs`)
+- Simulação de disparos concorrentes em paralelo (`Promise.all`) disputando o mesmo box de oficina, comprovando que apenas uma OS conquista a vaga e as demais recebem HTTP `409 Conflict`.
+- Teste de idempotência contra duplicidade de estornos contábeis e fechamentos repetidos de caixa.
+- Verificação de estoque mínimo e prevenção de saldos negativos sob alta concorrência.
+
+### E. Checklist de Prontidão Operacional e Conclusão da Release v1.0.0-homologacao
+- [x] Árvore Git limpa e sincronizada com `origin/main`.
+- [x] Arquivo canônico `docs/evidencias/implantacao_real_host_2026-09-21.json` 100% intocado.
+- [x] Manifesto de release criptográfico (`manifesto_release.json`) atualizado com hashes SHA-256 de todos os artefatos.
+- [x] Suíte completa de testes unitários, de integração, segurança, estabilidade e E2E aprovada com zero falhas.
+- [x] Versão pronta para implantação assistida e homologação de campo: **v1.0.0-homologacao**.
+
+
 
 
 

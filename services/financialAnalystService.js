@@ -2617,7 +2617,7 @@ function requisitarPecaOS(state = {}, payload = {}) {
   let precoUnit = valorUnitario != null ? Number(valorUnitario) : null;
 
   if (pecaEncontrada) {
-    const saldoAtual = Number(pecaEncontrada.quantidade != null ? pecaEncontrada.quantidade : (pecaEncontrada.qtd != null ? pecaEncontrada.qtd : 0));
+    const saldoAtual = Number(pecaEncontrada.quantidade != null ? pecaEncontrada.quantidade : (pecaEncontrada.qtd != null ? pecaEncontrada.qtd : (pecaEncontrada.qtdAtual != null ? pecaEncontrada.qtdAtual : 0)));
     if (saldoAtual < qtdSolicitada) {
       const nomePeca = pecaEncontrada.nome || pecaEncontrada.descricao || pecaEncontrada.id;
       const err = new Error(`Estoque insuficiente para a peça "${nomePeca}". Solicitado: ${qtdSolicitada}, Disponível: ${saldoAtual}.`);
@@ -2631,6 +2631,7 @@ function requisitarPecaOS(state = {}, payload = {}) {
     const novoSaldo = saldoAtual - qtdSolicitada;
     if (pecaEncontrada.quantidade != null) pecaEncontrada.quantidade = novoSaldo;
     if (pecaEncontrada.qtd != null) pecaEncontrada.qtd = novoSaldo;
+    if (pecaEncontrada.qtdAtual != null) pecaEncontrada.qtdAtual = novoSaldo;
     if (pecaEncontrada.estoque != null) pecaEncontrada.estoque = novoSaldo;
 
     if (precoUnit == null) {

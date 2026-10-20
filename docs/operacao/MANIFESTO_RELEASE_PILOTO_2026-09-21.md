@@ -3,8 +3,8 @@
 **Projeto:** Pátio CRM  
 **Versão:** `1.0.0`  
 **Fase:** Piloto Controlado em Ambiente Operacional (1 Oficina)  
-**Data de Congelamento:** 2026-10-20T18:13:30.486Z  
-**Commit Git:** `fca8d59c24072fecffe50b9dc61cc7f13c38809b` (`branch: main`)  
+**Data de Congelamento:** 2026-10-20T18:21:02.204Z  
+**Commit Git:** `b6076f8687e1b2bb871671bf6e63a062e4b2c9df` (`branch: main`)  
 **Ambiente:** Node.js `v24.21.0` em `win32-x64`  
 **Total de Arquivos Auditados:** 172  
 
@@ -162,7 +162,7 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 | `services/demoDataService.js` | `33ed44c377f6dd14ee9e9d414419ae4232880084bd2f77df828754cf2ba7dd01` |
 | `services/erpIntegrationService.js` | `3c76f606c7af5831e0a413acd7e7fa5caba373d36e032c13f91c0ee629018ba4` |
 | `services/executiveManagerService.js` | `8b32de93f464a049d6bba458f31c4af999de75f2090aec4cf83605724cf77e8c` |
-| `services/financialAnalystService.js` | `8fbecbc06a760e136544cfecba40f97454298367ff0dad644efbe9e3989ddcee` |
+| `services/financialAnalystService.js` | `f6c52a885f460084a00c40be983825a759b9bd29a1ed64f130151a5f4ca5bf67` |
 | `services/financialEngine.js` | `5d8372836fe7dfc5b74fd54a87a49dcae97aedf49020d88ea72b180c6d19bfe8` |
 | `services/fiscal/decimal.js` | `5c060f6cb2308e6da4d0e4e747d52012cdaaa1964b46b02e5354b2169ff4a7f1` |
 | `services/fiscal/fiscalCalculationEngine.js` | `d6f2c2d7d0c694774f340e0aa6547dfad50473a9caaf2e1bd0a7f224d58cfe41` |
