@@ -2,9 +2,9 @@
   "projeto": "Patio-CRM",
   "versao": "1.0.0",
   "fase": "Fase 3 — Piloto Controlado em Ambiente Operacional",
-  "dataGeracao": "2026-10-20T18:21:02.204Z",
+  "dataGeracao": "2026-10-20T18:21:53.945Z",
   "git": {
-    "commit": "b6076f8687e1b2bb871671bf6e63a062e4b2c9df",
+    "commit": "ccf0688c5560513db37ca5f77dbf45d6497d516d",
     "branch": "main"
   },
   "ambienteExecucao": {
