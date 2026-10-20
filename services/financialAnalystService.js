@@ -418,7 +418,7 @@ function fecharCaixa(state = {}, payload = {}) {
   const caixaAberto = obterCaixaAberto(state, tenantId);
 
   if (!caixaAberto) {
-    return { ok: false, code: 'CAIXA_FECHADO', error: 'Não há nenhum turno de caixa aberto no momento para ser encerrado.' };
+    return { ok: false, code: 'CAIXA_JA_FECHADO', status: 409, error: 'Não há nenhum turno de caixa aberto no momento para ser encerrado.' };
   }
 
   const movimentos = Array.isArray(state.movimentos) ? state.movimentos : [];

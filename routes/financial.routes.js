@@ -150,14 +150,15 @@ router.post('/api/financeiro/caixa/fechar', requirePermission('financial:write',
       });
 
       if (!resultado.ok) {
-        return { abort: true, status: 400, error: resultado.error };
+        return { abort: true, status: resultado.status || 400, code: resultado.code, error: resultado.error };
       }
     });
 
     if (saveRes?.aborted) {
       return res.status(saveRes.status || 400).json({
         success: false,
-        error: saveRes.error
+        code: saveRes.mutatorResult?.code || saveRes.code,
+        error: saveRes.mutatorResult?.error || saveRes.error
       });
     }
 
@@ -292,8 +293,8 @@ router.post('/api/financeiro/os/:osId/faturar', requirePermission('financial:wri
     if (saveRes?.aborted) {
       return res.status(saveRes.status || 400).json({
         success: false,
-        code: saveRes.code,
-        error: saveRes.error
+        code: saveRes.mutatorResult?.code || saveRes.code,
+        error: saveRes.mutatorResult?.error || saveRes.error
       });
     }
 
@@ -1294,8 +1295,8 @@ router.post('/api/financeiro/titulos/:id/liquidar', requirePermission('financial
     if (saveRes?.aborted) {
       return res.status(saveRes.status || 400).json({
         success: false,
-        code: saveRes.code,
-        error: saveRes.error
+        code: saveRes.mutatorResult?.code || saveRes.code,
+        error: saveRes.mutatorResult?.error || saveRes.error
       });
     }
 
@@ -1402,14 +1403,15 @@ router.post('/api/financeiro/movimentacoes', requirePermission('financial:write'
       });
 
       if (!resultado.ok) {
-        return { abort: true, status: 400, error: resultado.error };
+        return { abort: true, status: resultado.status || 400, code: resultado.code, error: resultado.error };
       }
     });
 
     if (saveRes?.aborted) {
       return res.status(saveRes.status || 400).json({
         success: false,
-        error: saveRes.error
+        code: saveRes.mutatorResult?.code || saveRes.code,
+        error: saveRes.mutatorResult?.error || saveRes.error
       });
     }
 

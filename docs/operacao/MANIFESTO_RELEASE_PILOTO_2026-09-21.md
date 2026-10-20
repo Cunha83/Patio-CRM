@@ -3,8 +3,8 @@
 **Projeto:** Pátio CRM  
 **Versão:** `1.0.0`  
 **Fase:** Piloto Controlado em Ambiente Operacional (1 Oficina)  
-**Data de Congelamento:** 2026-10-20T17:45:21.096Z  
-**Commit Git:** `551a1d4623ded63ff8d28c3fc39962b60320425a` (`branch: main`)  
+**Data de Congelamento:** 2026-10-20T18:13:30.486Z  
+**Commit Git:** `fca8d59c24072fecffe50b9dc61cc7f13c38809b` (`branch: main`)  
 **Ambiente:** Node.js `v24.21.0` em `win32-x64`  
 **Total de Arquivos Auditados:** 172  
 
@@ -101,7 +101,7 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 | `routes/billing.routes.js` | `6c2c09619db18cc2a22af40f33ea308759d16ba47f07fc5d79dfa0050a9fc803` |
 | `routes/config.routes.js` | `e6766a281cb40fd78b85ce720acdad97045d6b202be608aaaae604b92d7892aa` |
 | `routes/crm.routes.js` | `0b57e1929f60c6961f36974877afcf55e0c474bdd9fff260283f4528ffb1ae42` |
-| `routes/financial.routes.js` | `8231292d879f4647e644c98641121df75e11af14786bf8755d2b08f623d36fa4` |
+| `routes/financial.routes.js` | `320504340d16c76dd469e994526fc98d13b8fafbbcbef2a5066506431cab12ea` |
 | `routes/health.routes.js` | `881c1872d327b396e5f8785f1994bb087b6754332735b7835ce098dce21978a1` |
 | `routes/index.js` | `ceeb33e8bfc0bdc3f7015090b9f091ec5125f9ce27160ac93832dad9b798ddc2` |
 | `routes/inspection.routes.js` | `ca11f6322239c865c403603981e20bc832ca238a8ae344fac51635afdc96d72b` |
@@ -162,7 +162,7 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 | `services/demoDataService.js` | `33ed44c377f6dd14ee9e9d414419ae4232880084bd2f77df828754cf2ba7dd01` |
 | `services/erpIntegrationService.js` | `3c76f606c7af5831e0a413acd7e7fa5caba373d36e032c13f91c0ee629018ba4` |
 | `services/executiveManagerService.js` | `8b32de93f464a049d6bba458f31c4af999de75f2090aec4cf83605724cf77e8c` |
-| `services/financialAnalystService.js` | `c339a54deb4681997deaa1d725d8dcdab9ab46dc5075b9fc49623f7c36093a8c` |
+| `services/financialAnalystService.js` | `8fbecbc06a760e136544cfecba40f97454298367ff0dad644efbe9e3989ddcee` |
 | `services/financialEngine.js` | `5d8372836fe7dfc5b74fd54a87a49dcae97aedf49020d88ea72b180c6d19bfe8` |
 | `services/fiscal/decimal.js` | `5c060f6cb2308e6da4d0e4e747d52012cdaaa1964b46b02e5354b2169ff4a7f1` |
 | `services/fiscal/fiscalCalculationEngine.js` | `d6f2c2d7d0c694774f340e0aa6547dfad50473a9caaf2e1bd0a7f224d58cfe41` |
