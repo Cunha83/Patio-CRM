@@ -923,6 +923,87 @@ router.post('/api/financeiro/os/:osId/liberar-gargalo-peca', requirePermission('
 });
 
 /**
+ * 4.1.11 POST /api/financeiro/os/:osId/estornar-peca
+ * Devolve peça da OS ao estoque, deduz total de peças da OS e grava auditoria
+ */
+router.post('/api/financeiro/os/:osId/estornar-peca', requirePermission('os:write', 'labor:write', 'financial:write', 'operation:manage'), async (req, res) => {
+  try {
+    const tenantId = extractTenantId(req);
+    const osId = req.params.osId;
+    const { itemIndexOuPecaId, motivo } = req.body || {};
+    const operador = req.securityContext?.fullName || req.securityContext?.actorId || 'operador';
+
+    let resultado = null;
+    const saveRes = await mutateTenantState(req, (draft) => {
+      try {
+        resultado = financialAnalystService.estornarPecaOS(draft, {
+          osId,
+          itemIndexOuPecaId,
+          motivo,
+          operador: {
+            actorId: req.securityContext?.actorId,
+            nome: operador
+          }
+        });
+      } catch (err) {
+        return {
+          abort: true,
+          status: err.status || err.statusCode || 400,
+          code: err.code || 'ERRO_ESTORNO_PECA',
+          error: err.message,
+          message: err.message
+        };
+      }
+    });
+
+    if (saveRes?.aborted) {
+      const mutRes = saveRes.mutatorResult || saveRes;
+      return res.status(mutRes.status || saveRes.status || 400).json({
+        success: false,
+        code: mutRes.code,
+        error: mutRes.error,
+        message: mutRes.message
+      });
+    }
+
+    if (!saveRes || !saveRes.ok) {
+      return res.status(saveRes?.status || 500).json({
+        success: false,
+        error: saveRes?.error || 'Falha ao persistir estorno de peça'
+      });
+    }
+
+    try {
+      await recordSecurityAudit({
+        tenantId,
+        actorId: req.securityContext?.actorId || 'operador',
+        action: 'patio:os:estornar_peca',
+        entity: 'ordem_servico',
+        entityId: String(osId),
+        details: {
+          osId,
+          pecaDevolvida: resultado?.pecaDevolvida,
+          saldoEstoqueAtual: resultado?.saldoEstoqueAtual,
+          totalPecasOS: resultado?.totalPecasOS,
+          motivo,
+          operador
+        }
+      });
+    } catch (auditErr) {
+      console.warn('[Estornar Peca Audit] Falha não-bloqueante:', auditErr.message);
+    }
+
+    res.json({
+      success: true,
+      ...resultado
+    });
+  } catch (err) {
+    console.error('[API /api/financeiro/os/:osId/estornar-peca POST] Erro:', err);
+    res.status(err.status || 500).json({ success: false, code: err.code, error: err.message });
+  }
+});
+
+/**
  * 4.1.2 POST /api/financeiro/titulos/:id/liquidar
  * Realiza a liquidação (baixa) de um título a receber ou conta a pagar com geração de movimento no caixa e auditoria
  */

@@ -1359,7 +1359,7 @@ test('19. Sincronia Bidirecional de Estorno (Caixa <-> Títulos Liquidados) e DR
     // Sincronia Bidirecional: Título deve ter sido reaberto automaticamente!
     const tituloReaberto = state.contas.find(c => c.id === 'tit_rec_950');
     assert.equal(tituloReaberto.pago, false, 'Título deve ser reaberto como não pago');
-    assert.equal(tituloReaberto.status, 'aberto', 'Status do título deve voltar para aberto');
+    assert.ok(tituloReaberto.status === 'pendente' || tituloReaberto.status === 'aberto', 'Status do título deve voltar para pendente/aberto');
     assert.ok(tituloReaberto.reabertoPorEstornoEm, 'Deve registrar datahora de reabertura por estorno');
     assert.ok(tituloReaberto.ultimoEstornoId, 'Deve registrar o id do estorno');
 
@@ -2052,6 +2052,163 @@ test('23. Gestão de Estoque, Requisição de Peças na OS e Desbloqueio Automá
         [tenantId]
       );
       assert.ok(auditLib.length >= 1, 'Deve ter gravado auditoria de liberação de gargalo de peças');
+    } finally {
+      await new Promise(r => server.close(r));
+    }
+  } finally {
+    await closeDB().catch(() => {});
+    try { fs.rmSync(tempDir, { recursive: true, force: true }); } catch (_) {}
+  }
+});
+
+test('24. Reabertura Bidirecional de Títulos no Estorno e Devolução de Peças ao Estoque (Frente 7A)', async () => {
+  const fs = require('fs');
+  const os = require('os');
+  const express = require('express');
+  const http = require('http');
+  const { salvarEstado } = require('../lib/serverContext');
+  const { getDefaultState } = require('../lib/repository/stateRepository');
+  const { initDB, closeDB, all } = require('../db');
+  const financialRoutes = require('../routes/financial.routes');
+  const financialAnalystService = require('../services/financialAnalystService');
+
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'patio-reabertura-peca-test-'));
+  const testDbPath = path.join(tempDir, 'test.db');
+  process.env.DB_PATH = testDbPath;
+
+  try {
+    await initDB();
+    const tenantId = 'tenant_reabertura_7a';
+
+    const state = {
+      tenantId,
+      caixas: [{ id: 'cx_01', aberto: true, saldoAtual: 1000, totalEntradas: 0, totalSaidas: 0 }],
+      movimentos: [],
+      contas: [
+        {
+          id: 'tit_os_701',
+          tipo: 'receber',
+          osId: 'OS-701',
+          descricao: 'Faturamento OS #701',
+          valor: 1500,
+          pago: false,
+          status: 'aberto'
+        }
+      ],
+      estoque: [
+        { id: 'pec_tambor', codigo: 'TAM-01', nome: 'Tambor de Freio Dianteiro', quantidade: 4, estoqueMinimo: 2, custoUnitario: 200, precoVenda: 380 }
+      ],
+      os: [
+        {
+          id: 'OS-701',
+          num: 701,
+          st: 'executando',
+          etapaPatio: 'em_execucao',
+          pecasUtilizadas: [],
+          totalPecas: 0,
+          historicoPatio: []
+        }
+      ]
+    };
+
+    // 24.1 Sincronia de Título: Liquidação seguida de Estorno -> Título volta para 'pendente' e reflete na OS
+    const resLiq = financialAnalystService.liquidarTituloFinanceiro(state, {
+      id: 'tit_os_701',
+      valorPago: 1500,
+      forma: 'pix',
+      operador: 'dono_1'
+    });
+    assert.equal(resLiq.ok, true);
+    assert.equal(state.contas[0].pago, true);
+    assert.equal(state.contas[0].status, 'liquidado');
+
+    // Executa estorno do movimento gerado pela liquidação
+    const movLiquidacaoId = resLiq.movimentacao.id;
+    const resEstorno = financialAnalystService.estornarMovimentacao(state, {
+      movimentoId: movLiquidacaoId,
+      motivo: 'Estorno operacional solicitado pelo cliente',
+      operador: 'dono_1'
+    });
+    assert.equal(resEstorno.ok, true);
+    const tituloReaberto = state.contas.find(c => c.id === 'tit_os_701');
+    assert.equal(tituloReaberto.pago, false, 'Título deve ser marcado como não pago');
+    assert.equal(tituloReaberto.status, 'pendente', 'Título deve voltar para o status pendente');
+    assert.ok(tituloReaberto.reabertoPorEstornoEm, 'Deve registrar data de reabertura');
+    assert.ok(tituloReaberto.ultimoEstornoId, 'Deve registrar o id do estorno');
+
+    // 24.2 Requisição de peça seguida de Devolução (estornarPecaOS)
+    financialAnalystService.requisitarPecaOS(state, {
+      osId: 'OS-701',
+      pecaIdOuNome: 'TAM-01',
+      quantidade: 2,
+      operador: 'Mecânico Carlos'
+    });
+    assert.equal(state.estoque[0].quantidade, 2, 'Estoque deve cair de 4 para 2');
+    assert.equal(state.os[0].pecasUtilizadas.length, 1);
+    assert.equal(state.os[0].totalPecas, 760); // 2 * 380
+
+    // Devolve 1 item da peça ao estoque
+    const resDevolucao = financialAnalystService.estornarPecaOS(state, {
+      osId: 'OS-701',
+      itemIndexOuPecaId: 'TAM-01',
+      motivo: 'Peça requisitada a mais por engano',
+      operador: 'Mecânico Carlos'
+    });
+    assert.equal(resDevolucao.sucesso, true);
+    assert.equal(state.estoque[0].quantidade, 4, 'Saldo do estoque deve ser recomposto para 4');
+    assert.equal(state.os[0].pecasUtilizadas.length, 0);
+    assert.equal(state.os[0].totalPecas, 0);
+
+    // 24.3 Teste de Rota HTTP POST /api/financeiro/os/:osId/estornar-peca e auditoria
+    const app = express();
+    app.use(express.json());
+    app.use((req, res, next) => {
+      req.securityContext = {
+        actorId: 'almoxarife_1',
+        fullName: 'Almoxarife Roberto',
+        tenantId,
+        permissions: ['os:read', 'os:write', 'labor:read', 'labor:write', 'financial:read', 'financial:write', 'operation:manage']
+      };
+      req.headers['x-tenant-id'] = tenantId;
+      next();
+    });
+    app.use(financialRoutes);
+
+    // Requisita novamente 1 peça para testar via API
+    financialAnalystService.requisitarPecaOS(state, {
+      osId: 'OS-701',
+      pecaIdOuNome: 'TAM-01',
+      quantidade: 1,
+      operador: 'Mecânico Carlos'
+    });
+    assert.equal(state.estoque[0].quantidade, 3);
+
+    const base = getDefaultState(tenantId);
+    await salvarEstado(tenantId, { ...base, ...state });
+
+    const server = http.createServer(app);
+    await new Promise(r => server.listen(0, '127.0.0.1', r));
+    const port = server.address().port;
+    const baseUrl = `http://127.0.0.1:${port}`;
+
+    try {
+      const resEstPecaHttp = await fetch(`${baseUrl}/api/financeiro/os/OS-701/estornar-peca`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ itemIndexOuPecaId: 'TAM-01', motivo: 'Cancelamento via painel web' })
+      });
+      assert.equal(resEstPecaHttp.status, 200);
+      const jsonEstPeca = await resEstPecaHttp.json();
+      assert.equal(jsonEstPeca.success, true);
+      assert.equal(jsonEstPeca.saldoEstoqueAtual, 4, 'Saldo deve voltar para 4');
+      assert.equal(jsonEstPeca.totalPecasOS, 0);
+
+      // Auditoria no SQLite
+      const auditRows = await all(
+        "SELECT * FROM security_audit_log WHERE tenant_id = ? AND action = 'patio:os:estornar_peca'",
+        [tenantId]
+      );
+      assert.ok(auditRows.length >= 1, 'Deve ter registrado auditoria de estorno de peça');
     } finally {
       await new Promise(r => server.close(r));
     }
