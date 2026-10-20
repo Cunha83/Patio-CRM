@@ -78,6 +78,8 @@ test('js/modules/patio_render.js: sintaxe e exportações das funções de rende
   assert.ok(htmlCard.includes('OS 1001'), 'Card deve renderizar o número da OS');
   assert.ok(htmlCard.includes('ABC1D23'), 'Card deve renderizar a placa do caminhão');
   assert.ok(htmlCard.includes('Box 01'), 'Card deve identificar o box associado');
+  assert.ok(htmlCard.includes('data-act="copiar-aviso-os"'), 'Card deve exibir ação rápida copiar aviso OS');
+  assert.ok(htmlCard.includes('Copiar Aviso'), 'Texto de copiar aviso deve estar presente');
 
   // Teste de card com botão de retomada de gargalo
   const htmlCardGargalo = mockGlobal.cardOS(osComGargalo, mockGlobal.S.boxes[0]);

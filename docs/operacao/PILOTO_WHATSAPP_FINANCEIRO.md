@@ -479,5 +479,41 @@ Para integrar a operação de almoxarifado ao chão de oficina e eliminar parada
   - Botão `🔩 +Peça` permite requisição imediata direto da visão de pátio ou folha da OS.
   - Todas as movimentações geram trilha de auditoria em SQLite (`patio:os:requisitar_peca` e `patio:os:liberar_gargalo_peca`).
 
+---
+
+## 12. Reabertura Bidirecional de Títulos/Peças, DRE Operacional e Aviso ao Cliente
+
+### A. Reabertura Bidirecional de Títulos e Devolução de Peças ao Estoque
+A operação mecânica e financeira agora mantém integridade bidirecional completa:
+1. **Sincronia Caixa <-> Títulos Liquidados**:
+   - Ao estornar um movimento de caixa associado à liquidação de um título, o título é reaberto para status `pendente` (`pago: false`), preenchendo os metadados de auditoria `reabertoPorEstornoEm` e `ultimoEstornoId`.
+   - O saldo em aberto da Ordem de Serviço vinculada é imediatamente recalculado, atualizando seu status de liberação de pátio na portaria.
+2. **Devolução / Estorno de Peças da OS**:
+   - Permite cancelar ou devolver itens requisitados incorretamente para uma OS sem distorções no estoque ou na cobrança.
+   - Pelo WhatsApp: `devolver peca os <id> <nome_ou_codigo>` (ex.: `devolver peca os 101 MOL-01`).
+   - Pela API: `POST /api/financeiro/os/:osId/estornar-peca`.
+   - O saldo da peça é recomposto no almoxarifado (`quantidade += qtdDevolvida`), a lista `os.pecasUtilizadas` é atualizada e o valor de `os.totalPecas` é rebaixado proporcionalmente, registrando o evento `patio:os:estornar_peca` no `security_audit_log`.
+
+### B. Demonstrativo DRE Operacional Integrado (Gestão Segregada)
+O novo DRE operacional (`calcularDREOperacional`) reflete a performance pura da oficina sem distorções:
+1. **Segregação de Tesouraria Neutra**:
+   - Aportes de capital/troco (`suprimento`) e retiradas para cofre ou depósito (`sangria`) são isolados em seção própria ("Tesouraria Neutra") e **não afetam** o cálculo do lucro operacional líquido nem a margem percentual.
+2. **Custo de Peças em OSs Ativas**:
+   - Computa o montante total de peças alocadas em Ordens de Serviço em execução no pátio (`custoPecasAplicadasOS`), permitindo apuração precisa do capital em trânsito operacional.
+3. **Canais de Acesso**:
+   - **API**: `GET /api/financeiro/dre` e enriquecimento de `GET /api/financeiro/resumo`.
+   - **WhatsApp**: Comandos `dre` ou `resultado operacional` para administradores autorizados.
+   - **Web**: Card gerencial `📊 DRE Operacional (Visão Gerencial)` no painel da Verônica Analista com indicadores de receita, despesas, peças aplicadas, resultado operacional líquido, margem percentual e tesouraria neutra.
+
+### C. Aviso Estruturado de Cobrança / Retirada ao Cliente
+Facilita o atendimento ao cliente e a liberação física dos veículos na portaria:
+1. **Comunicação Padronizada via WhatsApp**:
+   - Comando: `aviso retirada os <id>` ou `cobranca os <id>`.
+   - Retorna mensagem estruturada e personalizada contendo: identificação da OS e da oficina, modelo do caminhão, placa, total orçado, total de peças aplicadas, total pago/adiantado, saldo pendente, chave Pix para quitação e status de liberação na portaria (Quitado, Faturado, Excepcional ou Retido).
+2. **Ação Rápida no Pátio Web**:
+   - Os cards de OS em exibição no pátio e na folha da OS contam com o botão `📲 Copiar Aviso` (`data-act="copiar-aviso-os"`).
+   - O clique requisita os dados consolidados da rota `GET /api/financeiro/os/:osId/aviso-cliente` e copia o texto completo para a área de transferência do usuário, pronto para envio no WhatsApp do cliente com um único clique.
+
+
 
 

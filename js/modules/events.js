@@ -502,6 +502,30 @@ document.addEventListener('click', e => {
       break;
     }
 
+    case 'copiar-aviso-os': {
+      const osId = b.dataset.id || b.dataset.os || (o && o.id);
+      const alvo = (S.os || []).find(x => String(x.id) === String(osId));
+      if (!alvo) break;
+
+      fetch(`/api/financeiro/os/${encodeURIComponent(osId)}/aviso-cliente`)
+        .then(async r => {
+          const d = await r.json().catch(() => ({}));
+          const texto = d.textoWhatsapp || d.textoCobranca;
+          if (texto && navigator && navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(texto);
+            torrar(`📲 Aviso da OS #${alvo.num || alvo.id} copiado para a área de transferência!`, 'sucesso');
+          } else if (texto) {
+            prompt('Copie o texto estruturado para o WhatsApp:', texto);
+          } else {
+            torrar('Não foi possível gerar o aviso para esta OS.', 'aviso');
+          }
+        })
+        .catch(() => {
+          torrar('Erro ao consultar aviso da OS.', 'erro');
+        });
+      break;
+    }
+
     case 'salvar-veiculo': {
       const r = S.ui.rascVeiculo;
       if (!r || !r.placa) { torrar('Digite a placa do caminhão'); break; }

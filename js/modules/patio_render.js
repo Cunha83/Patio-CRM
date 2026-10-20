@@ -306,6 +306,9 @@ function cardOS(o, b) {
             🏗️ Alocar Box
           </button>
         ` : '')}
+        <button class="btn btn-secundario" data-act="copiar-aviso-os" data-id="${o.id}" style="font-size:11px;padding:3px 8px;border-radius:6px;height:26px;font-weight:600" title="Copiar aviso pronto para WhatsApp do cliente">
+          📲 Copiar Aviso
+        </button>
       </div>
     </div>
   </div>`;

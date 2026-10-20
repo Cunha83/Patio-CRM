@@ -164,9 +164,22 @@ function calcularDREFrontend() {
 
   const lucro = +(recBruta - despOper).toFixed(2);
   const margem = recBruta > 0 ? +((lucro / recBruta) * 100).toFixed(2) : 0;
+
+  let custoPecasAplicadasOS = 0;
+  const osLista = Array.isArray(S.os) ? S.os : [];
+  for (const o of osLista) {
+    if (o.st !== 'cancelada') {
+      const pecas = Array.isArray(o.pecasUtilizadas) ? o.pecasUtilizadas : [];
+      for (const p of pecas) {
+        custoPecasAplicadasOS = +(custoPecasAplicadasOS + Number(p.subtotal || (p.quantidade * (p.valorUnitario || 0)))).toFixed(2);
+      }
+    }
+  }
+
   return {
     recBruta,
     despOper,
+    custoPecasAplicadasOS,
     lucro,
     margem,
     sup,
@@ -523,6 +536,12 @@ function blocoVeronicaAnalista() {
           <div class="mini" style="font-weight:600;color:var(--tijolo)">Despesas Operacionais</div>
           <div style="font-size:18px;font-weight:800;color:var(--tijolo)" class="num">${typeof brl === 'function' ? brl(dre.despOper) : dre.despOper}</div>
           <div class="mini">${dre.qtdDesp} saída(s) operacionai(s)</div>
+        </div>
+
+        <div style="background:rgba(245, 158, 11, 0.06);border:1px solid rgba(245, 158, 11, 0.3);border-radius:8px;padding:12px">
+          <div class="mini" style="font-weight:600;color:var(--alerta)">📦 Peças em OSs Ativas</div>
+          <div style="font-size:18px;font-weight:800;color:var(--alerta)" class="num">${typeof brl === 'function' ? brl(dre.custoPecasAplicadasOS) : dre.custoPecasAplicadasOS}</div>
+          <div class="mini">Custo alocado em OSs em curso</div>
         </div>
 
         <div style="background:${dre.lucro >= 0 ? 'rgba(37, 99, 235, 0.06)' : 'rgba(239, 68, 68, 0.06)'};border:1px solid ${dre.lucro >= 0 ? 'rgba(37, 99, 235, 0.3)' : 'rgba(239, 68, 68, 0.3)'};border-radius:8px;padding:12px">
