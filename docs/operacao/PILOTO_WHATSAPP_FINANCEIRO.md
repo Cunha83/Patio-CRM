@@ -514,6 +514,43 @@ Facilita o atendimento ao cliente e a liberação física dos veículos na porta
    - Os cards de OS em exibição no pátio e na folha da OS contam com o botão `📲 Copiar Aviso` (`data-act="copiar-aviso-os"`).
    - O clique requisita os dados consolidados da rota `GET /api/financeiro/os/:osId/aviso-cliente` e copia o texto completo para a área de transferência do usuário, pronto para envio no WhatsApp do cliente com um único clique.
 
+---
+
+## 13. Checklist Técnico Pesado (Suspensão & Freios), Trava de Qualidade e Laudo de Vistoria
+
+### A. Os 5 Itens Canônicos do Checklist Técnico de Linha Pesada
+Para garantir segurança mecânica impecável antes da entrega e rodagem de cavalos mecânicos e implementos rodoviários, cada Ordem de Serviço possui uma rotina de vistoria padronizada composta por 5 itens obrigatórios:
+1. `grampos_feixe_molas`: Torque e reaperto de grampos, molas mestras e feixe de molas.
+2. `pino_centro_alinhamento`: Verificação de integridade do pino de centro e alinhamento do eixo.
+3. `embuchamento_balanca`: Inspeção de folgas críticas em embuchamentos, braços tensores e balança.
+4. `sistema_pneumatico_freio`: Estanqueidade pneumática geral, atuação de cuícas duplas/simples e regulagem de catracas de freio.
+5. `reaperto_final_rodas`: Torque final conferido nas porcas de roda e teste de segurança.
+
+### B. Trava de Qualidade e Bloqueio de Conclusão (`CHECKLIST_TECNICO_REPROVADO` / HTTP 409)
+- **Estados Canônicos de Vistoria**:
+  - `🟡 Pendente`: Vistoria ainda não apontada na OS.
+  - `🛡️ Aprovado`: Todos os 5 itens conferidos e atestados pelo mecânico ou inspetor técnico.
+  - `❌ Reprovado Crítico`: Pelo menos um item apresentou inconformidade ou risco à rodagem.
+- **Trava de Segurança Operacional**:
+  - Se a OS estiver com status `reprovado_critico`, qualquer tentativa de finalizar a OS (`finalizar os <id>` ou `acao: 'finalizar'`) é bloqueada imediatamente com erro HTTP `409` (`CHECKLIST_TECNICO_REPROVADO`).
+  - O veículo só pode ser concluído e liberado para entrega após a correção técnica da falha e novo apontamento de aprovação.
+
+### C. Comandos de Vistoria e Laudo via WhatsApp Bot
+Mecânicos e inspetores podem registrar e consultar o laudo de vistoria diretamente no WhatsApp:
+- `checklist os <id> ok [obs]` ou `vistoria os <id> ok`: aprova todos os 5 itens simultaneamente e emite o selo `🛡️ VISTORIA TÉCNICA APROVADA`.
+- `checklist os <id> falha <motivo>` (ex.: `checklist os 101 falha vazamento valvula pedal`): aponta reprovação crítica, detalha o motivo e ativa a trava de bloqueio de finalização.
+- `laudo os <id>` ou `checklist os <id>`: consulta o laudo completo estruturado com o status individual de cada item, dados do avaliador e recomendações técnicas.
+
+### D. Selo de Vistoria Técnica e Ações Rápidas no Frontend
+- **Badges nos Cards de Pátio**:
+  - `🛡️ Vistoria OK`: exibido com destaque verde quando todos os testes estão conformes.
+  - `⚠️ Falha Vistoria`: exibido em vermelho de alerta quando há falha de segurança bloqueando o pátio.
+- **Ação Rápida**:
+  - Botão `🛡️ Checklist OK` (`data-act="aprovar-checklist-os"`) nos cards de OS, permitindo aprovação rápida com 1 clique pelo inspetor ou mecânico.
+- **Trilha de Auditoria**:
+  - Todas as aprovações e reprovações de checklist são registradas no SQLite (`patio:os:checklist_tecnico`).
+
+
 
 
 

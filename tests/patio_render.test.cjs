@@ -73,6 +73,15 @@ test('js/modules/patio_render.js: sintaxe e exportações das funções de rende
   assert.ok(badgesHtml.includes('GARGALO: Aguardando feixe de mola'), 'Badge deve conter o gargalo e motivo');
   assert.ok(badgesHtml.includes('1 peça(s)'), 'Badge deve conter o contador de peças');
 
+  // Testes de badges de vistoria / checklist técnico (Frente 8C)
+  const osAprovada = { ...osComGargalo, statusChecklist: 'aprovado' };
+  const badgesAprovada = mockGlobal.renderBadgesOperacionaisPatio(osAprovada);
+  assert.ok(badgesAprovada.includes('🛡️ Vistoria OK'), 'Badge deve conter selo de vistoria aprovada');
+
+  const osReprovada = { ...osComGargalo, statusChecklist: 'reprovado_critico' };
+  const badgesReprovada = mockGlobal.renderBadgesOperacionaisPatio(osReprovada);
+  assert.ok(badgesReprovada.includes('⚠️ Falha Vistoria'), 'Badge deve conter selo de falha na vistoria');
+
   // Teste de renderização do cardOS
   const htmlCard = mockGlobal.cardOS(mockGlobal.S.os[0], mockGlobal.S.boxes[0]);
   assert.ok(htmlCard.includes('OS 1001'), 'Card deve renderizar o número da OS');
@@ -80,6 +89,8 @@ test('js/modules/patio_render.js: sintaxe e exportações das funções de rende
   assert.ok(htmlCard.includes('Box 01'), 'Card deve identificar o box associado');
   assert.ok(htmlCard.includes('data-act="copiar-aviso-os"'), 'Card deve exibir ação rápida copiar aviso OS');
   assert.ok(htmlCard.includes('Copiar Aviso'), 'Texto de copiar aviso deve estar presente');
+  assert.ok(htmlCard.includes('data-act="aprovar-checklist-os"'), 'Card deve exibir ação rápida aprovar checklist');
+  assert.ok(htmlCard.includes('Checklist OK'), 'Texto de aprovar checklist deve estar presente');
 
   // Teste de card com botão de retomada de gargalo
   const htmlCardGargalo = mockGlobal.cardOS(osComGargalo, mockGlobal.S.boxes[0]);

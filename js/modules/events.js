@@ -526,6 +526,34 @@ document.addEventListener('click', e => {
       break;
     }
 
+    case 'aprovar-checklist-os': {
+      const osId = b.dataset.id || b.dataset.os || (o && o.id);
+      const alvo = (S.os || []).find(x => String(x.id) === String(osId));
+      if (!alvo) break;
+
+      fetch(`/api/financeiro/os/${encodeURIComponent(osId)}/checklist`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ modo: 'aprovar_todos', observacao: 'Vistoria aprovada via painel do pátio' })
+      })
+        .then(async r => {
+          const d = await r.json().catch(() => ({}));
+          if (!r.ok) {
+            torrar(d.mensagem || d.error || 'Falha ao aprovar checklist técnico.', 'aviso');
+            return;
+          }
+          alvo.statusChecklist = 'aprovado';
+          if (d.checklistTecnico) alvo.checklistTecnico = d.checklistTecnico;
+          salvar();
+          render();
+          torrar(`🛡️ Vistoria técnica da OS #${alvo.num || alvo.id} aprovada com sucesso!`, 'sucesso');
+        })
+        .catch(() => {
+          torrar('Erro de rede ao aprovar checklist.', 'erro');
+        });
+      break;
+    }
+
     case 'salvar-veiculo': {
       const r = S.ui.rascVeiculo;
       if (!r || !r.placa) { torrar('Digite a placa do caminhão'); break; }

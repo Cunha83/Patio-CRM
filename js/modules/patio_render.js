@@ -49,6 +49,14 @@ function renderBadgesOperacionaisPatio(o) {
     badges.push(`<span class="selo selo-execucao" style="background:#e0e7ff;color:#3730a3;border:1px solid #c7d2fe;font-size:10px;font-weight:600" title="Em Execução Mecânica">⚙️ Em Execução</span>`);
   }
 
+  // Checklist Técnico / Vistoria (Frente 8C)
+  const statusChk = o.statusChecklist || (o.checklistTecnico && o.checklistTecnico.status);
+  if (statusChk === 'aprovado') {
+    badges.push(`<span class="selo selo-vistoria-ok" style="background:#ecfdf5;color:#047857;border:1px solid #a7f3d0;font-size:10px;font-weight:700" title="Vistoria Técnica de Freios e Suspensão Aprovada">🛡️ Vistoria OK</span>`);
+  } else if (statusChk === 'reprovado_critico') {
+    badges.push(`<span class="selo selo-vistoria-falha" style="background:#fef2f2;color:#b91c1c;border:1px solid #fecaca;font-size:10px;font-weight:700" title="Falha Crítica na Vistoria Técnica: Liberação Bloqueada">⚠️ Falha Vistoria</span>`);
+  }
+
   return badges.join(' ');
 }
 
@@ -309,6 +317,11 @@ function cardOS(o, b) {
         <button class="btn btn-secundario" data-act="copiar-aviso-os" data-id="${o.id}" style="font-size:11px;padding:3px 8px;border-radius:6px;height:26px;font-weight:600" title="Copiar aviso pronto para WhatsApp do cliente">
           📲 Copiar Aviso
         </button>
+        ${o.statusChecklist !== 'aprovado' && o.st !== 'finalizada' ? `
+          <button class="btn btn-sucesso" data-act="aprovar-checklist-os" data-id="${o.id}" style="font-size:11px;padding:3px 8px;border-radius:6px;height:26px;font-weight:600" title="Aprovar Vistoria Técnica de Freios e Suspensão">
+            🛡️ Checklist OK
+          </button>
+        ` : ''}
       </div>
     </div>
   </div>`;
