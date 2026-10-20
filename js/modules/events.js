@@ -164,6 +164,7 @@ document.addEventListener('click', e => {
       S.ui.view = b.dataset.v; S.ui.busca = ''; render(); break;
     case 'filtro': S.ui.filtro = b.dataset.f; render(); break;
     case 'filtro-fin': S.ui.filtroFin = b.dataset.f; render(); break;
+    case 'mudar-periodo-bi': S.ui.periodoBi = b.dataset.periodo || 'mensal'; render(); break;
     case 'filtro-estoque': S.ui.filtroEstoque = b.dataset.f; render(); break;
     case 'aba-estoque': S.ui.abaEstoque = b.dataset.a; render(); break;
     case 'fechar': fecharFolha(); break;

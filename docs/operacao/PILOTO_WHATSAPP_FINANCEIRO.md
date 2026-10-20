@@ -585,6 +585,37 @@ Quando um caminhão retorna à oficina em garantia:
 - **Trilha de Auditoria**:
   - Toda vinculação de retorno de garantia é persistida e auditada no SQLite (`patio:os:retorno_garantia`).
 
+---
+
+## 15. Dashboard BI, Relatórios Periódicos de Produtividade (Boxes/Mecânicos) e Comissões (Release v1.0.0)
+
+### A. Visão Geral do Módulo BI
+O módulo de Business Intelligence & Produtividade Operacional consolida o desempenho técnico e financeiro do pátio e chão de oficina, integrando as Ordens de Serviço aos boxes físicos e mecânicos responsáveis.
+
+### B. Cartões de KPI e Indicadores Canônicos
+1. **💰 Faturamento Total de Mão de Obra**: Soma dos valores de serviços executados no período selecionado.
+2. **⏱️ Tempo Médio de Box**: Duração média de permanência dos caminhões em boxes de oficina.
+3. **🔄 Taxa de Giro de Oficina**: Proporção de OSs concluídas em relação ao número total de boxes disponíveis.
+4. **🤝 Total de Comissões a Pagar**: Total apurado de comissões da equipe técnica (alíquota padrão de 20%).
+   - **Regra de Exclusão de Garantia**: Retornos em garantia (`isRetornoGarantia: true`) são estritamente expurgados da base comissionável, remunerando apenas mão de obra nova faturada.
+
+### C. Visualizações e Gráficos em Barras Responsivos
+- **Ranking de Produtividade por Mecânico**: Barra de progresso proporcional com faturamento bruto de mão de obra gerada, total de OSs atendidas/finalizadas e valor individual de comissão apurada.
+- **Atendimentos & Ocupação por Box**: Volume de veículos atendidos em cada baia física de oficina e tempo médio de giro.
+- **Seletor de Período Dinâmico**: Alternador interativo entre `📅 Visão Semanal` (últimos 7 dias) e `🗓️ Visão Mensal` (mês corrente).
+
+### D. Comandos via WhatsApp Bot
+Disponíveis para perfis autorizados (`mecanico`, `atendente`, `financeiro`, `dono`, `gerente`):
+- `relatorio semanal` ou `produtividade semana`: emite o boletim analítico resumido dos últimos 7 dias.
+- `relatorio mensal` ou `fechamento mes`: emite o consolidado executivo mensal.
+- `comissoes` ou `minha comissao`:
+  - Se enviado pelo mecânico cadastrado: emite o extrato individual com base de cálculo, OSs finalizadas, deduções de garantia e valor líquido a receber.
+  - Se enviado por gestor/financeiro: emite o relatório consolidado de comissões de toda a equipe.
+
+### E. Consolidação da Release v1.0.0
+Com a conclusão da Frente 10 (10A, 10B e 10C), o Patio-CRM atinge o marco **v1.0.0**, com todas as rotinas operacionais (boxes, pátio, apontamento, almoxarifado, checklist pesado, garantias por placa, DRE operacional e BI de comissões) totalmente integradas, auditadas no SQLite e validadas criptograficamente pelo Manifesto de Release.
+
+
 
 
 

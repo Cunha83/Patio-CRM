@@ -124,3 +124,51 @@ test('js/modules/patio_render.js: sintaxe e exportações das funções de rende
   assert.ok(htmlView.includes('Em Atendimento'), 'viewPatio deve conter KPIs operacionais');
   assert.ok(htmlView.includes('Radar Operacional de Boxes & Gargalos de Pátio'), 'viewPatio deve conter o Radar Operacional de Pátio');
 });
+
+test('js/modules/financeiro_analista.js: Dashboard BI & Produtividade no frontend (Frente 10C)', () => {
+  const finAnalistaPath = path.resolve(__dirname, '..', 'js', 'modules', 'financeiro_analista.js');
+  assert.ok(fs.existsSync(finAnalistaPath), 'Arquivo financeiro_analista.js deve existir');
+  const code = fs.readFileSync(finAnalistaPath, 'utf8');
+
+  assert.doesNotThrow(() => {
+    new vm.Script(code, { filename: 'financeiro_analista.js' });
+  }, 'financeiro_analista.js deve possuir sintaxe válida');
+
+  const mockWindow = {};
+  const mockGlobal = {
+    window: mockWindow,
+    globalThis: mockWindow,
+    esc: (s) => String(s || ''),
+    brl: (n) => `R$ ${Number(n || 0).toFixed(2)}`,
+    totOS: () => 1000,
+    S: {
+      boxes: [
+        { id: 'BOX-01', nome: 'Box 01 — Linha Pesada' },
+        { id: 'BOX-02', nome: 'Box 02 — Freios' }
+      ],
+      mecanicos: [
+        { id: 'm1', nome: 'Carlos' }
+      ],
+      os: [
+        { id: 'os1', num: 101, mecanico: 'Carlos', box: 'BOX-01', st: 'finalizada', total: 1000, totalPecas: 200 }
+      ],
+      ui: { periodoBi: 'mensal' }
+    }
+  };
+
+  const context = vm.createContext(mockGlobal);
+  vm.runInContext(code, context);
+
+  assert.strictEqual(typeof mockGlobal.dashboardBiProdutividadeHtml, 'function');
+  assert.strictEqual(typeof mockGlobal.calcularProdutividadeFrontend, 'function');
+
+  const htmlBi = mockGlobal.dashboardBiProdutividadeHtml();
+  assert.ok(htmlBi.includes('Dashboard BI & Produtividade'), 'HTML deve conter título do BI');
+  assert.ok(htmlBi.includes('Faturamento Mão de Obra'), 'HTML deve conter card de faturamento de mão de obra');
+  assert.ok(htmlBi.includes('Tempo Médio de Box'), 'HTML deve conter card de tempo médio');
+  assert.ok(htmlBi.includes('Taxa de Giro de Oficina'), 'HTML deve conter card de taxa de giro');
+  assert.ok(htmlBi.includes('Total Comissões'), 'HTML deve conter card de comissões');
+  assert.ok(htmlBi.includes('data-act="mudar-periodo-bi"'), 'HTML deve conter alternador de período semanal/mensal');
+  assert.ok(htmlBi.includes('Ranking de Produtividade por Mecânico'), 'HTML deve conter gráfico em barras de mecânicos');
+  assert.ok(htmlBi.includes('Atendimentos & Ocupação por Box'), 'HTML deve conter gráfico em barras de boxes');
+});
