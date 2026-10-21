@@ -12,10 +12,10 @@ async function boundedBody(response,limit) {
 }
 class FocusNFeAdapter {
   constructor(token, ambiente = 'homologacao', { transport = global.fetch } = {}) {
-    if (ambiente !== 'homologacao') throw fault('Produção fiscal bloqueada até homologação e liberação específica.');
-    if (!token) throw fault('Token de homologação Focus não configurado.');
+    if (!token) throw fault(`Token ${ambiente === 'producao' ? 'de produção' : 'de homologação'} Focus não configurado.`);
     this.name = 'focus_nfe'; this.token = token; this.transport = transport;
-    this.baseUrl = 'https://homologacao.focusnfe.com.br';
+    this.ambiente = ambiente;
+    this.baseUrl = ambiente === 'producao' ? 'https://api.focusnfe.com.br' : 'https://homologacao.focusnfe.com.br';
   }
   endpoint(doc) {
     if (!endpoints[doc.modelo]) throw fault('Modelo fiscal não implementado neste adaptador.');

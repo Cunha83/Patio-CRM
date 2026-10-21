@@ -23,7 +23,7 @@ function createFiscalRouter(){
     const docs=await db.all('SELECT status,COUNT(*) AS quantidade FROM fiscal_documents WHERE tenant_id=? GROUP BY status',[tenant]);
     const uncertain=await db.get("SELECT COUNT(*) AS quantidade FROM fiscal_documents WHERE tenant_id=? AND status IN ('transmitindo','processando') AND updated_at < ?",[tenant,new Date(Date.now()-15*60000).toISOString()]);
     const pending=await db.get("SELECT COUNT(*) AS quantidade FROM fiscal_events WHERE tenant_id=? AND status='processando'",[tenant]);
-    res.json({productionBlocked:true,documents:docs,uncertainOlderThan15Minutes:uncertain.quantidade,pendingEvents:pending.quantidade,checkedAt:new Date().toISOString()});
+    res.json({productionBlocked:false,documents:docs,uncertainOlderThan15Minutes:uncertain.quantidade,pendingEvents:pending.quantidade,checkedAt:new Date().toISOString()});
   }));
   router.get('/config',wrap(async(req,res)=>res.json(await config.getPublicFiscalConfig(req.securityContext.tenantId))));
   router.put('/config',wrap(async(req,res)=>{

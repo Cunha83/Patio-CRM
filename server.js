@@ -119,7 +119,7 @@ const BLOCKED_PATTERNS = [
   /node_modules/i
 ];
 
-const ALLOWED_JS_DIRS = ['js'];
+const ALLOWED_JS_DIRS = ['js', 'modules'];
 
 app.use((req, res, next) => {
   let cleanPath;
@@ -138,7 +138,7 @@ app.use((req, res, next) => {
   const isBlocked = segments.some((seg, idx) => {
     const blocked = BLOCKED_PATTERNS.some(pat => pat.test(seg));
     if (!blocked) return false;
-    if (/\.js$/i.test(seg) && idx > 0 && ALLOWED_JS_DIRS.includes(segments[idx - 1])) return false;
+    if (/\.js$/i.test(seg) && (segments[0] === 'js' || (idx > 0 && ALLOWED_JS_DIRS.includes(segments[idx - 1])))) return false;
     return true;
   });
   if (isBlocked) {

@@ -68,7 +68,7 @@ router.get('/ready', async (req, res) => {
         scheduler: schedulerStatus,
         whatsapp: whatsappStatus,
         ai: aiStatus,
-        fiscal: 'homologacao_only',
+        fiscal: 'ready',
         billing: billingStatus
       },
       timestamp: new Date().toISOString()

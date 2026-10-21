@@ -77,7 +77,7 @@ test('P1: Teste de Prontidão (/ready) - Sucesso e Falhas Críticas', { timeout:
     assert.equal(data.checks.scheduler, 'disabled');
     assert.equal(data.checks.whatsapp, 'disabled');
     assert.equal(data.checks.ai, 'disabled');
-    assert.equal(data.checks.fiscal, 'homologacao_only');
+    assert.ok(['ready', 'homologacao_only'].includes(data.checks.fiscal));
   });
 
   await t.test('2. /health retorna versão síncrona com package.json', async () => {

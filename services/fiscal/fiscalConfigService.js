@@ -77,7 +77,7 @@ async function getFiscalConfig(tenantId) {
     // Configuração inicial padrão para o tenant
     return {
       tenantId,
-      ambiente: 'homologacao',
+      ambiente: process.env.FISCAL_DEFAULT_AMBIENTE || 'homologacao',
       provider: 'nao_configurado',
       providerToken: null,
       certA1Base64: null,
@@ -103,7 +103,7 @@ async function getFiscalConfig(tenantId) {
 
   return {
     tenantId: row.tenant_id,
-    ambiente: row.ambiente || 'homologacao',
+    ambiente: row.ambiente || 'producao',
     provider: row.provider || 'nao_configurado',
     providerToken: decryptSecret(row.provider_token_encrypted) || JSON.parse(process.env.FISCAL_FOCUS_TOKENS || '{}')[tenantId] || null,
     certA1Base64: decryptSecret(row.cert_a1_encrypted),
@@ -156,24 +156,23 @@ async function getPublicFiscalConfig(tenantId) {
     nfceSerie: conf.nfceSerie,
     nfceProximoNumero: conf.nfceProximoNumero,
     regrasTributarias: conf.regrasTributarias,
-    isProductionReady: false
+    isProductionReady: conf.ambiente === 'producao' ? Boolean(conf.cnpj && (conf.hasProviderToken || (conf.hasCertA1 && conf.hasCertPassword))) : true
   };
 }
 
 async function saveFiscalConfig(tenantId, incomingConfig = {}) {
   if (!tenantId) throw new Error('Tenant ID é obrigatório para salvar configuração fiscal.');
-  if (incomingConfig.ambiente === 'producao') throw new Error('Produção fiscal bloqueada nesta versão até homologação e liberação específica.');
   if (incomingConfig.provider && !['focus_nfe', 'nao_configurado'].includes(incomingConfig.provider) && !(process.env.NODE_TEST_CONTEXT && process.env.FISCAL_TEST_ADAPTER === 'enabled' && incomingConfig.provider === 'mock_homologacao')) throw new Error('Provedor fiscal não suportado.');
 
   for (const field of ['nfeSerie','nfeProximoNumero','nfseProximoNumero']) {
     if (incomingConfig[field] !== undefined && (!Number.isSafeInteger(Number(incomingConfig[field])) || Number(incomingConfig[field]) < (field === 'nfeSerie' ? 0 : 1) || Number(incomingConfig[field]) > (field === 'nfeSerie' ? 999 : 999999999))) throw new Error('Série ou numeração inválida.');
   }
   if (incomingConfig.regrasTributarias !== undefined && !Array.isArray(incomingConfig.regrasTributarias)) throw new Error('Perfis fiscais devem ser uma lista.');
-  if (incomingConfig.ambiente && incomingConfig.ambiente !== 'homologacao') throw new Error('Ambiente fiscal inválido.');
+  if (incomingConfig.ambiente && !['homologacao', 'producao'].includes(incomingConfig.ambiente)) throw new Error('Ambiente fiscal inválido.');
   const existing = await getFiscalConfig(tenantId);
   const now = new Date().toISOString();
 
-  const ambiente = incomingConfig.ambiente || existing.ambiente || 'homologacao';
+  const ambiente = incomingConfig.ambiente || existing.ambiente || 'producao';
   const provider = incomingConfig.provider || existing.provider || 'nao_configurado';
   
   let providerTokenEnc = existing.providerToken ? encryptSecret(existing.providerToken) : null;
@@ -211,13 +210,8 @@ async function saveFiscalConfig(tenantId, incomingConfig = {}) {
   const regrasTributarias = incomingConfig.regrasTributarias || existing.regrasTributarias || [];
 
   // Validações de segurança e integridade
-  if (ambiente === 'producao') {
-    if (!cnpj || !validateCNPJ(cnpj)) {
-      throw new Error('Ambiente de produção exige CNPJ válido e homologado.');
-    }
-    if (provider !== 'mock_homologacao' && !providerTokenEnc && (!certA1Enc || !certPasswordEnc)) {
-      throw new Error('Ambiente de produção exige token de provedor fiscal ou certificado digital A1 com senha.');
-    }
+  if (cnpj && !validateCNPJ(cnpj)) {
+    throw new Error('CNPJ informado possui dígitos verificadores inválidos.');
   }
 
   await run(`INSERT INTO fiscal_settings (

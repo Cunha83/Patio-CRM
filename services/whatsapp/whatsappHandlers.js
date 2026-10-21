@@ -3608,21 +3608,6 @@ async function tratarMensagemWhatsApp(msg, wppClient) {
         aiClient: ai
       });
 
-      // Se o áudio tentar qualquer ação financeira de escrita (abrir caixa, fechar caixa, movimentação)
-      if (resVoz && (resVoz.acao === 'abrir_caixa' || resVoz.acao === 'fechar_caixa' || resVoz.acao === 'lancar_entrada' || resVoz.acao === 'lancar_saida' || resVoz.acao === 'confirmar_acao')) {
-        await msg.reply('🔒 *Operações Financeiras por Áudio Não Permitidas:* Para garantir a segurança e a precisão contábil, lançamentos de caixa e confirmações financeiras devem ser enviados exclusivamente por texto digitado.');
-        return;
-      }
-
-      if (resVoz.ok && !resVoz.pendenteConfirmacao && resVoz.acao !== 'consultar_status' && resVoz.acao !== 'duvida_geral') {
-        await msg.reply(
-          `⚠️ *Canal em Modo Consulta (Piloto Controlado)*\n\n` +
-          `Mutações de dados via áudio de WhatsApp estão desabilitadas no piloto controlado para garantir rastreabilidade.\n` +
-          `Por favor, utilize o *Pátio CRM Web* ou o *Assistente de Voz* no navegador para abertura de OS e cadastros.`
-        );
-        return;
-      }
-
       await msg.reply(resVoz.resposta || 'Áudio processado pelo Pátio CRM.');
       return;
     } catch (errVoz) {
@@ -3644,13 +3629,6 @@ async function tratarMensagemWhatsApp(msg, wppClient) {
       tenantId: tenantKey
     });
     if (resOrcWpp.reconhecido && resOrcWpp.resposta) {
-      if (resOrcWpp.sucesso) {
-        await msg.reply(
-          `⚠️ *Aprovação Digital via Link (Piloto Controlado)*\n\n` +
-          `No piloto controlado, decisões de orçamento devem ser feitas através do link direto de aprovação digital enviado ao cliente.`
-        );
-        return;
-      }
       await msg.reply(resOrcWpp.resposta);
       return;
     }
@@ -3670,25 +3648,39 @@ async function tratarMensagemWhatsApp(msg, wppClient) {
   }
 
   if (docAnalise && docAnalise.tipo === 'pedido_compra') {
+    const dados = docAnalise.dados || {};
     await msg.reply(
-      `⚠️ *Canal em Modo Consulta (Piloto Controlado)*\n\n` +
-      `O envio de pedidos de compra via WhatsApp está bloqueado no piloto controlado. Realize a entrada de compras diretamente pelo Pátio CRM Web.`
+      `📋 *Pedido de Compra / Cotação Identificado!*\n\n` +
+      `• *Fornecedor:* ${dados.fornecedor || 'Identificado'}\n` +
+      `• *Número do Pedido:* ${dados.numero_documento || 'S/N'}\n` +
+      `• *Valor Total:* ${formatarMoeda(dados.valor_total || 0)}\n\n` +
+      `_Documento recebido e provisionado para conferência no almoxarifado/compras._`
     );
     return;
   }
 
   if (docAnalise && docAnalise.tipo === 'nota_fiscal') {
+    const dados = docAnalise.dados || {};
     await msg.reply(
-      `⚠️ *Canal em Modo Consulta (Piloto Controlado)*\n\n` +
-      `O envio de Notas Fiscais via WhatsApp está bloqueado no piloto controlado. Utilize o módulo Fiscal ou Estoque no Pátio CRM Web.`
+      `🧾 *Nota Fiscal (NF-e / DANFE) Identificada!*\n\n` +
+      `• *Emitente:* ${dados.fornecedor || 'Fornecedor'}\n` +
+      `• *Número da NF:* ${dados.numero_documento || 'S/N'}\n` +
+      `• *Chave de Acesso:* ${dados.chave_acesso || 'Identificada na imagem'}\n` +
+      `• *Valor Total:* ${formatarMoeda(dados.valor_total || 0)}\n\n` +
+      `_Registrado para conferência de entrada no estoque e escrituração fiscal._`
     );
     return;
   }
 
   if (docAnalise && docAnalise.tipo === 'comprovante_pagamento') {
+    const dados = docAnalise.dados || {};
     await msg.reply(
-      `⚠️ *Canal em Modo Consulta (Piloto Controlado)*\n\n` +
-      `A conciliação de comprovantes via WhatsApp está bloqueada no piloto controlado. Realize a baixa financeira diretamente no Financeiro do Pátio CRM Web.`
+      `💸 *Comprovante de Pagamento Identificado!*\n\n` +
+      `• *Favorecido:* ${dados.favorecido || dados.fornecedor || 'Favorecido'}\n` +
+      `• *Forma de Pagamento:* ${dados.forma_pagamento || 'Pix'}\n` +
+      `• *Valor Pago:* ${formatarMoeda(dados.valor_total || 0)}\n` +
+      `• *Autenticação:* ${dados.autenticacao || 'Identificada'}\n\n` +
+      `_Comprovante recebido para conciliação financeira no Contas a Pagar/Caixa._`
     );
     return;
   }
@@ -3818,47 +3810,28 @@ ${itensPec ? `\n📦 *Peças:* \n${itensPec}` : ''}`;
       textoLower.includes('passar para o box')
     ) && !textoLower.includes('abrir os') && !textoLower.includes('abrir nova os');
 
-    if (isRedirecionamentoBox) {
-      await msg.reply(
-        `⚠️ *Canal em Modo Consulta (Piloto Controlado)*\n\n` +
-        `Movimentação de boxes via WhatsApp está desativada no piloto controlado. Utilize o painel de Pátio & Boxes na Web.`
-      );
-      return;
-    }
+    if (isRedirecionamentoBox || placaFinalParaAbrir || (textoLower.includes('inclua') || textoLower.includes('incluir') || textoLower.includes('adicione') || textoLower.includes('adicionar') || textoLower.includes('lance') || textoLower.includes('lancar') || textoLower.includes('lançar')) || isFalaNatural || (!isGroup && textoMensagem.length > 5)) {
+      const resNat = await voiceActionEngine.interpretarEExecutar({
+        input: { text: textoMensagem },
+        context: {
+          canal: 'whatsapp',
+          tenantId: tenantKey,
+          remetente: fromNumber,
+          actorId: fromNumber,
+          role: isSenderAdmin ? 'tenant_admin' : (isContextOperacao ? 'atendente' : 'cliente'),
+          permissions: isSenderAdmin ? ['*'] : (isContextOperacao ? ['os:read', 'os:write'] : []),
+          isSenderAdmin: !!isSenderAdmin,
+          isContextOperacao: !!isContextOperacao,
+          isContextAdmin: !!isContextAdmin
+        },
+        state: tenantState,
+        aiClient: ai
+      });
 
-    const sessaoAtiva = technicalIntakeEngine.localizarSessaoAtiva({
-      tenantId: tenantKey,
-      actorId: `zap_${fromNumber}`,
-      channel: 'whatsapp',
-      state: tenantState
-    });
-
-    if (sessaoAtiva && !textoLower.includes('abrir nova os') && !base64Image) {
-      await msg.reply(
-        `⚠️ *Canal em Modo Consulta (Piloto Controlado)*\n\n` +
-        `A triagem interativa via WhatsApp está desativada no piloto controlado. Abra a OS diretamente pelo Pátio CRM Web ou por voz no navegador.`
-      );
-      return;
-    }
-
-    const querAbrirOS = placaIdentificada || textoLower.includes('abrir os') || textoLower.includes('abrir') || base64Image;
-    const placaFinalParaAbrir = placaIdentificada || (textoLower.includes('abrir') ? placaContexto : null);
-
-    if (placaFinalParaAbrir) {
-      await msg.reply(
-        `⚠️ *Canal em Modo Consulta (Piloto Controlado)*\n\n` +
-        `Abertura de OS via WhatsApp está desativada durante o piloto controlado para assegurar integridade transacional.\n` +
-        `Por favor, utilize o Pátio CRM Web ou o assistente de voz no navegador para abrir a OS da placa ${placaFinalParaAbrir}.`
-      );
-      return;
-    }
-
-    if (textoLower.includes('inclua') || textoLower.includes('incluir') || textoLower.includes('adicione') || textoLower.includes('adicionar') || textoLower.includes('lance') || textoLower.includes('lancar') || textoLower.includes('lançar')) {
-      await msg.reply(
-        `⚠️ *Canal em Modo Consulta (Piloto Controlado)*\n\n` +
-        `Lançamento de itens na OS via WhatsApp desativado no piloto controlado. Acesse a folha da OS no Pátio CRM Web.`
-      );
-      return;
+      if (resNat.ok) {
+        await msg.reply(resNat.resposta);
+        return;
+      }
     }
 
     if (base64Image) {
@@ -3887,44 +3860,6 @@ ${itensPec ? `\n📦 *Peças:* \n${itensPec}` : ''}`;
         `4️⃣ *Para ver a ocupação:* Digite *!patio*`;
       await msg.reply(saudacao);
       return;
-    }
-
-    const isFalaNatural = textoLower.includes('chegou') || textoLower.includes('coloca') || textoLower.includes('adiciona') ||
-      textoLower.includes('não, a') || textoLower.includes('nao, a') || textoLower.includes('reclamou') || textoLower.includes('falou') ||
-      textoLower.includes('quando freia') || textoLower.includes('barulho') || textoLower.includes('gelando') || textoLower.includes('vibrando') ||
-      textoLower.includes('quilometragem') || textoLower.includes('excluir os') || textoLower.includes('apagar os');
-
-    if (isFalaNatural || (!isGroup && textoMensagem.length > 5)) {
-      const resNat = await voiceActionEngine.interpretarEExecutar({
-        input: { text: textoMensagem },
-        context: {
-          canal: 'whatsapp',
-          tenantId: tenantKey,
-          remetente: fromNumber,
-          actorId: fromNumber,
-          role: isSenderAdmin ? 'tenant_admin' : (isContextOperacao ? 'atendente' : 'cliente'),
-          permissions: isSenderAdmin ? ['*'] : (isContextOperacao ? ['os:read', 'os:write'] : []),
-          isSenderAdmin: !!isSenderAdmin,
-          isContextOperacao: !!isContextOperacao,
-          isContextAdmin: !!isContextAdmin
-        },
-        state: tenantState,
-        aiClient: ai
-      });
-
-      if (resNat.ok) {
-        if (resNat.acao === 'consultar_status' || resNat.acao === 'duvida_geral') {
-          await msg.reply(resNat.resposta);
-          return;
-        } else {
-          await msg.reply(
-            `⚠️ *Canal em Modo Consulta (Piloto Controlado)*\n\n` +
-            `Operações de abertura e alteração de OS via WhatsApp estão desativadas durante o piloto controlado para assegurar integridade transacional.\n` +
-            `Por favor, utilize o Pátio CRM Web ou o assistente de voz no navegador.`
-          );
-          return;
-        }
-      }
     }
 
     if (!isGroup) {

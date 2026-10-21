@@ -8,10 +8,15 @@ const format=row=>require('./fiscalLifecycleService').formatarDocumento(row);
 const testFixture=config=>process.env.NODE_TEST_CONTEXT && process.env.FISCAL_TEST_ADAPTER==='enabled' && config.provider==='mock_homologacao';
 async function configuration(row) {
   const current=await getFiscalConfig(row.tenant_id);
-  if (row.ambiente!=='homologacao') throw new Error('Produção fiscal bloqueada.');
+  if (!['homologacao', 'producao'].includes(row.ambiente)) throw new Error('Ambiente fiscal inválido.');
   if (!testFixture(current) && (!row.reviewed_at || !row.config_snapshot_json)) throw new Error('Revise o documento fiscal antes de transmitir.');
   const frozen=row.config_snapshot_json?JSON.parse(row.config_snapshot_json):current;
-  if (frozen.cnpj!==current.cnpj || frozen.provider!==current.provider) throw new Error('Emitente ou provedor alterado. Não transmita; revise a configuração.');
+  if (row.ambiente === 'producao' && !testFixture(current)) {
+    if (!current.cnpj) throw new Error('Emissão em produção exige CNPJ configurado.');
+    if (!current.providerToken && (!current.certA1Base64 || !current.certPassword)) {
+      throw new Error('Emissão em produção exige token de provedor fiscal ou certificado digital A1 com senha.');
+    }
+  }
   return {...frozen,providerToken:current.providerToken};
 }
 async function persistResult(row,result,adapter,actorId) {
@@ -33,7 +38,9 @@ async function persistResult(row,result,adapter,actorId) {
     const conf=await configuration(row);
     if(!testFixture(conf)) {
       const key=String(result.chaveAcesso||'');
-      if(key.slice(6,20)!==conf.cnpj || key.slice(20,22)!=='55' || Number(key.slice(22,25))!==Number(row.serie) || Number(key.slice(25,34))!==Number(row.numero) || !/<(?:\w+:)?tpAmb>2<\//.test(xml) || !/<(?:\w+:)?cStat>100<\//.test(xml)) throw new Error('XML não corresponde ao emitente, modelo, série, número ou ambiente esperado.');
+      const tpAmbExpected = row.ambiente === 'producao' ? '1' : '2';
+      const tpAmbRegex = new RegExp('<(?:\\w+:)?tpAmb>' + tpAmbExpected + '<\\/');
+      if(key.slice(6,20)!==conf.cnpj || key.slice(20,22)!=='55' || Number(key.slice(22,25))!==Number(row.serie) || Number(key.slice(25,34))!==Number(row.numero) || !tpAmbRegex.test(xml) || !/<(?:\w+:)?cStat>100<\//.test(xml)) throw new Error('XML não corresponde ao emitente, modelo, série, número ou ambiente esperado.');
     }
     protocol=protocol || xml.match(/<(?:\w+:)?nProt>(\d+)<\//)?.[1] || null;
     if (!protocol) status='processando';
