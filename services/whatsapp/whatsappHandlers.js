@@ -3465,11 +3465,22 @@ async function tratarMensagemWhatsApp(msg, wppClient) {
   }
 
   const cfg = tenantState?.cfg || {};
-  const grupoAdminId = cfg.grupoAdminId || process.env.WHATSAPP_GRUPO_ADMIN_ID || '';
-  const grupoOperacaoId = cfg.grupoOperacaoId || process.env.WHATSAPP_GRUPO_OPERACAO_ID || '';
+  const responderApenasGrupos = cfg.responderApenasGrupos !== false;
 
-  const isGrupoAdmin = isGroup && Boolean(grupoAdminId) && (msg.from === grupoAdminId);
-  const isGrupoOperacao = isGroup && Boolean(grupoOperacaoId) && (msg.from === grupoOperacaoId);
+  const grupoAdminIds = [
+    ...(Array.isArray(cfg.grupoAdminId) ? cfg.grupoAdminId : [cfg.grupoAdminId]),
+    ...(Array.isArray(cfg.gruposAdmin) ? cfg.gruposAdmin : []),
+    ...(process.env.WHATSAPP_GRUPO_ADMIN_ID ? process.env.WHATSAPP_GRUPO_ADMIN_ID.split(',') : [])
+  ].map(s => String(s || '').trim()).filter(Boolean);
+
+  const grupoOperacaoIds = [
+    ...(Array.isArray(cfg.grupoOperacaoId) ? cfg.grupoOperacaoId : [cfg.grupoOperacaoId]),
+    ...(Array.isArray(cfg.gruposOperacao) ? cfg.gruposOperacao : []),
+    ...(process.env.WHATSAPP_GRUPO_OPERACAO_ID ? process.env.WHATSAPP_GRUPO_OPERACAO_ID.split(',') : [])
+  ].map(s => String(s || '').trim()).filter(Boolean);
+
+  const isGrupoAdmin = isGroup && grupoAdminIds.includes(msg.from);
+  const isGrupoOperacao = isGroup && grupoOperacaoIds.includes(msg.from);
 
   const adminList = (process.env.WHATSAPP_ADMIN_NUMBERS || '')
     .split(',')
@@ -3509,30 +3520,23 @@ async function tratarMensagemWhatsApp(msg, wppClient) {
     }
   } else {
     const linkInviteMatch = (msg.body || '').match(/chat\.whatsapp\.com\/([a-zA-Z0-9_-]{20,30})/);
-    if (linkInviteMatch && linkInviteMatch[1]) {
+    if (linkInviteMatch && linkInviteMatch[1] && isSenderAdmin) {
       try {
-        if (!isSenderAdmin) {
-          console.log(`[WhatsApp] Convite negado: remetente não é administrador.`);
-          await auditarComandoWhatsApp({
-            tenantId: tenantKey,
-            numero: normalizePhone(fromNumber) || fromNumber,
-            comando: msg.body || '',
-            resultado: 'recusado_nao_autorizado',
-            detalhes: { motivo: 'convite_grupo_por_desconhecido' }
-          });
-          return;
-        }
         const inviteCode = linkInviteMatch[1];
         console.log(`[WhatsApp] Link de convite recebido do administrador (${inviteCode}). Aceitando convite...`);
         const groupId = await wppClient.acceptInvite(inviteCode);
         console.log(`✅ [WhatsApp] Entrou com sucesso no grupo via convite: ${groupId}`);
-        await msg.reply(`✅ *Convite aceito com sucesso!*\nO agente agora faz parte do grupo (\`${groupId}\`).`);
-        return;
       } catch (eInv) {
         console.error('[WhatsApp] Erro ao aceitar convite:', eInv.message);
-        await msg.reply(`⚠️ Falha ao entrar no grupo: ${eInv.message}`);
-        return;
       }
+      return;
+    }
+
+    // Regra estrita de operação: o agente deve responder SOMENTE nos grupos configurados.
+    // Desativa qualquer resposta para números que enviem mensagem privada (clientes ou participantes cadastrados nos grupos).
+    if (responderApenasGrupos) {
+      console.log(`[WhatsApp] Mensagem direta de número ignorada (respostas ativas apenas em grupos). Remetente: ${fromNumber}`);
+      return;
     }
 
     if (!isSenderAdmin) {
@@ -3862,7 +3866,7 @@ ${itensPec ? `\n📦 *Peças:* \n${itensPec}` : ''}`;
       return;
     }
 
-    if (!isGroup) {
+    if (!isGroup && !responderApenasGrupos) {
       await msg.reply(
         `Mensagem recebida no *Pátio CRM*! 🚛\n\n` +
         `• Digite *!ajuda* para ver todos os comandos disponíveis.\n` +
@@ -3872,9 +3876,11 @@ ${itensPec ? `\n📦 *Peças:* \n${itensPec}` : ''}`;
     }
   } catch (localErr) {
     console.error('[WhatsApp] Erro no processamento de mensagem:', localErr);
-    try {
-      await msg.reply('Recebemos sua mensagem! Nossa equipe já está verificando no sistema.');
-    } catch (_) {}
+    if (isGroup || !responderApenasGrupos) {
+      try {
+        await msg.reply('Recebemos sua mensagem! Nossa equipe já está verificando no sistema.');
+      } catch (_) {}
+    }
   }
 }
 

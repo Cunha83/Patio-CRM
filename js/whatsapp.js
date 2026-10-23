@@ -541,6 +541,7 @@ function blocoRelatorioAdmin() {
   const horaEnvio = cfg.horaRelatorioDiario || '07:30';
   const autoEnvio = cfg.envioAutomaticoRelatorio !== false;
   const apenasDiasUteis = cfg.relatorioApenasDiasUteis !== false;
+  const responderApenasGrupos = cfg.responderApenasGrupos !== false;
   const wppStatusStr = S.ui?.wppStatus?.status || 'inicializando';
 
   // Carrega lista de grupos do WhatsApp do servidor se ainda não carregou
@@ -677,6 +678,17 @@ function blocoRelatorioAdmin() {
           <button class="btn btn-secundario" data-act="atualizar-grupos-wpp" style="font-size:12.5px;height:36px">
             🔄 Sincronizar Grupos do WhatsApp (${grupos.length})
           </button>
+        </div>
+      </div>
+
+      <!-- Política de Resposta Exclusiva em Grupos -->
+      <div style="background:var(--aco-050);padding:10px 12px;border-radius:8px;border:1px solid var(--aco-150);margin-bottom:14px">
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
+          <input type="checkbox" id="cfg_responder_apenas_grupos" ${responderApenasGrupos ? 'checked' : ''}>
+          <b>🔒 Responder Apenas nos Grupos Cadastrados (Silencioso no Privado)</b>
+        </label>
+        <div class="mini" style="color:var(--aco-600);margin-top:4px;padding-left:22px">
+          Desativa respostas automáticas para números individuais (DMs/privado), mantendo o agente 100% silencioso para clientes e números cadastrados. O agente responde exclusivamente dentro dos grupos cadastrados.
         </div>
       </div>
 

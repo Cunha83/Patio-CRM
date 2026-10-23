@@ -10,6 +10,8 @@ router.get('/precos', (req, res) => res.sendFile('precos.html', { root: path.joi
 router.get('/cadastro', (req, res) => res.sendFile('cadastro.html', { root: path.join(ROOT_DIR, 'public') }));
 router.get('/checkout', (req, res) => res.sendFile('checkout.html', { root: path.join(ROOT_DIR, 'public') }));
 router.get('/assinatura', (req, res) => res.sendFile('assinatura.html', { root: path.join(ROOT_DIR, 'public') }));
+router.get('/video-motion', (req, res) => res.sendFile('video-motion.html', { root: path.join(ROOT_DIR, 'public') }));
+router.use('/motion', express.static(path.join(ROOT_DIR, 'public', 'motion'), { dotfiles: 'deny' }));
 
 /* ── Servir Arquivos Estáticos do Frontend ────────────────── */
 router.use('/js', express.static(path.join(ROOT_DIR, 'js'), { dotfiles: 'deny' }));

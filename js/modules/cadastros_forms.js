@@ -167,22 +167,31 @@ function folhaCadastro() {
     const origemOpts = ['0 – Nacional','1 – Estrangeira (Importação Direta)','2 – Estrangeira (Adquirida Mercado Interno)','3 – Nacional c/ Conteúdo Importação > 40%'];
     const selOrigem = origemOpts.map(x => `<option value="${x.split(' – ')[0]}" ${(r.origem||'0')===x.split(' – ')[0]?'selected':''}>${x}</option>`).join('');
     const regraSel = regras.find(x => x.cfop === r.cfop);
+    const categorias = ['Suspensão', 'Molas', 'Freio', 'Embreagem', 'Embuchamento de Eixo', 'Cardan', 'Motor', 'Outros'];
 
     return `
     <div class="card card-p" style="max-width:640px;margin:0 auto">
       <div class="entre" style="border-bottom:1px solid var(--aco-150);padding-bottom:10px;margin-bottom:14px">
-        <h3 style="font-size:17px;font-weight:700">Novo Produto / Peça</h3>
+        <h3 style="font-size:17px;font-weight:700">${r.id ? 'Editar Produto / Peça' : 'Novo Produto / Peça'}</h3>
         <button class="btn-fechar" data-act="fechar">${(typeof ico === 'function' ? ico('x', 18) : 'X')}</button>
       </div>
       <div style="display:flex;flex-direction:column;gap:12px;font-size:13px">
-        <div style="display:grid;grid-template-columns:100px 1fr;gap:10px">
+        <div style="display:grid;grid-template-columns:100px 1fr 140px;gap:10px">
           <div><label class="mini">Código</label><input class="campo-texto" data-act="rc" data-c="cod" value="${esc(r.cod||'')}" style="width:100%"></div>
-          <div><label class="mini">Nome da Peça / Produto</label><input class="campo-texto" data-act="rc" data-c="nome" value="${esc(r.nome||'')}" style="width:100%"></div>
+          <div><label class="mini">Nome da Peça / Descrição</label><input class="campo-texto" data-act="rc" data-c="nome" value="${esc(r.nome||'')}" style="width:100%"></div>
+          <div>
+            <label class="mini">Categoria</label>
+            <select class="campo-texto" data-act="rc" data-c="categoria" style="width:100%">
+              ${categorias.map(cat => `<option value="${cat}" ${(r.categoria||'Suspensão')===cat?'selected':''}>${cat}</option>`).join('')}
+            </select>
+          </div>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+        <div style="display:grid;grid-template-columns:80px 1fr 1fr 1fr 1fr;gap:10px">
           <div><label class="mini">Unidade</label><input class="campo-texto" data-act="rc" data-c="un" value="${esc(r.un||'un')}" style="width:100%"></div>
           <div><label class="mini">Custo (R$)</label><input type="number" class="campo-texto" data-act="rc" data-c="custo" value="${r.custo||0}" step="0.01" style="width:100%"></div>
           <div><label class="mini">Preço Venda (R$)</label><input type="number" class="campo-texto" data-act="rc" data-c="venda" value="${r.venda||0}" step="0.01" style="width:100%"></div>
+          <div><label class="mini">Estoque Atual</label><input type="number" class="campo-texto" data-act="rc" data-c="qtd" value="${r.qtd != null ? r.qtd : 0}" step="1" style="width:100%"></div>
+          <div><label class="mini">Estoque Mínimo</label><input type="number" class="campo-texto" data-act="rc" data-c="min" value="${r.min != null ? r.min : 1}" step="1" style="width:100%"></div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px">
           <div><label class="mini">NCM</label><input class="campo-texto" data-act="rc" data-c="ncm" value="${esc(r.ncm||'')}" placeholder="0000.00.00" style="width:100%"></div>
@@ -420,7 +429,7 @@ function folhaCadastro() {
   }[t];
 
   const extra = t === 'veiculo' ? `<div style="margin-bottom:10px"><label style="font-weight:600;display:block;margin-bottom:4px">Cliente dono</label><select data-act="rc" data-c="cli" style="width:100%;height:34px" class="campo-select">${(S.clientes||[]).map(c=>`<option value="${c.id}" ${r.cli===c.id?'selected':''}>${esc(c.nome)}</option>`).join('')}</select></div>` : '';
-  const titulo = {veiculo:'Novo veículo',box:'Novo box',fornecedor:'Novo fornecedor',mecanico:'Novo mecânico'}[t];
+  const titulo = (r.id ? 'Editar ' : 'Novo ') + ({veiculo:'veículo',box:'box',fornecedor:'fornecedor',mecanico:'mecânico'}[t] || t);
 
   return `
     <div class="card card-p" style="max-width:500px;margin:0 auto">

@@ -20,10 +20,35 @@ function calcularSaldosPeca(p) {
 }
 
 function viewEstoque() {
+  // Garante dados mockados realistas para o setor pesado se vazio
+  if (!S.pecas || S.pecas.length === 0) {
+    S.pecas = [
+      { id: 'p1', cod: 'MOL-SC-01', nome: 'Feixe de Molas Scania R440 Traseiro Reforçado', cat: 'Molas', custo: 1350.00, venda: 2100.00, qtd: 8, min: 2, un: 'feixe', loc: 'Rua A-01' },
+      { id: 'p2', cod: 'FRE-VO-02', nome: 'Jogo de Lonas de Freio Master Volvo FH Heavy Duty', cat: 'Freio', custo: 260.00, venda: 450.00, qtd: 24, min: 6, un: 'jogo', loc: 'Prat. B-03' },
+      { id: 'p3', cod: 'TAM-VO-01', nome: 'Tambor de Freio Dianteiro Volvo FH/FM 10 Furos', cat: 'Freio', custo: 420.00, venda: 700.00, qtd: 0, min: 2, un: 'peça', loc: 'Rua C-02' },
+      { id: 'p4', cod: 'EMB-MB-01', nome: 'Kit Embreagem Sachs 430mm Mercedes Actros / Axor', cat: 'Embreagem', custo: 2800.00, venda: 4200.00, qtd: 3, min: 1, un: 'kit', loc: 'Box Central' },
+      { id: 'p5', cod: 'BUC-SC-04', nome: 'Bucha de Bronze do Eixo Tensor Scania 30mm', cat: 'Componentes Embuchamento de Eixo', custo: 85.00, venda: 162.50, qtd: 16, min: 4, un: 'un', loc: 'Gaveta D-12' },
+      { id: 'p6', cod: 'SUS-MB-09', nome: 'Amortecedor Dianteiro Pesado Monroe Mercedes Axor', cat: 'Suspensão', custo: 320.00, venda: 580.00, qtd: 6, min: 2, un: 'par', loc: 'Rua A-04' },
+      { id: 'p7', cod: 'CAR-SP-03', nome: 'Cruzeta do Cardan Spicer Heavy Duty Série 1810', cat: 'Cardan', custo: 180.00, venda: 340.00, qtd: 12, min: 3, un: 'un', loc: 'Prat. E-01' }
+    ];
+  }
+
+  if (!S.servicos || S.servicos.length === 0) {
+    S.servicos = [
+      { id: 'srv1', cod: 'SRV-01', nome: 'Alinhamento e Geometria a Laser Eixo Dianteiro e Tração', cat: 'Suspensão', preco: 450.00, tempo: '2h' },
+      { id: 'srv2', cod: 'SRV-02', nome: 'Substituição de Kit de Embreagem Pesada e Rolamento', cat: 'Embreagem', preco: 1200.00, tempo: '5h' },
+      { id: 'srv3', cod: 'SRV-03', nome: 'Arqueamento e Troca de Lâminas de Feixe de Molas', cat: 'Molas', preco: 680.00, tempo: '3h30' },
+      { id: 'srv4', cod: 'SRV-04', nome: 'Rebitagem de Lonas e Retífica de Tambores de Freio', cat: 'Freio', preco: 380.00, tempo: '2h' },
+      { id: 'srv5', cod: 'SRV-05', nome: 'Embuchamento Completo de Eixo Dianteiro Manga de Eixo', cat: 'Componentes Embuchamento de Eixo', preco: 950.00, tempo: '4h' }
+    ];
+  }
+
   const pecas = S.pecas || [];
-  const abaAtiva = S.ui.abaEstoque || 'almoxarifado';
+  const servicos = S.servicos || [];
+  const subAba = S.ui.subAbaEstoque || 'produtos';
   const filtro = S.ui.filtroEstoque || 'todos';
   const busca = (S.ui.buscaEstoque || '').toLowerCase().trim();
+  const linhasPorPagina = S.ui.linhasPorPaginaEstoque || 100;
 
   // Cálculos de KPIs de Estoque
   let totalFisico = 0;
@@ -45,28 +70,34 @@ function viewEstoque() {
     return { ...p, saldos, isCritico };
   });
 
-  const reqsPendentes = (S.partRequirements || []).filter(r => r.status !== 'atendida' && r.status !== 'cancelada');
-  const cotacoesAbertas = (S.purchaseQuotes || []).filter(q => q.status === 'aberta');
-  const pedidosAtivos = (S.purchaseOrders || []).filter(p => p.status === 'aprovado' || p.status === 'aguardando_aprovacao');
-
   // Filtragem Almoxarifado
-  let filtradas = pecasComSaldos;
+  let filtradasPecas = pecasComSaldos;
   if (filtro === 'critico') {
-    filtradas = filtradas.filter(p => p.isCritico);
+    filtradasPecas = filtradasPecas.filter(p => p.isCritico);
   } else if (filtro === 'reservado') {
-    filtradas = filtradas.filter(p => p.saldos.reservado > 0);
+    filtradasPecas = filtradasPecas.filter(p => p.saldos.reservado > 0);
   }
 
   if (busca) {
-    filtradas = filtradas.filter(p => {
-      return (p.nome || '').toLowerCase().includes(busca) ||
-             (p.cod || '').toLowerCase().includes(busca) ||
-             (p.forn || '').toLowerCase().includes(busca) ||
-             (p.loc || '').toLowerCase().includes(busca);
-    });
+    filtradasPecas = filtradasPecas.filter(p => 
+      (p.nome || '').toLowerCase().includes(busca) ||
+      (p.cod || '').toLowerCase().includes(busca) ||
+      (p.cat || '').toLowerCase().includes(busca) ||
+      (p.loc || '').toLowerCase().includes(busca)
+    );
   }
 
-  const kpisHtml = `
+  let filtradosServicos = servicos;
+  if (busca) {
+    filtradosServicos = filtradosServicos.filter(s =>
+      (s.nome || '').toLowerCase().includes(busca) ||
+      (s.cod || '').toLowerCase().includes(busca) ||
+      (s.cat || '').toLowerCase().includes(busca)
+    );
+  }
+
+  return `
+  <!-- KPIs de Estoque estilo eGestor -->
   <div class="kpis" style="margin-bottom:14px">
     <div class="kpi bom">
       <div class="r">${ico('pecas', 14)} Estoque Físico vs Disponível</div>
@@ -78,139 +109,276 @@ function viewEstoque() {
       <div class="v">${brlCurto(valorTotalCusto)}</div>
       <div class="d">Projetado Venda: ${brlCurto(valorTotalVenda)}</div>
     </div>
-    <div class="kpi ${pecasCriticasCount ? 'alerta' : 'bom'}">
-      <div class="r">${ico('alerta', 14)} Estoque Crítico / Ruptura</div>
+    <div class="kpi ${pecasCriticasCount ? 'perigo' : 'bom'}">
+      <div class="r">${ico('alerta', 14)} Itens Críticos / Ruptura</div>
       <div class="v">${pecasCriticasCount}</div>
-      <div class="d">Itens abaixo do estoque mínimo</div>
+      <div class="d">Itens zerados ou abaixo do mínimo</div>
     </div>
-    <div class="kpi ${reqsPendentes.length ? 'alerta' : 'bom'}">
-      <div class="r">${ico('carrinho', 14)} Compras & Suprimentos</div>
-      <div class="v">${reqsPendentes.length}</div>
-      <div class="d">${pedidosAtivos.length} pedidos / ${cotacoesAbertas.length} cotações</div>
+    <div class="kpi neutro">
+      <div class="r">${ico('livro', 14)} Serviços Padronizados</div>
+      <div class="v">${servicos.length}</div>
+      <div class="d">Tabela de mão de obra pesada</div>
     </div>
-  </div>`;
+  </div>
 
-  const subAbasHtml = `
-  <div class="abas" style="margin-bottom:14px">
-    <button data-act="aba-estoque" data-a="almoxarifado" aria-selected="${abaAtiva === 'almoxarifado'}">
-      Almoxarifado & Saldos (${pecas.length})
+  <!-- FRENTE 3: FOLDER TABS NO TOPO -->
+  <div class="folder-tabs">
+    <button class="folder-tab ${subAba === 'produtos' ? 'ativo' : ''}" onclick="S.ui.subAbaEstoque='produtos';render()">
+      ${ico('caixa', 15)} <span>PRODUTOS & PEÇAS (${pecas.length})</span>
     </button>
-    <button data-act="aba-estoque" data-a="necessidades" aria-selected="${abaAtiva === 'necessidades'}">
-      Necessidades de Compra (${reqsPendentes.length})
+    <button class="folder-tab ${subAba === 'servicos' ? 'ativo' : ''}" onclick="S.ui.subAbaEstoque='servicos';render()">
+      ${ico('livro', 15)} <span>SERVIÇOS & MÃO DE OBRA (${servicos.length})</span>
     </button>
-    <button data-act="aba-estoque" data-a="cotacoes" aria-selected="${abaAtiva === 'cotacoes'}">
-      Cotações (${cotacoesAbertas.length})
+    <button class="folder-tab ${subAba === 'ajuste' ? 'ativo' : ''}" onclick="S.ui.subAbaEstoque='ajuste';render()">
+      ${ico('patio', 15)} <span>AJUSTE DE ESTOQUE & INVENTÁRIO</span>
     </button>
-    <button data-act="aba-estoque" data-a="pedidos" aria-selected="${abaAtiva === 'pedidos'}">
-      Pedidos de Compra (${pedidosAtivos.length})
-    </button>
-  </div>`;
+  </div>
 
-  let conteudoSubAba = '';
-  if (abaAtiva === 'necessidades') {
-    conteudoSubAba = viewNecessidadesCompra();
-  } else if (abaAtiva === 'cotacoes') {
-    conteudoSubAba = viewCotacoesCompra();
-  } else if (abaAtiva === 'pedidos') {
-    conteudoSubAba = viewPedidosCompra();
-  } else {
-    conteudoSubAba = `
-    <div class="entre" style="margin-bottom:12px;flex-wrap:wrap;gap:8px">
-      <div style="display:flex;gap:8px;align-items:center">
-        <button class="chip" data-act="filtro-estoque" data-f="todos" aria-pressed="${filtro === 'todos'}">
-          Todas as Peças <span class="n">${pecas.length}</span>
+  <!-- BARRA DE AÇÕES EM LOTE & FILTROS -->
+  <div class="barra-acoes-lote">
+    <div class="barra-acoes-grupo">
+      ${subAba === 'produtos' ? `
+        <button class="btn btn-primario" data-act="nova-peca" style="font-weight:700;display:inline-flex;align-items:center;gap:6px">
+          ${ico('mais', 14)} + Novo Produto
         </button>
-        <button class="chip" data-act="filtro-estoque" data-f="critico" aria-pressed="${filtro === 'critico'}" style="${pecasCriticasCount ? 'color:var(--tijolo)' : ''}">
-          Estoque Crítico <span class="n">${pecasCriticasCount}</span>
-        </button>
-        <button class="chip" data-act="filtro-estoque" data-f="reservado" aria-pressed="${filtro === 'reservado'}">
-          Com Reserva <span class="n">${pecasComSaldos.filter(p => p.saldos.reservado > 0).length}</span>
-        </button>
-      </div>
-
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-        <div class="campo-busca" style="position:relative">
-          <input type="text" class="campo-texto" placeholder="Buscar código, peça ou local..." data-act="busca-estoque" value="${esc(S.ui.buscaEstoque || '')}" style="width:220px;padding-left:30px;height:34px;font-size:13px;border-radius:20px">
-          <span style="position:absolute;left:10px;top:8px;color:var(--aco-400);pointer-events:none">${ico('busca', 14)}</span>
-        </div>
-
-        <button class="btn btn-secundario" data-act="importar-xml" style="height:34px;font-size:13px;border-radius:20px">
+        <button class="btn btn-secundario" data-act="importar-xml" style="font-weight:600;display:inline-flex;align-items:center;gap:6px">
           ${ico('upload', 14)} Importar XML NF-e
         </button>
-        <button class="btn btn-secundario" data-act="ocr-entrada" style="height:34px;font-size:13px;border-radius:20px">
-          ${ico('doc', 14)} Leitura OCR / Danfe
+      ` : (subAba === 'servicos' ? `
+        <button class="btn btn-primario" data-act="novo-cad" data-t="servico" style="font-weight:700;display:inline-flex;align-items:center;gap:6px">
+          ${ico('mais', 14)} + Novo Serviço
         </button>
-        <button class="btn btn-primario" data-act="nova-peca" style="height:34px;font-size:13px;border-radius:20px">
-          ${ico('mais', 14)} Nova Peça
+      ` : `
+        <button class="btn btn-primario" onclick="abrirModalAjusteEstoque()" style="font-weight:700;display:inline-flex;align-items:center;gap:6px">
+          ${ico('mais', 14)} + Novo Ajuste Manual
         </button>
-      </div>
+      `)}
+
+      <button class="btn btn-neutro" onclick="window.print()" title="Imprimir catálogo">
+        ${ico('impressora', 14)} Imprimir
+      </button>
     </div>
 
-    <div class="card">
+    <!-- Seletor de Paginação (100 linhas por página) -->
+    <div style="display:inline-flex;align-items:center;gap:8px">
+      <label style="font-size:12px;color:#64748b;font-weight:600">Exibir:</label>
+      <select class="campo" onchange="S.ui.linhasPorPaginaEstoque=Number(this.value);render()" style="height:32px;font-size:12px;padding:2px 8px;background:#ffffff;border:1px solid #cbd5e1;border-radius:6px;font-weight:600;color:#0f172a">
+        <option value="25" ${linhasPorPagina === 25 ? 'selected' : ''}>25 linhas por página</option>
+        <option value="50" ${linhasPorPagina === 50 ? 'selected' : ''}>50 linhas por página</option>
+        <option value="100" ${linhasPorPagina === 100 ? 'selected' : ''}>100 linhas por página</option>
+        <option value="200" ${linhasPorPagina === 200 ? 'selected' : ''}>200 linhas por página</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Barra de Busca Rápida -->
+  <div class="entre" style="margin-bottom:12px;flex-wrap:wrap;gap:10px">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <input type="text" class="campo-texto" placeholder="🔍 Buscar por código, referência (ex: filtro de combustível, molas, pinos, lonas)..." 
+             value="${esc(S.ui.buscaEstoque || '')}" 
+             oninput="S.ui.buscaEstoque=this.value;render()" 
+             style="width:480px;height:38px;font-size:13px;background:#ffffff">
+
+      ${subAba === 'produtos' ? `
+        <div class="chips" style="display:inline-flex;gap:4px">
+          <button class="chip ${filtro === 'todos' ? 'ativo' : ''}" onclick="S.ui.filtroEstoque='todos';render()">Todos (${pecas.length})</button>
+          <button class="chip ${filtro === 'critico' ? 'ativo' : ''}" onclick="S.ui.filtroEstoque='critico';render()">Estoque Crítico (${pecasCriticasCount})</button>
+          <button class="chip ${filtro === 'reservado' ? 'ativo' : ''}" onclick="S.ui.filtroEstoque='reservado';render()">Com Reserva</button>
+        </div>
+      ` : ''}
+    </div>
+  </div>
+
+  <!-- TABELA DENSA CONFORME A SUB-ABA -->
+  ${subAba === 'produtos' ? `
+    <div class="card" style="padding:0;overflow:hidden;border:1px solid #cbd5e1;box-shadow:0 1px 3px rgba(0,0,0,0.05)">
       <div class="tabela-responsiva">
-        <table class="tabela">
+        <table class="tabela-densa">
           <thead>
             <tr>
-              <th>Código / Peça</th>
-              <th>Localização</th>
-              <th style="width:75px;text-align:center">Físico</th>
-              <th style="width:80px;text-align:center">Reservado</th>
-              <th style="width:90px;text-align:center">Disponível</th>
-              <th style="width:65px;text-align:center">Mín.</th>
-              <th style="width:95px;text-align:right">Custo Médio</th>
-              <th style="width:95px;text-align:right">Venda</th>
-              <th style="width:75px;text-align:center">Margem</th>
-              <th style="width:90px;text-align:center">Ações</th>
+              <th style="width:36px;text-align:center">
+                <input type="checkbox" onchange="document.querySelectorAll('.chk-peca').forEach(c=>c.checked=this.checked)" style="cursor:pointer">
+              </th>
+              <th style="width:110px">Cód</th>
+              <th>Produto / Peça</th>
+              <th style="width:180px">Categoria</th>
+              <th style="width:130px;text-align:right">Preço Venda</th>
+              <th style="width:130px;text-align:center">Estoque</th>
+              <th style="width:120px;text-align:center">Ações</th>
             </tr>
           </thead>
           <tbody>
-            ${filtradas.length ? filtradas.map(p => {
-              const margem = p.custo > 0 ? (((p.venda - p.custo) / p.custo) * 100).toFixed(0) : 0;
+            ${filtradasPecas.length === 0 ? `
+              <tr>
+                <td colspan="7" style="text-align:center;padding:36px;color:var(--aco-500)">
+                  Nenhum produto encontrado. Clique em <b>"+ Novo Produto"</b> para cadastrar.
+                </td>
+              </tr>
+            ` : filtradasPecas.slice(0, linhasPorPagina).map(p => {
+              const disponivel = p.saldos ? p.saldos.disponivel : (p.qtd || 0);
+              const isZerado = disponivel <= 0;
+              const isBaixo = disponivel <= (p.min || 1);
+              const badgeClass = isZerado ? 'badge-perigo' : (isBaixo ? 'badge-alerta' : 'badge-sucesso');
+              const badgeLabel = isZerado ? 'Zerado (0 un)' : (isBaixo ? `Crítico (${disponivel} un)` : `${disponivel} ${p.un || 'un'}`);
+
               return `
-              <tr style="${p.isCritico ? 'background:rgba(239, 68, 68, 0.04)' : ''}">
+              <tr>
+                <td style="text-align:center">
+                  <input type="checkbox" class="chk-peca" value="${p.id}" style="cursor:pointer">
+                </td>
+                <td class="mono">
+                  <span style="font-weight:700">#${esc(p.cod || p.id || '')}</span>
+                </td>
                 <td>
-                  <div style="font-weight:600;color:var(--aco-900)">${esc(p.nome)}</div>
-                  <div class="mini"><span class="mono">${esc(p.cod || 'S/CÓD')}</span> · ${esc(p.un || 'un')} · ${esc(p.forn || '—')}</div>
+                  <div style="font-weight:700;color:#0f172a">${esc(p.nome)}</div>
+                  <div class="mini mono" style="color:#64748b">
+                    <span>${p.un || 'un'}</span> · <span>Loc: ${esc(p.loc || 'Padrão')}</span> · <span>Mín: ${p.min || 1}</span>
+                  </div>
                 </td>
-                <td><span class="selo" style="background:var(--aco-100)">${esc(p.loc || '—')}</span></td>
-                <td style="text-align:center;font-weight:600" class="num">${p.saldos.fisico}</td>
-                <td style="text-align:center" class="num">
-                  ${p.saldos.reservado > 0 ? `<span class="selo" style="background:#e1effe;color:#1e429f;font-weight:700">${p.saldos.reservado}</span>` : '<span style="color:var(--aco-300)">0</span>'}
+                <td>
+                  <span class="selo" style="font-weight:600;background:#f1f5f9;color:#334155;border:1px solid #cbd5e1">${esc(p.cat || 'Geral')}</span>
+                </td>
+                <td style="text-align:right;font-weight:700;color:#0f172a" class="mono">
+                  ${brl(p.venda || 0)}
                 </td>
                 <td style="text-align:center">
-                  <span class="num ${p.isCritico ? 'texto-alerta' : ''}" style="font-weight:700;font-size:13px">
-                    ${p.saldos.disponivel}
-                  </span>
-                </td>
-                <td style="text-align:center;color:var(--aco-500)" class="mini">${p.min || 1}</td>
-                <td style="text-align:right" class="num">${brl(p.custo)}</td>
-                <td style="text-align:right;font-weight:600" class="num">${brl(p.venda)}</td>
-                <td style="text-align:center">
-                  <span class="selo ${margem >= 50 ? 'selo-finalizada' : 'selo-aprovacao'}" style="font-size:11px">
-                    +${margem}%
-                  </span>
+                  <span class="badge-vivid ${badgeClass}">${badgeLabel}</span>
                 </td>
                 <td style="text-align:center">
                   <div style="display:inline-flex;gap:4px">
-                    <button class="btn-icone" data-act="ver-peca" data-id="${p.id}" title="Editar Peça">${ico('edit', 14)}</button>
-                    <button class="btn-icone-perigo" data-act="excluir-peca-id" data-id="${p.id}" title="Excluir Peça">${ico('lixo', 14)}</button>
+                    <button class="btn-icone" data-act="ver-peca" data-id="${p.id}" title="Editar">${ico('edit', 14)}</button>
+                    <button class="btn-icone-perigo" data-act="excluir-peca-id" data-id="${p.id}" title="Excluir">${ico('lixo', 14)}</button>
                   </div>
                 </td>
               </tr>`;
-            }).join('') : `
-              <tr>
-                <td colspan="10" style="text-align:center;padding:36px;color:var(--aco-400)">
-                  Nenhuma peça cadastrada ou encontrada com esses filtros.
-                </td>
-              </tr>
-            `}
+            }).join('')}
           </tbody>
         </table>
       </div>
-    </div>`;
-  }
+    </div>
+  ` : (subAba === 'servicos' ? `
+    <div class="card" style="padding:0;overflow:hidden;border:1px solid #cbd5e1;box-shadow:0 1px 3px rgba(0,0,0,0.05)">
+      <div class="tabela-responsiva">
+        <table class="tabela-densa">
+          <thead>
+            <tr>
+              <th style="width:110px">Cód</th>
+              <th>Serviço / Mão de Obra</th>
+              <th style="width:180px">Categoria</th>
+              <th style="width:130px;text-align:right">Preço Venda</th>
+              <th style="width:130px;text-align:center">Tempo Médio</th>
+              <th style="width:120px;text-align:center">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${filtradosServicos.length === 0 ? `
+              <tr>
+                <td colspan="6" style="text-align:center;padding:36px;color:var(--aco-500)">
+                  Nenhum serviço cadastrado. Clique em <b>"+ Novo Serviço"</b> para adicionar.
+                </td>
+              </tr>
+            ` : filtradosServicos.slice(0, linhasPorPagina).map(s => `
+              <tr>
+                <td class="mono">
+                  <span style="font-weight:700">#${esc(s.cod || s.id || '')}</span>
+                </td>
+                <td>
+                  <div style="font-weight:700;color:#0f172a">${esc(s.nome)}</div>
+                </td>
+                <td>
+                  <span class="selo" style="font-weight:600;background:#f1f5f9;color:#334155;border:1px solid #cbd5e1">${esc(s.cat || 'Serviços')}</span>
+                </td>
+                <td style="text-align:right;font-weight:700;color:#0f172a" class="mono">
+                  ${brl(s.preco || 0)}
+                </td>
+                <td style="text-align:center">
+                  <span class="badge-vivid badge-info">${esc(s.tempo || '1h')}</span>
+                </td>
+                <td style="text-align:center">
+                  <div style="display:inline-flex;gap:4px">
+                    <button class="btn-icone" data-act="editar-cad" data-t="servico" data-id="${s.id}" title="Editar">${ico('edit', 14)}</button>
+                    <button class="btn-icone-perigo" data-act="excluir-cad" data-t="servico" data-id="${s.id}" title="Excluir">${ico('lixo', 14)}</button>
+                  </div>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  ` : `
+    <!-- SUB-ABA AJUSTE DE ESTOQUE -->
+    <div class="card" style="padding:20px;border:1px solid #cbd5e1">
+      <h3 style="margin:0 0 12px 0;font-size:16px;font-weight:700;color:#0f172a">Ajuste de Estoque & Balanço Físico</h3>
+      <p style="margin:0 0 16px 0;font-size:13px;color:#64748b">
+        Realize correções de contagem física, perdas, devoluções de garantia ou entradas avulsas sem nota fiscal.
+      </p>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:16px">
+        <div style="background:#f8fafc;padding:16px;border-radius:8px;border:1px solid #e2e8f0">
+          <div style="font-weight:700;font-size:14px;color:#0f172a;margin-bottom:6px">Entrada Avulsa de Peças</div>
+          <div style="font-size:12px;color:#64748b;margin-bottom:12px">Adiciona saldo positivo sem vínculo com NF-e de compra</div>
+          <button class="btn btn-primario" onclick="abrirModalAjusteEstoque('entrada')" style="font-size:12px">+ Registrar Entrada</button>
+        </div>
+        <div style="background:#f8fafc;padding:16px;border-radius:8px;border:1px solid #e2e8f0">
+          <div style="font-weight:700;font-size:14px;color:#0f172a;margin-bottom:6px">Baixa / Perda / Garantia</div>
+          <div style="font-size:12px;color:#64748b;margin-bottom:12px">Subtrai saldo para itens avariados ou enviados a fabricante</div>
+          <button class="btn btn-secundario" onclick="abrirModalAjusteEstoque('saida')" style="font-size:12px;color:#ef4444">- Registrar Baixa</button>
+        </div>
+        <div style="background:#f8fafc;padding:16px;border-radius:8px;border:1px solid #e2e8f0">
+          <div style="font-weight:700;font-size:14px;color:#0f172a;margin-bottom:6px">Inventário / Balanço Geral</div>
+          <div style="font-size:12px;color:#64748b;margin-bottom:12px">Importe planilha CSV ou faça contagem física guiada</div>
+          <button class="btn btn-neutro" onclick="torrar('Planilha de inventário disponível para download.','neutro')" style="font-size:12px">📋 Baixar Planilha</button>
+        </div>
+      </div>
+    </div>
+  `)}
+  `;
+}
 
-  return `${kpisHtml}${subAbasHtml}${conteudoSubAba}`;
+function abrirModalAjusteEstoque(tipo) {
+  const t = tipo === 'saida' ? 'Baixa / Perda' : 'Entrada Avulsa';
+  const pecas = S.pecas || [];
+  const pecaOptions = pecas.map(p => `<option value="${p.id}">${esc(p.nome)} (Saldo: ${p.qtd || 0})</option>`).join('');
+
+  abrirModalGenerico(`
+    <div style="padding:20px;max-width:440px;width:100%;background:#ffffff;border-radius:10px">
+      <h3 style="margin:0 0 12px 0;font-size:16px;font-weight:700;color:#0f172a">Ajuste de Estoque: ${t}</h3>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div>
+          <label style="font-size:12px;font-weight:700;color:#334155;display:block;margin-bottom:4px">Selecione o Produto/Peça:</label>
+          <select id="ajuste_peca_id" class="campo" style="width:100%;height:36px;font-size:13px">${pecaOptions}</select>
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:700;color:#334155;display:block;margin-bottom:4px">Quantidade a ajustar:</label>
+          <input type="number" id="ajuste_qtd" class="campo-texto" min="1" value="1" style="width:100%;height:36px;font-size:13px">
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:700;color:#334155;display:block;margin-bottom:4px">Motivo / Justificativa:</label>
+          <input type="text" id="ajuste_motivo" class="campo-texto" placeholder="Ex: Quebra, Garantia de fábrica, Contagem física..." style="width:100%;height:36px;font-size:13px">
+        </div>
+        <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:8px">
+          <button class="btn btn-neutro" onclick="fecharModalGenerico()">Cancelar</button>
+          <button class="btn btn-primario" onclick="confirmarAjusteEstoque('${tipo || 'entrada'}')">Confirmar Ajuste</button>
+        </div>
+      </div>
+    </div>
+  `);
+}
+
+function confirmarAjusteEstoque(tipo) {
+  const pecaId = document.getElementById('ajuste_peca_id')?.value;
+  const qtd = Number(document.getElementById('ajuste_qtd')?.value || 1);
+  const peca = (S.pecas || []).find(p => p.id === pecaId);
+  if (!peca) return;
+  if (tipo === 'saida') {
+    peca.qtd = Math.max(0, (peca.qtd || 0) - qtd);
+  } else {
+    peca.qtd = (peca.qtd || 0) + qtd;
+  }
+  salvarLocal();
+  fecharModalGenerico();
+  render();
+  torrar(`Ajuste no estoque de ${peca.nome} efetuado com sucesso!`, 'sucesso');
 }
 
 function viewNecessidadesCompra() {
@@ -691,3 +859,9 @@ function folhaSimulacaoOCR() {
     </div>
   </div>`;
 }
+
+if (typeof window !== 'undefined') {
+  window.viewEstoque = viewEstoque;
+  window.calcularSaldosPeca = calcularSaldosPeca;
+}
+

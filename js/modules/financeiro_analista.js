@@ -897,9 +897,13 @@ async function estornarMovimentoApi(movimentoId, motivo) {
 }
 
 function falarParecerVeronica(texto) {
-  if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+  const cleanText = (texto || '').replace(/[#*_`]/g, '');
+  if (typeof window !== 'undefined' && typeof window.falarTexto === 'function') {
+    window.falarTexto(cleanText, { forcar: true });
+  } else if (typeof PatioVoz !== 'undefined' && typeof PatioVoz.falarTexto === 'function') {
+    PatioVoz.falarTexto(cleanText, { forcar: true });
+  } else if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
     window.speechSynthesis.cancel();
-    const cleanText = (texto || '').replace(/[#*_`]/g, '');
     const utter = new SpeechSynthesisUtterance(cleanText);
     utter.lang = 'pt-BR';
     utter.rate = 1.05;

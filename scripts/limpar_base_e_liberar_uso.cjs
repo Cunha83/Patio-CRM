@@ -73,7 +73,16 @@ async function main() {
         cidade: "",
         uf: "",
         ambienteNfe: "Produção",
-        proximoNumOs: 1
+        proximoNumOs: 1,
+        assistente: {
+          displayName: "Verônica",
+          voiceGender: "female",
+          voiceURI: "",
+          voiceName: "",
+          pitch: 1.0,
+          rate: 1.0,
+          enabled: true
+        }
       },
       clientes: [],
       veiculos: [],
@@ -137,18 +146,31 @@ async function main() {
       console.log(`      ✔ Senha do administrador 'admin@oficina.local' atualizada.`);
     }
 
-    // Garante usuário rápido 'patio' para o ambiente controlado de testes
+    // Garante usuário rápido 'patio' com senha 'patio' para acesso local
     let userPatio = await userRepository.getUserByUsername('patio');
+    const saltPatio = crypto.randomBytes(16).toString('hex');
+    const hashPatio = userRepository.hashPassword('patio', saltPatio);
     if (!userPatio) {
-      await userRepository.createUser({
-        username: 'patio',
-        password: 'patio-password-test',
-        name: 'Operador Pátio Testes',
-        role: 'tenant_admin',
+      const userId = `usr_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
+      await db.run(`INSERT INTO users (
+        id, username, password_hash, password_salt, password_algo,
+        name, phone, status, failed_login_attempts, locked_until, must_change_password,
+        created_at, updated_at
+      ) VALUES (?, 'patio', ?, ?, 'scrypt', 'Operador Pátio Testes', '', 'active', 0, NULL, 0, ?, ?)`, [
+        userId, hashPatio, saltPatio, now, now
+      ]);
+      await userRepository.addMembership({
+        userId,
         tenantId: 'default',
-        allowWeakInTest: true
+        role: 'tenant_admin',
+        permissions: userRepository.ROLE_PERMISSIONS.tenant_admin
       });
-      console.log(`      ✔ Usuário de teste local 'patio' habilitado.`);
+      console.log(`      ✔ Usuário de teste local 'patio' (senha: patio) habilitado.`);
+    } else {
+      await db.run('UPDATE users SET password_hash = ?, password_salt = ?, failed_login_attempts = 0, locked_until = NULL, status = ? WHERE username = ?', [
+        hashPatio, saltPatio, 'active', 'patio'
+      ]);
+      console.log(`      ✔ Usuário de teste local 'patio' (senha: patio) desbloqueado e atualizado.`);
     }
 
     // Limpa pasta de uploads se houver arquivos de teste
@@ -175,7 +197,7 @@ async function main() {
     console.log(' • Travas de piloto:    Todas removidas (WhatsApp e Módulos)');
     console.log(' • Emissão fiscal:      Destravada para Produção / Homologação');
     console.log(' • Usuário Admin:       admin@oficina.local  (Senha: AdminOficina2026!#Secure)');
-    console.log(' • Acesso Rápido Local: patio / patio (ou patio / patio-password-test)');
+    console.log(' • Acesso Rápido Local: patio / patio');
     console.log(' • Backup salvo em:     ' + backupFile);
     console.log('================================================================\n');
 

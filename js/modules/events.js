@@ -893,12 +893,14 @@ document.addEventListener('click', e => {
       const horaInput = document.getElementById('cfg_hora_relatorio');
       const autoInput = document.getElementById('cfg_auto_envio');
       const diasUteisInput = document.getElementById('cfg_apenas_dias_uteis');
+      const apenasGruposInput = document.getElementById('cfg_responder_apenas_grupos');
 
       const gAdminId = (gAdminInput ? gAdminInput.value : '').trim();
       const gOpId = (gOpInput ? gOpInput.value : '').trim();
       const horaStr = horaInput ? horaInput.value : '07:30';
       const autoBool = autoInput ? autoInput.checked : true;
       const diasUteisBool = diasUteisInput ? diasUteisInput.checked : true;
+      const apenasGruposBool = apenasGruposInput ? apenasGruposInput.checked : true;
 
       S.cfg = S.cfg || {};
       S.cfg.grupoAdminId = gAdminId;
@@ -906,6 +908,7 @@ document.addEventListener('click', e => {
       S.cfg.horaRelatorioDiario = horaStr;
       S.cfg.envioAutomaticoRelatorio = autoBool;
       S.cfg.relatorioApenasDiasUteis = diasUteisBool;
+      S.cfg.responderApenasGrupos = apenasGruposBool;
       salvar();
 
       fetch('/api/whatsapp/config-grupos', {
@@ -916,7 +919,8 @@ document.addEventListener('click', e => {
           grupoOperacaoId: gOpId,
           horaRelatorio: horaStr,
           envioAutomatico: autoBool,
-          apenasDiasUteis: diasUteisBool
+          apenasDiasUteis: diasUteisBool,
+          responderApenasGrupos: apenasGruposBool
         })
       })
         .then(r => r.json())
@@ -1019,36 +1023,86 @@ document.addEventListener('click', e => {
       render();
       torrar('Cliente excluído');
     }); break;
+    case 'editar-cad': {
+      const tipo = b.dataset.t;
+      const id = b.dataset.id;
+      let item = null;
+      if (tipo === 'cliente') item = (S.clientes || []).find(x => x.id === id);
+      else if (tipo === 'veiculo') item = (S.veiculos || []).find(x => x.id === id);
+      else if (tipo === 'fornecedor') item = (S.fornecedores || []).find(x => x.id === id);
+      else if (tipo === 'produto') item = (S.pecas || []).find(x => x.id === id);
+      else if (tipo === 'servico') item = (S.servicos || []).find(x => x.id === id);
+      else if (tipo === 'mecanico') item = (S.mecanicos || []).find(x => x.id === id);
+      else if (tipo === 'box') item = (S.boxes || []).find(x => x.id === id);
+      if (item) {
+        S.ui.cadTipo = tipo;
+        S.ui.rascCad = JSON.parse(JSON.stringify(item));
+        abrirFolha(folhaCadastro);
+      }
+      break;
+    }
+    case 'excluir-cad': {
+      const tipo = b.dataset.t;
+      const id = b.dataset.id;
+      pedirConfirmacao('excluir_' + tipo + '_' + id, 'Toque de novo para confirmar a exclusão', () => {
+        if (tipo === 'cliente') S.clientes = (S.clientes || []).filter(x => x.id !== id);
+        else if (tipo === 'veiculo') S.veiculos = (S.veiculos || []).filter(x => x.id !== id);
+        else if (tipo === 'fornecedor') S.fornecedores = (S.fornecedores || []).filter(x => x.id !== id);
+        else if (tipo === 'produto') S.pecas = (S.pecas || []).filter(x => x.id !== id);
+        else if (tipo === 'servico') S.servicos = (S.servicos || []).filter(x => x.id !== id);
+        else if (tipo === 'mecanico') S.mecanicos = (S.mecanicos || []).filter(x => x.id !== id);
+        else if (tipo === 'box') S.boxes = (S.boxes || []).filter(x => x.id !== id);
+        salvar();
+        render();
+        torrar('Registro excluído com sucesso!');
+      });
+      break;
+    }
     case 'salvar-cad': {
       const r = S.ui.rascCad || {}, t = S.ui.cadTipo;
       if (t === 'cliente') {
         if (!r.nome) { torrar('Razão Social / Nome é obrigatório'); break; }
         if (r.id) {
-          const idx = S.clientes.findIndex(x => x.id === r.id);
+          const idx = (S.clientes || []).findIndex(x => x.id === r.id);
           if (idx >= 0) S.clientes[idx] = { ...S.clientes[idx], ...r, scoreSerasa: (r.scoreSerasa !== undefined && r.scoreSerasa !== '' && r.scoreSerasa !== null) ? Number(r.scoreSerasa) : (S.clientes[idx].scoreSerasa ?? null), situacaoSerasa: r.situacaoSerasa ?? S.clientes[idx].situacaoSerasa ?? null, consultaSerasaRealizada: r.consultaSerasaRealizada !== undefined ? Boolean(r.consultaSerasaRealizada) : (S.clientes[idx].consultaSerasaRealizada || false) };
         } else {
+          S.clientes = S.clientes || [];
           S.clientes.push({ id: uid('cli'), nome: r.nome, fantasia: r.fantasia || '', doc: r.doc || '', fone: r.fone || '', email: r.email || '', contato: r.contato || '', prazo: +r.prazo || 0, ie: r.ie || '', endereco: r.endereco || '', cidade: r.cidade || '', uf: r.uf || '', cep: r.cep || '', optin: true, bloqueado: false, scoreSerasa: (r.scoreSerasa !== undefined && r.scoreSerasa !== '' && r.scoreSerasa !== null) ? Number(r.scoreSerasa) : null, situacaoSerasa: r.situacaoSerasa ?? null, consultaSerasaRealizada: Boolean(r.consultaSerasaRealizada) });
         }
       }
       if (t === 'fornecedor') {
         if (!r.nome) { torrar('Razão Social do Fornecedor é obrigatória'); break; }
-        S.fornecedores.push({ id: uid('f'), nome: r.nome, fantasia: r.fantasia||'', doc: r.doc||'', fone: r.fone||'', email: r.email||'', contato: r.contato||'', cidade: r.cidade||'', uf: r.uf||'' });
+        S.fornecedores = S.fornecedores || [];
+        if (r.id) {
+          const idx = S.fornecedores.findIndex(x => x.id === r.id);
+          if (idx >= 0) S.fornecedores[idx] = { ...S.fornecedores[idx], ...r };
+        } else {
+          S.fornecedores.push({ id: uid('f'), nome: r.nome, fantasia: r.fantasia||'', doc: r.doc||'', fone: r.fone||'', email: r.email||'', contato: r.contato||'', cidade: r.cidade||'', uf: r.uf||'', cep: r.cep||'', endereco: r.endereco||'' });
+        }
       }
       if (t === 'mecanico') {
         if (!r.nome) { torrar('Nome do mecânico é obrigatório'); break; }
-        S.mecanicos.push({ id: uid('m'), nome: r.nome, especialidade: r.especialidade||'Geral', fone: r.fone||'' });
+        S.mecanicos = S.mecanicos || [];
+        if (r.id) {
+          const idx = S.mecanicos.findIndex(x => x.id === r.id);
+          if (idx >= 0) S.mecanicos[idx] = { ...S.mecanicos[idx], ...r };
+        } else {
+          S.mecanicos.push({ id: uid('m'), nome: r.nome, especialidade: r.especialidade||'Geral', fone: r.fone||'' });
+        }
       }
       if (t === 'produto') {
         if (!r.nome) { torrar('Nome do produto é obrigatório'); break; }
+        S.pecas = S.pecas || [];
         if (r.id) {
           const idx = S.pecas.findIndex(x => x.id === r.id);
-          if (idx >= 0) S.pecas[idx] = { ...S.pecas[idx], ...r, custo: +r.custo||0, venda: +r.venda||0, cClassTrib: r.cClassTrib || S.pecas[idx].cClassTrib || '' };
+          if (idx >= 0) S.pecas[idx] = { ...S.pecas[idx], ...r, categoria: r.categoria || S.pecas[idx].categoria || 'Suspensão', custo: +r.custo||0, venda: +r.venda||0, qtd: r.qtd !== undefined ? +r.qtd : (S.pecas[idx].qtd || 0), min: r.min !== undefined ? +r.min : (S.pecas[idx].min || 1), cClassTrib: r.cClassTrib || S.pecas[idx].cClassTrib || '' };
         } else {
-          S.pecas.push({ id: uid('p'), cod: r.cod||'', nome: r.nome, un: r.un||'un', ncm: r.ncm||'', cest: r.cest||'', origem: r.origem||'0', cfop: r.cfop||'', cClassTrib: r.cClassTrib||'', custo: +r.custo||0, venda: +r.venda||0 });
+          S.pecas.push({ id: uid('p'), cod: r.cod||'', nome: r.nome, categoria: r.categoria||'Suspensão', un: r.un||'un', ncm: r.ncm||'', cest: r.cest||'', origem: r.origem||'0', cfop: r.cfop||'', cClassTrib: r.cClassTrib||'', custo: +r.custo||0, venda: +r.venda||0, qtd: +r.qtd||0, min: +r.min||1 });
         }
       }
       if (t === 'servico') {
         if (!r.nome) { torrar('Descrição do serviço é obrigatória'); break; }
+        S.servicos = S.servicos || [];
         if (r.id) {
           const idx = S.servicos.findIndex(x => x.id === r.id);
           if (idx >= 0) S.servicos[idx] = { ...S.servicos[idx], ...r, valor: +r.valor||0, horas: +r.horas||1, cClassTrib: r.cClassTrib || S.servicos[idx].cClassTrib || '' };
@@ -1074,13 +1128,25 @@ document.addEventListener('click', e => {
       }
       if (t === 'box') {
         if (!r.nome) { torrar('Nome do box é obrigatório'); break; }
-        S.boxes.push({ id: uid('b'), nome: r.nome, tipo: r.tipo || 'Geral' });
+        S.boxes = S.boxes || [];
+        if (r.id) {
+          const idx = S.boxes.findIndex(x => x.id === r.id);
+          if (idx >= 0) S.boxes[idx] = { ...S.boxes[idx], ...r };
+        } else {
+          S.boxes.push({ id: uid('b'), nome: r.nome, tipo: r.tipo || 'Geral' });
+        }
       }
       if (t === 'veiculo') {
         if (!r.placa) { torrar('Falta a placa'); break; }
-        S.veiculos.push({ id: uid('v'), cli: r.cli || S.clientes[0]?.id, placa: (r.placa || '').toUpperCase(), modelo: r.modelo || '', ano: r.ano || '', km: +r.km || 0, tipo: r.tipo || 'Cavalo' });
+        S.veiculos = S.veiculos || [];
+        if (r.id) {
+          const idx = S.veiculos.findIndex(x => x.id === r.id);
+          if (idx >= 0) S.veiculos[idx] = { ...S.veiculos[idx], ...r, placa: (r.placa || '').toUpperCase(), km: +r.km || 0 };
+        } else {
+          S.veiculos.push({ id: uid('v'), cli: r.cli || S.clientes[0]?.id, placa: (r.placa || '').toUpperCase(), modelo: r.modelo || '', ano: r.ano || '', km: +r.km || 0, tipo: r.tipo || 'Cavalo' });
+        }
       }
-      salvar(); S.ui.rascCad = null; fecharFolha(); render(); torrar('Cadastro realizado com sucesso!'); break;
+      salvar(); S.ui.rascCad = null; fecharFolha(); render(); torrar('Cadastro salvo com sucesso!', 'sucesso'); break;
     }
 
     /* --- Relatórios & Backup --- */
@@ -1094,12 +1160,27 @@ document.addEventListener('click', e => {
 
     /* --- Config & Reset --- */
     case 'remover-logo': {
-      if (S.cfg?.identidadeVisual) {
+      if (S.cfg && S.cfg.identidadeVisual) {
         S.cfg.identidadeVisual.logo = null;
-        salvar();
-        render();
-        torrar('Logotipo removido.');
+        S.cfg.identidadeVisual.logoUrl = null;
       }
+      if (S.cfg) S.cfg.logoEmpresa = null;
+      fetch('/api/configuracoes/empresa/logo', { method: 'DELETE' }).catch(() => {});
+      salvar();
+      render();
+      torrar('Logotipo removido.', 'sucesso');
+      break;
+    }
+    case 'remover-institucional': {
+      if (S.cfg && S.cfg.identidadeVisual) {
+        S.cfg.identidadeVisual.imagemInstitucional = null;
+        S.cfg.identidadeVisual.imagemInstitucionalUrl = null;
+      }
+      if (S.cfg) S.cfg.imagemInstitucional = null;
+      fetch('/api/configuracoes/empresa/imagem-institucional', { method: 'DELETE' }).catch(() => {});
+      salvar();
+      render();
+      torrar('Imagem institucional removida.', 'sucesso');
       break;
     }
     case 'salvar-cfg': salvar(); torrar('Configurações salvas!'); break;
@@ -1152,32 +1233,47 @@ document.addEventListener('change', e => {
       torrar('Arquivo muito grande! Máximo permitido: 2MB.', 'erro');
       return;
     }
-    const formData = new FormData();
-    formData.append('arquivo', file);
-    torrar('Enviando logotipo...', 'neutro');
-    fetch('/api/configuracoes/empresa/logo', {
-      method: 'POST',
-      body: formData
-    })
-      .then(r => r.json())
-      .then(res => {
-        if (res.sucesso) {
+    const reader = new FileReader();
+    torrar('Processando logotipo...', 'neutro');
+    reader.onload = async ev => {
+      const base64 = ev.target.result;
+      try {
+        torrar('Enviando logotipo...', 'neutro');
+        const r = await fetch('/api/configuracoes/empresa/logo', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            logoBase64: base64,
+            mimeType: file.type || 'image/png'
+          })
+        });
+        const res = await r.json();
+        if (res.success || res.sucesso) {
           S.cfg = S.cfg || {};
           S.cfg.identidadeVisual = S.cfg.identidadeVisual || {};
-          S.cfg.identidadeVisual.logoUrl = res.url;
-          S.cfg.identidadeVisual.logoHash = res.hash;
-          S.cfg.identidadeVisual.logo = res.url;
+          const url = res.url || base64;
+          S.cfg.identidadeVisual.logoUrl = url;
+          S.cfg.identidadeVisual.logo = url;
+          S.cfg.logoEmpresa = url;
           salvar();
           render();
           torrar('Logotipo salvo com sucesso!', 'sucesso');
         } else {
-          torrar(res.erro || 'Erro ao enviar logotipo.', 'erro');
+          torrar(res.error || res.erro || 'Erro ao enviar logotipo.', 'erro');
         }
-      })
-      .catch(err => {
+      } catch (err) {
         console.error('Erro upload logo:', err);
-        torrar('Falha no upload do logotipo.', 'erro');
-      });
+        // Fallback local se a rota de rede falhar
+        S.cfg = S.cfg || {};
+        S.cfg.identidadeVisual = S.cfg.identidadeVisual || {};
+        S.cfg.identidadeVisual.logo = base64;
+        S.cfg.logoEmpresa = base64;
+        salvar();
+        render();
+        torrar('Logotipo salvo localmente!', 'sucesso');
+      }
+    };
+    reader.readAsDataURL(file);
     return;
   }
 
@@ -1188,32 +1284,47 @@ document.addEventListener('change', e => {
       torrar('Arquivo muito grande! Máximo permitido: 2MB.', 'erro');
       return;
     }
-    const formData = new FormData();
-    formData.append('arquivo', file);
-    torrar('Enviando imagem institucional...', 'neutro');
-    fetch('/api/configuracoes/empresa/imagem-institucional', {
-      method: 'POST',
-      body: formData
-    })
-      .then(r => r.json())
-      .then(res => {
-        if (res.sucesso) {
+    const reader = new FileReader();
+    torrar('Processando imagem institucional...', 'neutro');
+    reader.onload = async ev => {
+      const base64 = ev.target.result;
+      try {
+        torrar('Enviando imagem institucional...', 'neutro');
+        const r = await fetch('/api/configuracoes/empresa/imagem-institucional', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            imagemBase64: base64,
+            mimeType: file.type || 'image/png'
+          })
+        });
+        const res = await r.json();
+        if (res.success || res.sucesso) {
           S.cfg = S.cfg || {};
           S.cfg.identidadeVisual = S.cfg.identidadeVisual || {};
-          S.cfg.identidadeVisual.imagemInstitucionalUrl = res.url;
-          S.cfg.identidadeVisual.imagemInstitucionalHash = res.hash;
-          S.cfg.identidadeVisual.imagemInstitucional = res.url;
+          const url = res.url || base64;
+          S.cfg.identidadeVisual.imagemInstitucionalUrl = url;
+          S.cfg.identidadeVisual.imagemInstitucional = url;
+          S.cfg.imagemInstitucional = url;
           salvar();
           render();
           torrar('Imagem institucional salva com sucesso!', 'sucesso');
         } else {
-          torrar(res.erro || 'Erro ao enviar imagem.', 'erro');
+          torrar(res.error || res.erro || 'Erro ao enviar imagem.', 'erro');
         }
-      })
-      .catch(err => {
+      } catch (err) {
         console.error('Erro upload imagem:', err);
-        torrar('Falha no upload da imagem.', 'erro');
-      });
+        // Fallback local se a rota de rede falhar
+        S.cfg = S.cfg || {};
+        S.cfg.identidadeVisual = S.cfg.identidadeVisual || {};
+        S.cfg.identidadeVisual.imagemInstitucional = base64;
+        S.cfg.imagemInstitucional = base64;
+        salvar();
+        render();
+        torrar('Imagem institucional salva localmente!', 'sucesso');
+      }
+    };
+    reader.readAsDataURL(file);
     return;
   }
 

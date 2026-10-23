@@ -1,4 +1,4 @@
-﻿'use strict';
+'use strict';
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -228,3 +228,95 @@ test('4. API /api/configuracoes/assistente: GET, PUT e persistência com parâme
     try { fs.rmSync(tempDir, { recursive: true, force: true }); } catch (_) {}
   }
 });
+
+test('5. VoiceProviderAdapter no js/voz.js: Padronização, sem oscilação, cache estável e exportação global', () => {
+  const vm = require('vm');
+  const code = fs.readFileSync(path.join(__dirname, '../js/voz.js'), 'utf8');
+
+  const storageMock = {};
+  const spokenList = [];
+
+  const context = {
+    console: { log() {}, warn() {}, info() {}, error() {} },
+    ico: () => '<i></i>',
+    esc: (s) => s || '',
+    localStorage: {
+      getItem(k) { return storageMock[k] || null; },
+      setItem(k, v) { storageMock[k] = String(v); }
+    },
+    document: {
+      readyState: 'complete',
+      getElementById() { return null; },
+      createElement() { return { setAttribute() {}, classList: { add() {}, remove() {} } }; },
+      body: { appendChild() {} },
+      addEventListener() {}
+    },
+    SpeechSynthesisUtterance: function(text) {
+      this.text = text;
+      this.lang = '';
+      this.pitch = 1.0;
+      this.rate = 1.0;
+      this.voice = null;
+    },
+    speechSynthesis: {
+      cancel() {},
+      getVoices() {
+        return [
+          { voiceURI: 'voice-daniel', name: 'Microsoft Daniel - Portuguese (Brazil)', lang: 'pt-BR' },
+          { voiceURI: 'voice-maria', name: 'Microsoft Maria - Portuguese (Brazil)', lang: 'pt-BR' },
+          { voiceURI: 'voice-francisca', name: 'Microsoft Francisca Online (Natural) - Portuguese (Brazil)', lang: 'pt-BR' }
+        ];
+      },
+      speak(ut) {
+        spokenList.push(ut);
+      }
+    },
+    window: {}
+  };
+  context.window = context;
+
+  vm.createContext(context);
+  vm.runInContext(code, context);
+
+  assert.ok(typeof context.window.falarTexto === 'function', 'window.falarTexto deve estar exportado globalmente');
+  assert.ok(typeof context.window.obterConfigAssistenteGlobal === 'function', 'obterConfigAssistenteGlobal deve existir');
+  assert.ok(typeof context.window.salvarConfigAssistenteGlobal === 'function', 'salvarConfigAssistenteGlobal deve existir');
+  assert.ok(context.window.VoiceProviderAdapter, 'VoiceProviderAdapter deve existir');
+
+  // Configura a voz como Francisca via helper global
+  context.window.salvarConfigAssistenteGlobal({
+    displayName: 'Sofia',
+    voiceGender: 'female',
+    voiceURI: 'voice-francisca',
+    voiceName: 'Microsoft Francisca Online (Natural) - Portuguese (Brazil)'
+  });
+
+  // 1ª Resolução: deve encontrar Francisca
+  const res1 = context.window.VoiceProviderAdapter.resolveVoice();
+  assert.equal(res1.voice.name, 'Microsoft Francisca Online (Natural) - Portuguese (Brazil)');
+  assert.equal(res1.fallback, false);
+
+  // 2ª Resolução subsequente: deve manter a MESMA voz Francisca em cache sem oscilação
+  const res2 = context.window.VoiceProviderAdapter.resolveVoice();
+  assert.equal(res2.voice.name, 'Microsoft Francisca Online (Natural) - Portuguese (Brazil)');
+  assert.strictEqual(res1.voice, res2.voice);
+
+  // Testa falarTexto global com forçar: true
+  context.window.falarTexto('Teste de relatório de pátio', { forcar: true });
+  assert.equal(spokenList.length, 1);
+  assert.equal(spokenList[0].voice.name, 'Microsoft Francisca Online (Natural) - Portuguese (Brazil)');
+  assert.equal(spokenList[0].text, 'Teste de relatório de pátio');
+
+  // Se trocar a voz para Maria, deve invalidar o cache e falar com Maria imediatamente
+  context.window.salvarConfigAssistenteGlobal({
+    voiceURI: 'voice-maria',
+    voiceName: 'Microsoft Maria - Portuguese (Brazil)'
+  });
+  const res3 = context.window.VoiceProviderAdapter.resolveVoice();
+  assert.equal(res3.voice.name, 'Microsoft Maria - Portuguese (Brazil)');
+
+  context.window.falarTexto('Segunda frase com voz atualizada', { forcar: true });
+  assert.equal(spokenList.length, 2);
+  assert.equal(spokenList[1].voice.name, 'Microsoft Maria - Portuguese (Brazil)');
+});
+

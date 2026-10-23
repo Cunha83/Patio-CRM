@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Pátio CRM — Vídeo de Apresentação Oficial (30s Motion)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;700;800;900&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #070d14;
+      --bg-card: rgba(13, 24, 38, 0.85);
+      --verde-neon: #10b981;
+      --verde-glow: rgba(16, 185, 129, 0.45);
+      --ciano-neon: #06b6d4;
+      --azul-neon: #3b82f6;
+      --alerta-vermelho: #ef4444;
+      --laranja-alerta: #f59e0b;
+      --texto-branco: #ffffff;
+      --texto-cinza: #94a3b8;
+      --borda-brilho: rgba(255, 255, 255, 0.12);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: #03070c;
+      color: var(--texto-branco);
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      overflow-x: hidden;
+      padding: 16px;
+    }
+
+    /* CONTAINER DO VÍDEO CINEMATOGRÁFICO 16:9 */
+    .video-frame {
+      position: relative;
+      width: 100%;
+      max-width: 1200px;
+      aspect-ratio: 16 / 9;
+      background: var(--bg-dark);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.9), 0 0 50px rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    /* CAMADAS DE CENA (KEN BURNS & TRANSITIONS) */
+    .cena {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px;
+      text-align: center;
+      pointer-events: none;
+    }
+
+    .cena.ativa {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+    }
+
+    /* FUNDO DAS CENAS COM IMAGENS AI */
+    .cena-bg {
+      position: absolute;
+      inset: 0;
+      background-size: cover;
+      background-position: center;
+      filter: brightness(0.38) contrast(1.15);
+      transform: scale(1.05);
+      transition: transform 6s ease-out;
+      z-index: 1;
+    }
+
+    .cena.ativa .cena-bg {
+      transform: scale(1.18);
+    }
+
+    .cena-overlay {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at center, rgba(7, 13, 20, 0.3) 0%, rgba(3, 7, 12, 0.92) 100%);
+      z-index: 2;
+    }
+
+    .cena-conteudo {
+      position: relative;
+      z-index: 3;
+      max-width: 980px;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* TIPOGRAFIA CINÉTICA E TÍTULOS */
+    .tag-topo {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(8px);
+      padding: 6px 16px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      border: 1px solid var(--borda-brilho);
+      margin-bottom: 20px;
+      animation: pulseGlow 2s infinite;
+    }
+
+    .titulo-cinetico {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: clamp(2rem, 4.5vw, 4rem);
+      font-weight: 900;
+      line-height: 1.1;
+      letter-spacing: -1px;
+      text-shadow: 0 4px 20px rgba(0, 0, 0, 0.8);
+      margin-bottom: 16px;
+    }
+
+    .subtitulo-cinetico {
+      font-size: clamp(1rem, 1.8vw, 1.4rem);
+      color: #cbd5e1;
+      line-height: 1.5;
+      font-weight: 400;
+      max-width: 760px;
+      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.9);
+    }
+
+    /* DESTAQUES E GRIDS ESPECÍFICOS POR CENA */
+    /* CENA 1: DORES DA OFICINA */
+    .grid-dores {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      width: 100%;
+      margin-top: 28px;
+    }
+
+    .card-dor {
+      background: rgba(239, 68, 68, 0.12);
+      border: 1px solid rgba(239, 68, 68, 0.35);
+      border-radius: 12px;
+      padding: 18px 14px;
+      backdrop-filter: blur(10px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      transform: translateY(20px);
+      opacity: 0;
+      transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .cena.ativa .card-dor:nth-child(1) { transform: translateY(0); opacity: 1; transition-delay: 0.3s; }
+    .cena.ativa .card-dor:nth-child(2) { transform: translateY(0); opacity: 1; transition-delay: 0.6s; }
+    .cena.ativa .card-dor:nth-child(3) { transform: translateY(0); opacity: 1; transition-delay: 0.9s; }
+
+    /* CENA 2: HERO PÁTIO CRM & KANBAN */
+    .grid-boxes {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      width: 100%;
+      margin-top: 24px;
+    }
+
+    .box-card {
+      background: var(--bg-card);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      border-radius: 10px;
+      padding: 14px;
+      text-align: left;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+      transform: scale(0.9);
+      opacity: 0;
+      transition: all 0.5s ease;
+    }
+
+    .cena.ativa .box-card:nth-child(1) { transform: scale(1); opacity: 1; transition-delay: 0.2s; }
+    .cena.ativa .box-card:nth-child(2) { transform: scale(1); opacity: 1; transition-delay: 0.4s; }
+    .cena.ativa .box-card:nth-child(3) { transform: scale(1); opacity: 1; transition-delay: 0.6s; }
+    .cena.ativa .box-card:nth-child(4) { transform: scale(1); opacity: 1; transition-delay: 0.8s; }
+
+    /* CENA 3: CARDS DE PODER */
+    .grid-features {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      width: 100%;
+      margin-top: 24px;
+    }
+
+    .feature-card {
+      background: linear-gradient(145deg, rgba(16, 185, 129, 0.15), rgba(6, 182, 212, 0.08));
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      border-radius: 14px;
+      padding: 22px 18px;
+      backdrop-filter: blur(12px);
+      text-align: left;
+      transform: translateY(30px);
+      opacity: 0;
+      transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .cena.ativa .feature-card:nth-child(1) { transform: translateY(0); opacity: 1; transition-delay: 0.2s; }
+    .cena.ativa .feature-card:nth-child(2) { transform: translateY(0); opacity: 1; transition-delay: 0.5s; }
+    .cena.ativa .feature-card:nth-child(3) { transform: translateY(0); opacity: 1; transition-delay: 0.8s; }
+
+    /* CENA 4: WHATSAPP IA */
+    .chat-preview {
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid rgba(16, 185, 129, 0.4);
+      border-radius: 16px;
+      padding: 20px 24px;
+      max-width: 600px;
+      width: 100%;
+      margin-top: 20px;
+      box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6), 0 0 30px rgba(16, 185, 129, 0.2);
+    }
+
+    .msg-balao {
+      padding: 12px 16px;
+      border-radius: 12px;
+      font-size: 14px;
+      line-height: 1.4;
+      margin-bottom: 12px;
+      text-align: left;
+    }
+    .msg-bot { background: #064e3b; color: #a7f3d0; border-bottom-left-radius: 2px; }
+    .msg-user { background: #1e293b; color: #e2e8f0; margin-left: 40px; border-bottom-right-radius: 2px; }
+
+    /* CENA 5: CTA FINAL */
+    .cta-btn {
+      margin-top: 28px;
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: #fff;
+      font-size: clamp(1rem, 1.8vw, 1.4rem);
+      font-weight: 800;
+      padding: 16px 42px;
+      border-radius: 999px;
+      border: none;
+      box-shadow: 0 0 35px rgba(16, 185, 129, 0.6), 0 8px 20px rgba(0, 0, 0, 0.4);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      cursor: pointer;
+      animation: pulseBtn 1.8s infinite;
+    }
+
+    /* BARRA DE PROGRESSO & CONTROLES DO MOTION */
+    .controles-frame {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      max-width: 1200px;
+      margin-top: 16px;
+      background: rgba(13, 24, 38, 0.85);
+      border: 1px solid var(--borda-brilho);
+      border-radius: 12px;
+      padding: 14px 20px;
+      gap: 12px;
+    }
+
+    .timeline-container {
+      position: relative;
+      width: 100%;
+      height: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+      cursor: pointer;
+      overflow: hidden;
+    }
+
+    .timeline-progresso {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #10b981, #06b6d4);
+      box-shadow: 0 0 10px #10b981;
+      transition: width 0.1s linear;
+    }
+
+    .botoes-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .btn-ctrl {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--borda-brilho);
+      color: #fff;
+      font-size: 14px;
+      font-weight: 600;
+      padding: 8px 18px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s;
+    }
+    .btn-ctrl:hover {
+      background: rgba(16, 185, 129, 0.2);
+      border-color: var(--verde-neon);
+    }
+
+    .temporizador {
+      font-family: 'Space Grotesk', monospace;
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--ciano-neon);
+    }
+
+    /* LEGENDA DINÂMICA DA LOCUÇÃO */
+    .legenda-locucao {
+      position: absolute;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(8px);
+      padding: 10px 24px;
+      border-radius: 999px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #f8fafc;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      z-index: 10;
+      max-width: 85%;
+      text-align: center;
+      transition: all 0.3s ease;
+    }
+
+    @keyframes pulseGlow {
+      0%, 100% { box-shadow: 0 0 15px rgba(16, 185, 129, 0.2); }
+      50% { box-shadow: 0 0 30px rgba(16, 185, 129, 0.6); }
+    }
+
+    @keyframes pulseBtn {
+      0%, 100% { transform: scale(1); box-shadow: 0 0 25px rgba(16, 185, 129, 0.5); }
+      50% { transform: scale(1.04); box-shadow: 0 0 45px rgba(16, 185, 129, 0.8); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- VÍDEO PRINCIPAL (16:9 VIEWPORT) -->
+  <div class="video-frame" id="videoFrame">
+
+    <!-- CENA 1: 00s a 05s (O Caos Antigo) -->
+    <div class="cena" id="cena1">
+      <div class="cena-bg" style="background-image: url('/motion/cena1_caos.jpg');"></div>
+      <div class="cena-overlay"></div>
+      <div class="cena-conteudo">
+        <div class="tag-topo" style="color:var(--alerta-vermelho); border-color: rgba(239,68,68,0.4);">
+          ⚠️ O Gargalo das Oficinas
+        </div>
+        <h1 class="titulo-cinetico">
+          SUA OFICINA AINDA DEPENDE<br><span style="color:var(--alerta-vermelho)">DE PAPEL E ANOTAÇÃO?</span>
+        </h1>
+        <p class="subtitulo-cinetico">
+          Prejuízos silenciosos todos os meses com peças sem baixa, ordens de serviço perdidas e faturamento sem controle.
+        </p>
+        <div class="grid-dores">
+          <div class="card-dor">
+            <span style="font-size:24px">❌</span>
+            <strong style="color:#f87171">Peças Sumindo</strong>
+            <small style="color:#cbd5e1">Sem baixa no estoque</small>
+          </div>
+          <div class="card-dor">
+            <span style="font-size:24px">💸</span>
+            <strong style="color:#f87171">Cobranças Esquecidas</strong>
+            <small style="color:#cbd5e1">Boletos de frotistas vencidos</small>
+          </div>
+          <div class="card-dor">
+            <span style="font-size:24px">📉</span>
+            <strong style="color:#f87171">Caixa no Escuro</strong>
+            <small style="color:#cbd5e1">Sem saber o lucro real da operação</small>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CENA 2: 05s a 12s (A Chegada do Pátio CRM) -->
+    <div class="cena" id="cena2">
+      <div class="cena-bg" style="background-image: url('/motion/cena2_oficina.jpg');"></div>
+      <div class="cena-overlay"></div>
+      <div class="cena-conteudo">
+        <div class="tag-topo" style="color:var(--ciano-neon); border-color: rgba(6,182,212,0.4);">
+          ⚡ A Nova Era da Gestão Pesada
+        </div>
+        <h1 class="titulo-cinetico">
+          CHEGOU O <span style="color:var(--verde-neon)">PÁTIO CRM</span>
+        </h1>
+        <p class="subtitulo-cinetico">
+          O sistema definitivo desenhado sob medida para mecânicas de caminhões, carretas, ônibus e frotistas pesados.
+        </p>
+        <div class="grid-boxes">
+          <div class="box-card" style="border-left: 4px solid var(--verde-neon);">
+            <div style="font-size:11px;color:var(--texto-cinza)">Box 01 — Valeta Pesada</div>
+            <strong style="font-size:14px;color:#fff">Scania R 450</strong>
+            <div style="margin-top:6px;font-size:11px;color:var(--verde-neon);font-weight:700">● Em Execução</div>
+          </div>
+          <div class="box-card" style="border-left: 4px solid var(--ciano-neon);">
+            <div style="font-size:11px;color:var(--texto-cinza)">Box 02 — Rápido & Freio</div>
+            <strong style="font-size:14px;color:#fff">Volvo FH 540</strong>
+            <div style="margin-top:6px;font-size:11px;color:var(--ciano-neon);font-weight:700">● Concluído ✅</div>
+          </div>
+          <div class="box-card" style="border-left: 4px solid var(--laranja-alerta);">
+            <div style="font-size:11px;color:var(--texto-cinza)">Box 03 — Injeção & Motor</div>
+            <strong style="font-size:14px;color:#fff">Actros 2651</strong>
+            <div style="margin-top:6px;font-size:11px;color:var(--laranja-alerta);font-weight:700">● Aguard. Peça</div>
+          </div>
+          <div class="box-card" style="border-left: 4px solid var(--texto-cinza);">
+            <div style="font-size:11px;color:var(--texto-cinza)">Box 04 — Câmbio & Eixo</div>
+            <strong style="font-size:14px;color:#fff">DAF XF 480</strong>
+            <div style="margin-top:6px;font-size:11px;color:var(--texto-cinza);font-weight:700">● Na Fila</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CENA 3: 12s a 20s (Os Superpoderes: XML, Estoque Pesado, eGestor) -->
+    <div class="cena" id="cena3">
+      <div class="cena-bg" style="background-image: url('/motion/cena3_dashboard.jpg');"></div>
+      <div class="cena-overlay"></div>
+      <div class="cena-conteudo">
+        <div class="tag-topo" style="color:var(--verde-neon);">
+          🚀 Automação & Lucratividade
+        </div>
+        <h1 class="titulo-cinetico">
+          DO XML AO LUCRO <span style="color:var(--ciano-neon)">EM SEGUNDOS</span>
+        </h1>
+        <div class="grid-features">
+          <div class="feature-card">
+            <div style="font-size:28px;margin-bottom:8px">📄⚡</div>
+            <h3 style="font-size:17px;font-weight:800;color:var(--verde-neon)">Importação XML NF-e</h3>
+            <p style="font-size:13px;color:#cbd5e1;margin-top:6px">
+              Importe notas fiscais com 1 clique: cadastra fornecedor, alimenta estoque e gera parcelas a pagar.
+            </p>
+          </div>
+          <div class="feature-card">
+            <div style="font-size:28px;margin-bottom:8px">⚙️📦</div>
+            <h3 style="font-size:17px;font-weight:800;color:var(--ciano-neon)">Peças da Linha Pesada</h3>
+            <p style="font-size:13px;color:#cbd5e1;margin-top:6px">
+              Suspensão, Molas, Freios, Embreagem e Cardan com baixa automática e controle de margem no PDV.
+            </p>
+          </div>
+          <div class="feature-card">
+            <div style="font-size:28px;margin-bottom:8px">📊💰</div>
+            <h3 style="font-size:17px;font-weight:800;color:#facc15">Painel eGestor & DRE</h3>
+            <p style="font-size:13px;color:#cbd5e1;margin-top:6px">
+              Receita bruta, contas do dia, curva de vendas e lucro líquido real sem adivinhação.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CENA 4: 20s a 25s (Inteligência & WhatsApp Automático) -->
+    <div class="cena" id="cena4">
+      <div class="cena-bg" style="background-image: url('/motion/cena2_oficina.jpg');"></div>
+      <div class="cena-overlay"></div>
+      <div class="cena-conteudo">
+        <div class="tag-topo" style="color:#22c55e; border-color: rgba(34,197,94,0.4)">
+          💬 Assistente & WhatsApp Integrado
+        </div>
+        <h1 class="titulo-cinetico">
+          SUA OFICINA NO <span style="color:#22c55e">PILOTO AUTOMÁTICO</span>
+        </h1>
+        <div class="chat-preview">
+          <div class="msg-bot">
+            <strong>🤖 Verônica (Patio CRM):</strong><br>
+            Olá Carlos! O boleto da <strong>OS #1048</strong> da TransRodrigues (Feixe de Molas Scania) vence hoje. Segue a Chave Pix e nota fiscal em anexo. 📄
+          </div>
+          <div class="msg-user">
+            <strong>🚛 TransRodrigues:</strong><br>
+            Recebido Verônica! Acabamos de efetuar o Pix de R$ 4.800,00. Muito obrigado pela agilidade! 👍
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CENA 5: 25s a 30s (Fechamento & CTA) -->
+    <div class="cena" id="cena5">
+      <div class="cena-bg" style="background-image: url('/motion/cena3_dashboard.jpg');"></div>
+      <div class="cena-overlay"></div>
+      <div class="cena-conteudo">
+        <div class="tag-topo" style="color:var(--verde-neon)">
+          🏆 Líder em Gestão Pesada
+        </div>
+        <h1 class="titulo-cinetico" style="font-size:clamp(2.4rem, 5vw, 4.2rem)">
+          TRANSFORME SUA OFICINA COM O <span style="color:var(--verde-neon)">PÁTIO CRM</span>
+        </h1>
+        <p class="subtitulo-cinetico">
+          Mais agilidade nos boxes, lucro visível na tela e controle total das suas frotas.
+        </p>
+        <button class="cta-btn" onclick="reiniciarVideo()">
+          EXPERIMENTAR O PÁTIO CRM AGORA
+        </button>
+        <div style="margin-top:20px;font-size:14px;color:var(--texto-cinza);letter-spacing:1px">
+          ACESSE: <strong style="color:#fff">WWW.PATIOCRM.COM.BR</strong> · SUPORTE DIRETO NO WHATSAPP
+        </div>
+      </div>
+    </div>
+
+    <!-- LEGENDA DA LOCUÇÃO SINCRONIZADA -->
+    <div class="legenda-locucao" id="legendaLocucao">
+      Preparando apresentação...
+    </div>
+
+  </div>
+
+  <!-- PAINEL DE CONTROLE DA APRESENTAÇÃO -->
+  <div class="controles-frame">
+    <div class="timeline-container" id="timelineContainer" onclick="buscarTempo(event)">
+      <div class="timeline-progresso" id="timelineProgresso"></div>
+    </div>
+    <div class="botoes-row">
+      <div style="display:flex;align-items:center;gap:12px">
+        <button class="btn-ctrl" id="btnPlayPause" onclick="togglePlayPause()">
+          ▶ Reproduzir
+        </button>
+        <button class="btn-ctrl" onclick="reiniciarVideo()">
+          🔄 Reiniciar
+        </button>
+        <button class="btn-ctrl" id="btnAudio" onclick="toggleAudio()">
+          🔊 Locução IA: ON
+        </button>
+      </div>
+      <div class="temporizador" id="temporizador">
+        00:00 / 00:30
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* =====================================================================
+       ROTEIRO CINEMATOGRÁFICO DE 30 SEGUNDOS (TIMELINE MOTOR)
+    ===================================================================== */
+    const DURACOES = [
+      { id: 'cena1', inicio: 0,   fim: 5.5,  legenda: 'Sua oficina pesada ainda perde tempo com papelada, peças sem controle e cobranças esquecidas no WhatsApp?' },
+      { id: 'cena2', inicio: 5.5, fim: 12.5, legenda: 'Conheça o Pátio CRM — o ecossistema definitivo para oficinas de caminhões e veículos pesados.' },
+      { id: 'cena3', inicio: 12.5, fim: 20.5, legenda: 'Importe notas fiscais com um clique, controle peças e serviços sem furos e visualize seu lucro real em tempo real.' },
+      { id: 'cena4', inicio: 20.5, fim: 25.5, legenda: 'Cobrança automática via WhatsApp e inteligência operacional integrada ao seu dia a dia.' },
+      { id: 'cena5', inicio: 25.5, fim: 30.0, legenda: 'Assuma o controle total do seu pátio e multiplique seus lucros. Experimente o Pátio CRM hoje mesmo!' }
+    ];
+
+    let tempoAtual = 0;
+    const duracaoTotal = 30.0;
+    let tocando = false;
+    let intervaloTimer = null;
+    let audioAtivo = true;
+    let ultimaCenaFalada = -1;
+
+    // SINTETIZADOR DE EFEITOS SONOROS (WEB AUDIO API NATIVO)
+    let audioCtx = null;
+    function iniciarAudioContext() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+    }
+
+    function tocarSomImpacto(frequencia = 150, duracao = 0.4) {
+      if (!audioAtivo) return;
+      try {
+        iniciarAudioContext();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(frequencia, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(30, audioCtx.currentTime + duracao);
+        gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duracao);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duracao);
+      } catch (_) {}
+    }
+
+    // NARRADOR DE VOZ PROFISSIONAL (WEB SPEECH SYNTHESIS)
+    function falarTexto(texto) {
+      if (!audioAtivo || typeof speechSynthesis === 'undefined') return;
+      try {
+        speechSynthesis.cancel();
+        const ut = new SpeechSynthesisUtterance(texto);
+        ut.lang = 'pt-BR';
+        ut.rate = 1.08;
+        ut.pitch = 0.98;
+        const vozes = speechSynthesis.getVoices();
+        const vozPt = vozes.find(v => v.lang.includes('pt') || v.name.includes('Brazil') || v.name.includes('Portuguese'));
+        if (vozPt) ut.voice = vozPt;
+        speechSynthesis.speak(ut);
+      } catch (_) {}
+    }
+
+    // ATUALIZAÇÃO DA LINHA DO TEMPO
+    function atualizarCena(tempo) {
+      const idxCena = DURACOES.findIndex(c => tempo >= c.inicio && tempo < c.fim);
+      const cenaAtiva = idxCena !== -1 ? DURACOES[idxCena] : DURACOES[DURACOES.length - 1];
+
+      // Ativa a cena visual
+      DURACOES.forEach((c, i) => {
+        const el = document.getElementById(c.id);
+        if (el) {
+          if (c.id === cenaAtiva.id) {
+            if (!el.classList.contains('ativa')) {
+              el.classList.add('ativa');
+              tocarSomImpacto(120 + i * 25, 0.35);
+            }
+          } else {
+            el.classList.remove('ativa');
+          }
+        }
+      });
+
+      // Atualiza legenda
+      const elLegenda = document.getElementById('legendaLocucao');
+      if (elLegenda && cenaAtiva) {
+        elLegenda.textContent = cenaAtiva.legenda;
+      }
+
+      // Dispara locução da cena se mudou
+      if (idxCena !== -1 && idxCena !== ultimaCenaFalada) {
+        ultimaCenaFalada = idxCena;
+        falarTexto(cenaAtiva.legenda);
+      }
+
+      // Atualiza barra de progresso e temporizador
+      const pct = Math.min(100, (tempo / duracaoTotal) * 100);
+      document.getElementById('timelineProgresso').style.width = pct + '%';
+
+      const s = Math.floor(tempo);
+      const strSeg = s < 10 ? '0' + s : s;
+      document.getElementById('temporizador').textContent = `00:${strSeg} / 00:30`;
+
+      // Fim do vídeo aos 30s
+      if (tempo >= duracaoTotal) {
+        pausar();
+        tempoAtual = duracaoTotal;
+      }
+    }
+
+    function loopVideo() {
+      if (!tocando) return;
+      tempoAtual += 0.1;
+      atualizarCena(tempoAtual);
+      if (tempoAtual < duracaoTotal) {
+        intervaloTimer = setTimeout(loopVideo, 100);
+      }
+    }
+
+    function tocar() {
+      iniciarAudioContext();
+      tocando = true;
+      document.getElementById('btnPlayPause').innerHTML = '⏸ Pausar';
+      if (tempoAtual >= duracaoTotal) tempoAtual = 0;
+      loopVideo();
+    }
+
+    function pausar() {
+      tocando = false;
+      document.getElementById('btnPlayPause').innerHTML = '▶ Reproduzir';
+      if (intervaloTimer) clearTimeout(intervaloTimer);
+      if (typeof speechSynthesis !== 'undefined') speechSynthesis.cancel();
+    }
+
+    function togglePlayPause() {
+      if (tocando) pausar();
+      else tocar();
+    }
+
+    function reiniciarVideo() {
+      pausar();
+      tempoAtual = 0;
+      ultimaCenaFalada = -1;
+      atualizarCena(0);
+      tocar();
+    }
+
+    function toggleAudio() {
+      audioAtivo = !audioAtivo;
+      document.getElementById('btnAudio').textContent = audioAtivo ? '🔊 Locução IA: ON' : '🔇 Locução IA: OFF';
+      if (!audioAtivo && typeof speechSynthesis !== 'undefined') speechSynthesis.cancel();
+    }
+
+    function buscarTempo(e) {
+      const rect = e.currentTarget.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const pct = Math.max(0, Math.min(1, clickX / rect.width));
+      tempoAtual = pct * duracaoTotal;
+      ultimaCenaFalada = -1;
+      atualizarCena(tempoAtual);
+    }
+
+    // Inicialização automática ao carregar
+    window.addEventListener('DOMContentLoaded', () => {
+      atualizarCena(0);
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('autostart') === '1') {
+        setTimeout(tocar, 600);
+      }
+    });
+
+    // Tecla espaço para Play/Pause
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'Space') {
+        e.preventDefault();
+        togglePlayPause();
+      }
+    });
+  </script>
+</body>
+</html>

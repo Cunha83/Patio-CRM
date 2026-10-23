@@ -19,6 +19,7 @@ function renderNav() {
     {
       titulo: 'Comercial & CRM',
       itens: [
+        { id: 'vendas', label: 'Vendas (Balcão & OS)', icone: 'carrinho', perfis: ['recepcao', 'gestor', 'todos'] },
         { id: 'mensagens', label: 'WhatsApp & CRM', icone: 'zap', perfis: ['recepcao', 'gestor', 'todos'] },
         { id: 'painel', label: 'Painel & KPIs', icone: 'painel', perfis: ['gestor', 'todos'] }
       ]
@@ -26,7 +27,8 @@ function renderNav() {
     {
       titulo: 'Suprimentos',
       itens: [
-        { id: 'estoque', label: 'Almoxarifado', icone: 'pecas', perfis: ['gestor', 'todos'] }
+        { id: 'estoque', label: 'Almoxarifado', icone: 'pecas', perfis: ['gestor', 'todos'] },
+        { id: 'compras', label: 'Compras & Entrada NF-e', icone: 'doc', perfis: ['gestor', 'todos'] }
       ]
     },
     {
@@ -105,49 +107,238 @@ function renderTopo() {
   }[perfil] || 'Geral';
 
   const titulos = {
-    operacao: 'Dashboard Operacional em Tempo Real',
-    patio: 'Pátio Operacional & Boxes',
-    painel: 'Painel Geral de Desempenho',
-    estoque: 'Almoxarifado & Peças',
-    financeiro: 'Gestão Financeira & DRE',
-    mensagens: 'Comunicação & WhatsApp CRM',
-    cadastros: 'Cadastros & Frotas',
-    relatorios: 'Relatórios & Exportações',
-    configuracoes: 'Configurações da Oficina'
+    operacao: { tit: 'Dashboard Operacional em Tempo Real', icone: 'relogio', novo: 'nova-os', novoLabel: '+ Nova OS' },
+    patio: { tit: 'Pátio Operacional & Boxes', icone: 'patio', novo: 'nova-os', novoLabel: '+ Nova OS' },
+    painel: { tit: 'Painel Inicial Executivo & KPIs', icone: 'painel', novo: 'nova-os', novoLabel: '+ Nova OS' },
+    estoque: { tit: 'Catálogo de Produtos & Almoxarifado', icone: 'pecas', novo: 'novo-produto', novoLabel: '+ Novo Produto' },
+    vendas: { tit: 'Vendas & Ordens de Serviço', icone: 'carrinho', novo: 'nova-venda', novoLabel: '+ Nova Venda' },
+    compras: { tit: 'Compras & Entrada de Notas (XML)', icone: 'doc', novo: 'nova-compra', novoLabel: '+ Nova Compra' },
+    financeiro: { tit: 'Gestão Financeira & DRE Gerencial', icone: 'fin', novo: 'novo-lancamento', novoLabel: '+ Lançamento' },
+    fiscal: { tit: 'Central Fiscal (NF-e, NFC-e, NFS-e, MDF-e)', icone: 'relatorios', novo: 'fiscal-novo', novoLabel: '+ Novo Documento' },
+    mensagens: { tit: 'Comunicação WhatsApp & Régua de Cobrança', icone: 'zap', novo: 'novo-disparo', novoLabel: '+ Nova Mensagem' },
+    cadastros: { tit: 'Cadastros Unificados & Frotas', icone: 'cad', novo: 'novo-cliente', novoLabel: '+ Novo Contato' },
+    relatorios: { tit: 'Central de Relatórios & Exportações', icone: 'relatorios', novo: 'exportar-dados', novoLabel: 'Exportar Relatório' },
+    configuracoes: { tit: 'Super-Menu de Configurações da Oficina', icone: 'cfg', novo: 'salvar-cfg', novoLabel: 'Salvar Configurações' }
   };
 
+  const infoAtual = titulos[v] || { tit: 'Pátio CRM', icone: 'patio', novo: 'nova-os', novoLabel: '+ Nova OS' };
   const logoSrc = (S.cfg && S.cfg.identidadeVisual && (S.cfg.identidadeVisual.logoUrl || S.cfg.identidadeVisual.logo)) || (S.cfg && S.cfg.logoEmpresa);
+  const empresaNome = (S.cfg && S.cfg.empresa) || 'PÁTIO DIESEL';
+  const usuarioNome = (S.user && S.user.name) || (S.cfg && S.cfg.usuarios && S.cfg.usuarios[0] && S.cfg.usuarios[0].nome) || 'Administrador';
 
   return `
-  <header class="topo">
-    <div class="marca">
-      <div class="chapa" style="display:flex;align-items:center;justify-content:center;overflow:hidden">
-        ${logoSrc ? `<img src="${esc(logoSrc)}" alt="Logo" style="max-height:22px;max-width:24px;object-fit:contain">` : ico('patio', 18)}
+  <!-- TOPBAR GLOBAL INTELIGENTE -->
+  <header class="topbar-enterprise">
+    <!-- Esquerda: Logo & Empresa -->
+    <div style="display:flex;align-items:center;gap:12px">
+      <div class="chapa" style="display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:6px;width:34px;height:34px">
+        ${logoSrc ? `<img src="${esc(logoSrc)}" alt="Logo" style="max-height:24px;max-width:28px;object-fit:contain">` : ico('patio', 18)}
       </div>
       <div>
-        <div style="display:flex;align-items:center">
-          <h1 style="margin:0">${esc((S.cfg && S.cfg.empresa) || 'PÁTIO DIESEL')}</h1>
-          ${(S._isDemo || (S.cfg && S.cfg.empresa && S.cfg.empresa.includes('Demonstração'))) ? '<span style="display:inline-block;background:#eab308;color:#000;font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;margin-left:6px" title="Ambiente de Demonstração com dados fictícios">DEMO 90D</span>' : ''}
+        <div style="font-weight:700;font-size:14px;color:#fff;line-height:1.2;display:flex;align-items:center;gap:6px">
+          <span>${esc(empresaNome)}</span>
+          ${(S._isDemo || (S.cfg && S.cfg.empresa && S.cfg.empresa.includes('Demonstração'))) ? '<span style="background:#eab308;color:#000;font-size:9.5px;font-weight:800;padding:1px 5px;border-radius:4px">DEMO</span>' : ''}
         </div>
-        <div class="sub">${titulos[v] || 'CRM'}</div>
+        <div style="font-size:11px;color:#94a3b8">Sistema de Gestão de Veículos Pesados</div>
       </div>
     </div>
-    <div class="topo-titulo-desktop" style="font-weight:700;font-size:16px;color:#fff">
-      ${titulos[v] || 'Oficina'}
+
+    <!-- Centro: Barra de Busca Global com Prefixos -->
+    <div class="busca-global-wrap">
+      <span class="busca-global-ico">${ico('lupa', 15)}</span>
+      <input type="text" id="campo-busca-global" class="busca-global-input" 
+             placeholder="Busca global ou prefixos (em:vendas, em:compras, em:clientes, em:produtos)..." 
+             onkeydown="if(event.key==='Enter'){executarBuscaGlobal(this.value)}"
+             title="Use prefixos contextuais como em:vendas, em:compras, em:clientes, em:produtos, em:nfe ou em:patio">
+      <span class="busca-global-atalho">Ctrl+K</span>
     </div>
-    <div class="dir">
-      ${(S._isDemo || (S.cfg && S.cfg.empresa && S.cfg.empresa.includes('Demonstração')))
-        ? `<a href="/" style="text-decoration:none;font-size:11px;padding:4px 8px;border-radius:12px;background:rgba(255,255,255,0.12);color:#e2e8f0;display:inline-flex;align-items:center;gap:4px" onclick="sessionStorage.removeItem('patio_tenant')">Voltar à Produção</a>`
-        : `<a href="/?tenant=oficina_demo_dados_ficticios" style="text-decoration:none;font-size:11px;padding:4px 8px;border-radius:12px;background:#eab308;color:#000;font-weight:600;display:inline-flex;align-items:center;gap:4px">🧪 Base Demo (90d)</a>`}
-      <div class="pill-topo" title="Perfil ativo: ${perfilLabel}">
-        <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--verde)"></span>
-        <span>${esc(perfilLabel)}</span>
+
+    <!-- Direita: Perfil + Botão Rápido + Novo -->
+    <div style="display:flex;align-items:center;gap:10px">
+      <div style="text-align:right;display:flex;flex-direction:column;align-items:flex-end">
+        <span style="font-size:12px;font-weight:700;color:#fff">${esc(usuarioNome)}</span>
+        <div style="display:inline-flex;align-items:center;gap:4px;font-size:10.5px;color:#94a3b8">
+          <span style="width:6px;height:6px;border-radius:50%;background:var(--verde)"></span>
+          <span>${esc(perfilLabel)}</span>
+        </div>
       </div>
-      <button class="btn btn-primario" data-act="nova-os" style="height:32px;font-size:12.5px;padding:0 12px;border-radius:16px">
-        ${ico('mais', 14)} Nova OS
+
+      <!-- Dropdown Rápido + Novo -->
+      <div class="dropdown-novo-wrap">
+        <button class="btn btn-primario" type="button" onclick="toggleDropdownNovo()" style="height:34px;font-size:12.5px;padding:0 14px;font-weight:700;display:inline-flex;align-items:center;gap:6px;box-shadow:0 2px 6px rgba(0,0,0,0.2)">
+          ${ico('mais', 14)} <span>+ Novo</span> <span style="font-size:10px">▾</span>
+        </button>
+        <div id="dropdown-novo-menu" class="dropdown-novo-menu">
+          <button class="dropdown-item" onclick="toggleDropdownNovo();abrirModalNovaOS()">
+            ${ico('patio', 16)} <span>Nova Ordem de Serviço (OS)</span>
+          </button>
+          <button class="dropdown-item" onclick="toggleDropdownNovo();abrirModalNovaVenda()">
+            ${ico('carrinho', 16)} <span>Nova Venda / Pedido</span>
+          </button>
+          <button class="dropdown-item" onclick="toggleDropdownNovo();abrirModalNovoCliente()">
+            ${ico('gente', 16)} <span>Novo Cliente / Frota</span>
+          </button>
+          <button class="dropdown-item" onclick="toggleDropdownNovo();abrirModalNovoLancamento('pagar')">
+            ${ico('grana', 16)} <span>Nova Despesa / Conta a Pagar</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- FAIXA SUB-HEADER CONTEXTUAL -->
+  <div class="sub-header-contextual" style="margin: 12px 16px 14px 16px">
+    <h2>
+      ${ico(infoAtual.icone, 18)}
+      <span>${esc(infoAtual.tit)}</span>
+    </h2>
+    <div class="sub-header-acoes">
+      <button class="btn btn-neutro" onclick="abrirTutorialModulo('${v}')" style="background:rgba(255,255,255,0.12);color:#fff;border:1px solid rgba(255,255,255,0.2);font-size:12px;padding:6px 12px;display:inline-flex;align-items:center;gap:6px">
+        ${ico('livro', 14)} <span>Tutoriais</span>
+      </button>
+      <button class="btn btn-primario" data-act="${infoAtual.novo}" style="font-size:12px;padding:6px 14px;display:inline-flex;align-items:center;gap:6px;font-weight:700">
+        ${ico('mais', 14)} <span>${esc(infoAtual.novoLabel)}</span>
       </button>
     </div>
-  </header>`;
+  </div>`;
+}
+
+// Mecanismo de Busca Global com Suporte a Prefixos Contextuais
+function executarBuscaGlobal(termo) {
+  if (!termo || !termo.trim()) return;
+  const t = termo.trim();
+
+  // Prefixos contextuais
+  if (t.startsWith('em:vendas')) {
+    const q = t.replace('em:vendas', '').trim();
+    S.ui.view = 'vendas';
+    S.ui.buscaVendas = q;
+    render();
+    if (typeof torrar === 'function') torrar(`Filtrando Vendas: "${q || 'todas'}"`);
+    return;
+  }
+  if (t.startsWith('em:compras')) {
+    const q = t.replace('em:compras', '').trim();
+    S.ui.view = 'compras';
+    S.ui.buscaCompras = q;
+    render();
+    if (typeof torrar === 'function') torrar(`Filtrando Compras: "${q || 'todas'}"`);
+    return;
+  }
+  if (t.startsWith('em:clientes')) {
+    const q = t.replace('em:clientes', '').trim();
+    S.ui.view = 'cadastros';
+    S.ui.abaCad = 'clientes';
+    S.ui.buscaCad = q;
+    render();
+    if (typeof torrar === 'function') torrar(`Filtrando Clientes: "${q || 'todos'}"`);
+    return;
+  }
+  if (t.startsWith('em:produtos')) {
+    const q = t.replace('em:produtos', '').trim();
+    S.ui.view = 'estoque';
+    S.ui.buscaPeca = q;
+    render();
+    if (typeof torrar === 'function') torrar(`Filtrando Almoxarifado: "${q || 'todos'}"`);
+    return;
+  }
+  if (t.startsWith('em:nfe') || t.startsWith('em:fiscal')) {
+    if (typeof abrirCentralFiscal === 'function') abrirCentralFiscal();
+    else if (document.getElementById('patio-fiscal')) {
+      const b = document.getElementById('patio-fiscal').shadowRoot?.querySelector('.launcher');
+      if (b) b.click();
+    }
+    return;
+  }
+  if (t.startsWith('em:patio')) {
+    const q = t.replace('em:patio', '').trim();
+    S.ui.view = 'patio';
+    S.ui.busca = q;
+    render();
+    if (typeof torrar === 'function') torrar(`Buscando no Pátio: "${q || 'todos'}"`);
+    return;
+  }
+
+  // Busca geral heurística inteligente
+  const qLower = t.toLowerCase();
+  const achouCliente = (S.clientes || []).some(c => (c.nome || '').toLowerCase().includes(qLower) || (c.doc || '').includes(qLower));
+  if (achouCliente) {
+    S.ui.view = 'cadastros';
+    S.ui.abaCad = 'clientes';
+    S.ui.buscaCad = t;
+    render();
+    if (typeof torrar === 'function') torrar(`Buscando cliente "${t}" em Cadastros`);
+    return;
+  }
+
+  const achouPeca = (S.pecas || []).some(p => (p.nome || '').toLowerCase().includes(qLower) || (p.cod || '').toLowerCase().includes(qLower));
+  if (achouPeca) {
+    S.ui.view = 'estoque';
+    S.ui.buscaPeca = t;
+    render();
+    if (typeof torrar === 'function') torrar(`Buscando peça "${t}" no Almoxarifado`);
+    return;
+  }
+
+  const achouVenda = (S.vendas || []).some(v => (v.codigo || '').toLowerCase().includes(qLower) || (v.clienteNome || '').toLowerCase().includes(qLower));
+  if (achouVenda) {
+    S.ui.view = 'vendas';
+    S.ui.buscaVendas = t;
+    render();
+    if (typeof torrar === 'function') torrar(`Buscando venda "${t}"`);
+    return;
+  }
+
+  // Fallback: Busca geral na tela de Pátio
+  S.ui.view = 'patio';
+  S.ui.busca = t;
+  render();
+  if (typeof torrar === 'function') torrar(`Buscando "${t}" no Pátio`);
+}
+
+// Toggle Dropdown + Novo
+function toggleDropdownNovo() {
+  const el = document.getElementById('dropdown-novo-menu');
+  if (el) el.classList.toggle('aberto');
+}
+
+// Fecha dropdowns se clicar fora
+if (typeof document !== 'undefined') {
+  document.addEventListener('click', (e) => {
+    const wrap = e.target.closest('.dropdown-novo-wrap');
+    if (!wrap) {
+      const el = document.getElementById('dropdown-novo-menu');
+      if (el && el.classList.contains('aberto')) el.classList.remove('aberto');
+    }
+  });
+
+  // Atalho global Ctrl+K para busca
+  document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+      e.preventDefault();
+      const input = document.getElementById('campo-busca-global');
+      if (input) {
+        input.focus();
+        input.select();
+      }
+    }
+  });
+}
+
+// Modal / Toast de Tutoriais do Módulo
+function abrirTutorialModulo(view) {
+  const dicas = {
+    patio: 'Dica do Pátio: Arraste os cards entre as colunas para atualizar o status do box. Clique sobre o veículo para editar serviços e peças.',
+    vendas: 'Dica de Vendas: Utilize as abas de Vendas e Devoluções para separar faturamento e devoluções de balcão. O botão WhatsApp envia o link direto ao cliente.',
+    compras: 'Dica de Compras: Arraste um arquivo XML da SEFAZ para importar o cabeçalho, duplicatas e dar entrada automática no estoque.',
+    estoque: 'Dica de Almoxarifado: Controle estoque mínimo de molas e peças críticas. Itens com estoque zerado são sinalizados em vermelho.',
+    financeiro: 'Dica Financeira: Acompanhe o DRE gerencial do mês e concilie boletos e Pix diretamente pela régua automatizada.',
+    fiscal: 'Dica Fiscal: Emita NF-e de peças ou NFS-e de mão de obra a partir de qualquer Ordem de Serviço concluída com um clique.',
+    cadastros: 'Dica de Cadastros: Cadastre transportadores e fornecedores vinculando tags de segmento para acelerar emissões e orçamentos.'
+  };
+  const msg = dicas[view] || 'Pátio CRM: Tecnologia inovadora para gestão completa e alta lucratividade em oficinas mecânicas pesadas.';
+  if (typeof torrar === 'function') torrar(msg);
+  else alert(msg);
 }
 
 function renderOnboardingBanner() {

@@ -68,7 +68,9 @@ router.post('/api/configuracoes/empresa/logo', limiterUploads, requirePermission
   try {
     const state = await getOrLoadState(req);
     const tenantId = extractTenantId(req);
-    const { logoBase64, mimeType = 'image/png' } = req.body || {};
+    const body = req.body || {};
+    const logoBase64 = body.logoBase64 || body.base64 || body.arquivoBase64 || body.logo || body.imagemBase64;
+    const mimeType = body.mimeType || 'image/png';
 
     if (!logoBase64 || typeof logoBase64 !== 'string') {
       return res.status(400).json({ success: false, error: 'Arquivo de logotipo base64 é obrigatório.' });
@@ -132,7 +134,9 @@ router.post('/api/configuracoes/empresa/imagem-institucional', limiterUploads, r
   try {
     const state = await getOrLoadState(req);
     const tenantId = extractTenantId(req);
-    const { imagemBase64, mimeType = 'image/png' } = req.body || {};
+    const body = req.body || {};
+    const imagemBase64 = body.imagemBase64 || body.base64 || body.arquivoBase64 || body.imagem || body.logoBase64;
+    const mimeType = body.mimeType || 'image/png';
 
     if (!imagemBase64 || typeof imagemBase64 !== 'string') {
       return res.status(400).json({ success: false, error: 'Arquivo de imagem base64 é obrigatório.' });

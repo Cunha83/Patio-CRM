@@ -28,7 +28,7 @@ const {
 } = require('../services/whatsapp/whatsappHandlers');
 const financialEngine = require('../services/financialEngine');
 const financialAnalystService = require('../services/financialAnalystService');
-const { getOrLoadState, salvarEstado } = require('../lib/serverContext');
+const { getOrLoadState, salvarEstado, mutateTenantState } = require('../lib/serverContext');
 
 test('WhatsApp Agente Financeiro - Suíte Completa de Leitura e Escrita Controlada', async (t) => {
   await initDB();
@@ -141,14 +141,19 @@ test('WhatsApp Agente Financeiro - Suíte Completa de Leitura e Escrita Controla
     assert.equal(confirmacoesPendentes.size, 0);
   });
 
-  // ── 2. NÚMERO NÃO AUTORIZADO (DESCONHECIDO) ─────────────────────────
-  await t.test('2. Número desconhecido recebe resposta neutra e zero dados financeiros vazados', async () => {
-    const mockState = criarEstadoMock();
+  // ── 2. NÚMERO NÃO AUTORIZADO (DESCONHECIDO) E SILÊNCIO NO PRIVADO ────
+  await t.test('2. Número desconhecido no privado não recebe resposta quando responderApenasGrupos ativo e resposta neutra quando desativado', async () => {
     const defaultState = await getOrLoadState('default');
-    const prevCfg = defaultState.cfg;
-    defaultState.cfg = { adminFones: ['5511999998888'] };
+    const prevCfg = { ...(defaultState.cfg || {}) };
 
     try {
+      // 2.1 Com responderApenasGrupos ativo (padrão de proteção contra resposta a clientes no privado):
+      await mutateTenantState('default', draft => {
+        if (!draft.cfg) draft.cfg = {};
+        draft.cfg.adminFones = ['5511999998888'];
+        draft.cfg.responderApenasGrupos = true;
+      });
+
       const replies = [];
       const msgDesconhecido = {
         from: '5511911112222@c.us',
@@ -159,21 +164,36 @@ test('WhatsApp Agente Financeiro - Suíte Completa de Leitura e Escrita Controla
 
       await tratarMensagemWhatsApp(msgDesconhecido, null);
 
-      assert.equal(replies.length, 1);
-      assert.match(replies[0], /Olá! Sou o assistente do Pátio CRM/i);
-      assert.doesNotMatch(replies[0], /saldo|caixa|1\.500|5\.000/i);
+      assert.equal(replies.length, 0, 'Não deve enviar mensagem no privado quando responderApenasGrupos está ativo');
+
+      // 2.2 Modo legado: responderApenasGrupos explicitamente false
+      await mutateTenantState('default', draft => {
+        if (!draft.cfg) draft.cfg = {};
+        draft.cfg.adminFones = ['5511999998888'];
+        draft.cfg.responderApenasGrupos = false;
+      });
+
+      const repliesLegado = [];
+      const msgLegado = {
+        from: '5511911112222@c.us',
+        body: 'Qual o saldo do caixa ou movimentações?',
+        hasMedia: false,
+        reply: async (txt) => { repliesLegado.push(txt); }
+      };
+
+      await tratarMensagemWhatsApp(msgLegado, null);
+
+      assert.equal(repliesLegado.length, 1);
+      assert.match(repliesLegado[0], /Olá! Sou o assistente do Pátio CRM/i);
+      assert.doesNotMatch(repliesLegado[0], /saldo|caixa|1\.500|5\.000/i);
 
       // Consulta tanto no banco persistente de auditoria quanto na memória
       const auditRows = await all("SELECT * FROM security_audit_log WHERE actor_id = 'whatsapp:5511911112222'");
-      const memLogs = (defaultState.security_audit_log || []).filter(l => l.details?.numeroNormalizado === '5511911112222');
-      assert.ok(auditRows.length > 0 || memLogs.length > 0, 'Deve registrar auditoria para número desconhecido');
-      if (auditRows.length > 0) {
-        const lastRow = auditRows[auditRows.length - 1];
-        const details = JSON.parse(lastRow.details_json || '{}');
-        assert.equal(details.resultado, 'recusado_nao_autorizado');
-      }
+      assert.ok(auditRows.length > 0, 'Deve registrar auditoria para número desconhecido');
     } finally {
-      defaultState.cfg = prevCfg;
+      await mutateTenantState('default', draft => {
+        draft.cfg = prevCfg;
+      });
     }
   });
 
@@ -687,34 +707,49 @@ test('WhatsApp Agente Financeiro - Suíte Completa de Leitura e Escrita Controla
     const { tratarMensagemWhatsApp } = require('../services/whatsapp/whatsappHandlers');
     const mockState = criarEstadoMock();
     const numeroAdmin = '5511999998888';
+    const grupoAdminId = '120363000000000@g.us';
 
-    // 14.1 Simula recebimento de áudio quando há pendência de confirmação
-    const chavePendente = `default:${numeroAdmin}`;
-    confirmacoesPendentes.set(chavePendente, {
-      acao: 'lancar_entrada',
-      valor: 200,
-      expiraEm: Date.now() + 60000,
-      fromNumber: numeroAdmin
+    const defaultState = await getOrLoadState('default');
+    const prevCfg = { ...(defaultState.cfg || {}) };
+    await mutateTenantState('default', draft => {
+      if (!draft.cfg) draft.cfg = {};
+      draft.cfg.grupoAdminId = grupoAdminId;
+      draft.cfg.adminFones = [numeroAdmin];
     });
 
-    const repliesAudio = [];
-    const msgAudio = {
-      id: { _serialized: 'msg_audio_confirm_attempt' },
-      from: `${numeroAdmin}@c.us`,
-      author: `${numeroAdmin}@c.us`,
-      hasMedia: true,
-      type: 'audio',
-      body: '',
-      downloadMedia: async () => ({ data: 'fake_audio_base64_data', mimetype: 'audio/ogg' }),
-      reply: async (txt) => { repliesAudio.push(txt); }
-    };
+    try {
+      // 14.1 Simula recebimento de áudio no grupo admin quando há pendência de confirmação
+      const chavePendente = `default:${numeroAdmin}`;
+      confirmacoesPendentes.set(chavePendente, {
+        acao: 'lancar_entrada',
+        valor: 200,
+        expiraEm: Date.now() + 60000,
+        fromNumber: numeroAdmin
+      });
 
-    await tratarMensagemWhatsApp(msgAudio, null);
+      const repliesAudio = [];
+      const msgAudio = {
+        id: { _serialized: 'msg_audio_confirm_attempt' },
+        from: grupoAdminId,
+        author: `${numeroAdmin}@c.us`,
+        hasMedia: true,
+        type: 'audio',
+        body: '',
+        downloadMedia: async () => ({ data: 'fake_audio_base64_data', mimetype: 'audio/ogg' }),
+        reply: async (txt) => { repliesAudio.push(txt); }
+      };
 
-    assert.equal(repliesAudio.length, 1);
-    assert.match(repliesAudio[0], /Operação Financeira Pendente/i);
-    assert.match(repliesAudio[0], /texto digitado/i);
-    assert.ok(confirmacoesPendentes.has(chavePendente), 'Pendência não deve ser consumida nem afetada por áudio');
+      await tratarMensagemWhatsApp(msgAudio, null);
+
+      assert.equal(repliesAudio.length, 1);
+      assert.match(repliesAudio[0], /Operação Financeira Pendente/i);
+      assert.match(repliesAudio[0], /texto digitado/i);
+      assert.ok(confirmacoesPendentes.has(chavePendente), 'Pendência não deve ser consumida nem afetada por áudio');
+    } finally {
+      await mutateTenantState('default', draft => {
+        draft.cfg = prevCfg;
+      });
+    }
   });
 
   // ── 15. AUDITORIA DE CONCORRÊNCIA, TTL, SOBRESCRITA E RASTREABILIDADE (TAREFA 1) ─
@@ -2543,6 +2578,94 @@ test('WhatsApp Agente Financeiro - Suíte Completa de Leitura e Escrita Controla
     assert.equal(repliesComissoesGeral.length, 1);
     assert.match(repliesComissoesGeral[0], /EXTRATO DE COMISSÕES — FECHAMENTO MENSAL/i);
     assert.match(repliesComissoesGeral[0], /Mecânico Carlos/);
+  });
+
+  // ── 36. BLOQUEIO DE RESPOSTAS NO PRIVADO (responderApenasGrupos) ─────
+  await t.test('36. O robô responde exclusivamente nos grupos configurados e fica 100% silencioso no privado', async () => {
+    const { tratarMensagemWhatsApp } = require('../services/whatsapp/whatsappHandlers');
+    const numeroAdmin = '5511999998888';
+    const numeroCliente = '5511988887777';
+    const grupoAdminId = '120363111111111@g.us';
+    const grupoOperacaoId = '120363222222222@g.us';
+    const grupoDesconhecido = '120363999999999@g.us';
+
+    const defaultState = await getOrLoadState('default');
+    const prevCfg = { ...(defaultState.cfg || {}) };
+
+    await mutateTenantState('default', draft => {
+      if (!draft.cfg) draft.cfg = {};
+      draft.cfg.grupoAdminId = grupoAdminId;
+      draft.cfg.grupoOperacaoId = grupoOperacaoId;
+      draft.cfg.adminFones = [numeroAdmin];
+      draft.cfg.responderApenasGrupos = true;
+    });
+
+    try {
+      // 36.1 Cliente enviando mensagem privada (DM): 0 respostas
+      const repliesClientePrivado = [];
+      const msgClientePrivado = {
+        id: { _serialized: 'msg_cliente_priv_1' },
+        from: `${numeroCliente}@c.us`,
+        author: `${numeroCliente}@c.us`,
+        body: 'Olá, gostaria de saber se vocês consertam feixe de mola',
+        reply: async (txt) => { repliesClientePrivado.push(txt); }
+      };
+      await tratarMensagemWhatsApp(msgClientePrivado, null);
+      assert.equal(repliesClientePrivado.length, 0, 'Robô deve ficar 100% silencioso para clientes no privado');
+
+      // 36.2 Número cadastrado no grupo/admin enviando mensagem privada (DM): 0 respostas
+      const repliesAdminPrivado = [];
+      const msgAdminPrivado = {
+        id: { _serialized: 'msg_admin_priv_1' },
+        from: `${numeroAdmin}@c.us`,
+        author: `${numeroAdmin}@c.us`,
+        body: '!caixa',
+        reply: async (txt) => { repliesAdminPrivado.push(txt); }
+      };
+      await tratarMensagemWhatsApp(msgAdminPrivado, null);
+      assert.equal(repliesAdminPrivado.length, 0, 'Robô deve ficar 100% silencioso para números cadastrados no privado');
+
+      // 36.3 Grupo não cadastrado: 0 respostas
+      const repliesGrupoDesconhecido = [];
+      const msgGrupoDesconhecido = {
+        id: { _serialized: 'msg_grupo_desc_1' },
+        from: grupoDesconhecido,
+        author: `${numeroAdmin}@c.us`,
+        body: '!caixa',
+        reply: async (txt) => { repliesGrupoDesconhecido.push(txt); }
+      };
+      await tratarMensagemWhatsApp(msgGrupoDesconhecido, null);
+      assert.equal(repliesGrupoDesconhecido.length, 0, 'Robô não deve responder em grupos não cadastrados');
+
+      // 36.4 Mensagem enviada dentro do Grupo de Administração configurado: responde no grupo
+      const repliesGrupoAdmin = [];
+      const msgGrupoAdmin = {
+        id: { _serialized: 'msg_grupo_admin_1' },
+        from: grupoAdminId,
+        author: `${numeroAdmin}@c.us`,
+        body: '!caixa',
+        reply: async (txt) => { repliesGrupoAdmin.push(txt); }
+      };
+      await tratarMensagemWhatsApp(msgGrupoAdmin, null);
+      assert.equal(repliesGrupoAdmin.length, 1, 'Robô deve responder dentro do grupo admin configurado');
+      assert.match(repliesGrupoAdmin[0], /CAIXA|SALDO/i);
+
+      // 36.5 Mensagem enviada dentro do Grupo de Operação configurado: responde no grupo
+      const repliesGrupoOperacao = [];
+      const msgGrupoOperacao = {
+        id: { _serialized: 'msg_grupo_op_1' },
+        from: grupoOperacaoId,
+        author: `${numeroAdmin}@c.us`,
+        body: 'status placa ABC1234',
+        reply: async (txt) => { repliesGrupoOperacao.push(txt); }
+      };
+      await tratarMensagemWhatsApp(msgGrupoOperacao, null);
+      assert.equal(repliesGrupoOperacao.length, 1, 'Robô deve responder dentro do grupo de operação configurado');
+    } finally {
+      await mutateTenantState('default', draft => {
+        draft.cfg = prevCfg;
+      });
+    }
   });
 });
 

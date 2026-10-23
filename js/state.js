@@ -84,7 +84,8 @@ function mostrarFalhaSync(message) {
     banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#fff1d6;color:#582600;padding:12px;box-shadow:0 2px 8px #0003';
     document.body.appendChild(banner);
   }
-  banner.replaceChildren();
+  if (typeof banner.replaceChildren === 'function') banner.replaceChildren();
+  else banner.innerHTML = '';
   const text = document.createElement('span');
   text.textContent = message + ' ';
   banner.appendChild(text);
@@ -361,6 +362,7 @@ if (typeof module !== 'undefined' && module.exports) {
 const hoje = () => new Date().toISOString().slice(0, 10);
 const dataBR = (d) => (d ? d.slice(8, 10) + '/' + d.slice(5, 7) : '');
 const dataBRfull = (d) => (d ? d.slice(8, 10) + '/' + d.slice(5, 7) + '/' + d.slice(0, 4) : '');
+const formatarData = dataBRfull;
 const horaBR = () => new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 const diasEntre = (a, b) => Math.round((new Date(b) - new Date(a)) / 864e5);
 function addDias(d, n) {
@@ -406,11 +408,43 @@ const totOS = (o) => {
   return +Math.max(0, totServ + totPec - (Number(o.desc) || 0)).toFixed(2);
 };
 
-const emAberto = (tipo) => S.contas.filter((c) => c.tipo === tipo && !c.pago);
+const obterContasUnificadas = () => {
+  if (!S) return [];
+  const list = [];
+  if (Array.isArray(S.contas)) {
+    for (const c of S.contas) list.push(c);
+  }
+  if (Array.isArray(S.contasReceber)) {
+    for (const c of S.contasReceber) {
+      if (!list.some(x => x.id === c.id)) list.push({ ...c, tipo: 'receber' });
+    }
+  }
+  if (Array.isArray(S.contasPagar)) {
+    for (const c of S.contasPagar) {
+      if (!list.some(x => x.id === c.id)) list.push({ ...c, tipo: 'pagar' });
+    }
+  }
+  return list;
+};
+
+const obterMovimentosUnificados = () => {
+  if (!S) return [];
+  if (Array.isArray(S.movimentos) && S.movimentos.length > 0) return S.movimentos;
+  if (Array.isArray(S.lancamentosCaixa) && S.lancamentosCaixa.length > 0) return S.lancamentosCaixa;
+  if (Array.isArray(S.historicoCaixa) && S.historicoCaixa.length > 0) return S.historicoCaixa;
+  return Array.isArray(S.movimentos) ? S.movimentos : [];
+};
+
+const emAberto = (tipo) => {
+  const todas = obterContasUnificadas();
+  return todas.filter((c) => (c.tipo === tipo || (!c.tipo && tipo === 'receber')) && !c.pago && c.st !== 'pago' && c.status !== 'pago');
+};
+
 const saldoCaixa = () => {
-  const ini = Number(S.cfg.saldoInicial) || 0;
-  const ent = soma(S.movimentos.filter((m) => m.tipo === 'entrada'), (m) => m.valor);
-  const sai = soma(S.movimentos.filter((m) => m.tipo === 'saida'), (m) => m.valor);
+  const ini = Number(S?.cfg?.saldoInicial) || 0;
+  const movs = obterMovimentosUnificados();
+  const ent = soma(movs.filter((m) => m.tipo === 'entrada' || m.tipo === 'credito'), (m) => m.valor);
+  const sai = soma(movs.filter((m) => m.tipo === 'saida' || m.tipo === 'debito'), (m) => m.valor);
   return +(ini + ent - sai).toFixed(2);
 };
 
@@ -605,13 +639,17 @@ function sementes() {
       { id: 's8', nome: 'Revisão e Regulagem de Válvulas de Motor', valor: 750.00, horas: 3.5, iss_cod: '14.01', iss_aliq: 5.0, cnae: '4520-0/01' }
     ],
     pecas: [
-      { id: 'p1', cod: 'SCN-1875892', nome: 'Jogo de Pastilhas de Freio Scania Série R (WVA 29174)', un: 'jg', qtd: 8, min: 3, custo: 320.00, venda: 540.00, loc: 'Prat. A-02', forn: 'Fras-le Peças', ncm: '87083019', cfop: '5102', cest: '01.053.00', origem: '0 - Nacional' },
-      { id: 'p2', cod: 'VLV-2134567', nome: 'Filtro Separador Racor Volvo FH D13', un: 'un', qtd: 14, min: 5, custo: 85.00, venda: 165.00, loc: 'Prat. B-01', forn: 'Donaldson Filtros', ncm: '84212300', cfop: '5102', cest: '01.062.00', origem: '0 - Nacional' },
-      { id: 'p3', cod: 'MBZ-004420', nome: 'Cuíca de Freio Dupla Tipo 30/30 Tristop', un: 'un', qtd: 4, min: 2, custo: 420.00, venda: 730.00, loc: 'Prat. C-04', forn: 'Knorr-Bremse', ncm: '87083090', cfop: '5102', cest: '01.053.00', origem: '1 - Estrangeira' },
-      { id: 'p4', cod: 'LUB-15W40', nome: 'Óleo Motor Diesel 15W40 CI-4 Top Turbo (Galão 20L)', un: 'gl', qtd: 18, min: 6, custo: 290.00, venda: 480.00, loc: 'Depósito 01', forn: 'Lubrax Distribuidora', ncm: '27101932', cfop: '5405', cest: '06.002.00', origem: '0 - Nacional' },
-      { id: 'p5', cod: 'WBC-480104', nome: 'Válvula Moduladora EBS/ABS Wabco', un: 'un', qtd: 2, min: 1, custo: 1250.00, venda: 2100.00, loc: 'Prat. E-01', forn: 'ZF Wabco Brasil', ncm: '87083090', cfop: '5102', cest: '01.053.00', origem: '1 - Estrangeira' },
-      { id: 'p6', cod: 'SCN-2245890', nome: 'Kit Embreagem Cerâmica Scania 430mm Sachs', un: 'kt', qtd: 3, min: 1, custo: 2800.00, venda: 4450.00, loc: 'Pallet 03', forn: 'Sachs Embreagens', ncm: '87089300', cfop: '5102', cest: '01.045.00', origem: '0 - Nacional' },
-      { id: 'p7', cod: 'FLT-AR540', nome: 'Elemento Filtro de Ar Primário Volvo FH4/FH5', un: 'un', qtd: 6, min: 3, custo: 190.00, venda: 340.00, loc: 'Prat. B-03', forn: 'Mann Filter', ncm: '84213100', cfop: '5102', cest: '01.062.00', origem: '0 - Nacional' }
+      { id: 'p1', cod: 'SCN-1875892', nome: 'Jogo de Pastilhas de Freio Scania Série R (WVA 29174)', categoria: 'Freio', un: 'jg', qtd: 8, min: 3, custo: 320.00, venda: 540.00, loc: 'Prat. A-02', forn: 'Fras-le Peças', ncm: '87083019', cfop: '5102', cest: '01.053.00', origem: '0 - Nacional' },
+      { id: 'p2', cod: 'VLV-2134567', nome: 'Filtro Separador Racor Volvo FH D13', categoria: 'Motor', un: 'un', qtd: 14, min: 5, custo: 85.00, venda: 165.00, loc: 'Prat. B-01', forn: 'Donaldson Filtros', ncm: '84212300', cfop: '5102', cest: '01.062.00', origem: '0 - Nacional' },
+      { id: 'p3', cod: 'MBZ-004420', nome: 'Cuíca de Freio Dupla Tipo 30/30 Tristop', categoria: 'Freio', un: 'un', qtd: 4, min: 2, custo: 420.00, venda: 730.00, loc: 'Prat. C-04', forn: 'Knorr-Bremse', ncm: '87083090', cfop: '5102', cest: '01.053.00', origem: '1 - Estrangeira' },
+      { id: 'p4', cod: 'LUB-15W40', nome: 'Óleo Motor Diesel 15W40 CI-4 Top Turbo (Galão 20L)', categoria: 'Motor', un: 'gl', qtd: 18, min: 6, custo: 290.00, venda: 480.00, loc: 'Depósito 01', forn: 'Lubrax Distribuidora', ncm: '27101932', cfop: '5405', cest: '06.002.00', origem: '0 - Nacional' },
+      { id: 'p5', cod: 'WBC-480104', nome: 'Válvula Moduladora EBS/ABS Wabco', categoria: 'Freio', un: 'un', qtd: 2, min: 1, custo: 1250.00, venda: 2100.00, loc: 'Prat. E-01', forn: 'ZF Wabco Brasil', ncm: '87083090', cfop: '5102', cest: '01.053.00', origem: '1 - Estrangeira' },
+      { id: 'p6', cod: 'SCN-2245890', nome: 'Kit Embreagem Cerâmica Scania 430mm Sachs', categoria: 'Embreagem', un: 'kt', qtd: 3, min: 1, custo: 2800.00, venda: 4450.00, loc: 'Pallet 03', forn: 'Sachs Embreagens', ncm: '87089300', cfop: '5102', cest: '01.045.00', origem: '0 - Nacional' },
+      { id: 'p7', cod: 'FLT-AR540', nome: 'Elemento Filtro de Ar Primário Volvo FH4/FH5', categoria: 'Motor', un: 'un', qtd: 6, min: 3, custo: 190.00, venda: 340.00, loc: 'Prat. B-03', forn: 'Mann Filter', ncm: '84213100', cfop: '5102', cest: '01.062.00', origem: '0 - Nacional' },
+      { id: 'p8', cod: 'MOL-VLVFH', nome: 'Feixe de Molas Dianteiro Parabólico Volvo FH', categoria: 'Molas', un: 'un', qtd: 5, min: 2, custo: 1450.00, venda: 2390.00, loc: 'Rack M-01', forn: 'Cofap Molas', ncm: '73201000', cfop: '5102', cest: '01.070.00', origem: '0 - Nacional' },
+      { id: 'p9', cod: 'BUC-PIN28', nome: 'Jogo de Buchas de Bronze com Pino de Centro do Eixo', categoria: 'Embuchamento de Eixo', un: 'jg', qtd: 7, min: 2, custo: 380.00, venda: 690.00, loc: 'Prat. D-02', forn: 'Suporte Rei', ncm: '87088000', cfop: '5102', cest: '01.080.00', origem: '0 - Nacional' },
+      { id: 'p10', cod: 'CRZ-SPC250', nome: 'Cruzeta de Transmissão Cardan Reforçada Spicer', categoria: 'Cardan', un: 'un', qtd: 6, min: 2, custo: 260.00, venda: 490.00, loc: 'Prat. C-01', forn: 'Dana Spicer', ncm: '87089990', cfop: '5102', cest: '01.085.00', origem: '0 - Nacional' },
+      { id: 'p11', cod: 'AMT-SCH100', nome: 'Amortecedor Dianteiro Turbogás Pesado Sachs', categoria: 'Suspensão', un: 'un', qtd: 4, min: 2, custo: 520.00, venda: 890.00, loc: 'Prat. A-05', forn: 'Sachs', ncm: '87088000', cfop: '5102', cest: '01.075.00', origem: '0 - Nacional' }
     ],
     os: [
       {
@@ -756,7 +794,78 @@ function sementes() {
     ],
     extrato: [],
     nfsRecebidas: [],
-    compras: [],
+    compras: [
+      {
+        id: 'comp1',
+        codigo: 'C101',
+        num: '48920',
+        fornecedorId: 'f1',
+        fornecedorNome: 'Fras-le Peças',
+        fornecedorDoc: '11.222.333/0001-44',
+        data: addDias(dHoje, -5),
+        total: 2560.00,
+        situacao: 'Finalizada',
+        itens: [
+          { cod: 'SCN-1875892', nome: 'Jogo de Pastilhas de Freio Scania Série R (WVA 29174)', un: 'jg', qtd: 8, custo: 320.00, total: 2560.00 }
+        ]
+      },
+      {
+        id: 'comp2',
+        codigo: 'C102',
+        num: '12498',
+        fornecedorId: 'f2',
+        fornecedorNome: 'Sachs Embreagens',
+        fornecedorDoc: '22.333.444/0001-55',
+        data: addDias(dHoje, -2),
+        total: 5600.00,
+        situacao: 'Finalizada',
+        itens: [
+          { cod: 'SCN-2245890', nome: 'Kit Embreagem Cerâmica Scania 430mm Sachs', un: 'kt', qtd: 2, custo: 2800.00, total: 5600.00 }
+        ]
+      }
+    ],
+    vendas: [
+      {
+        id: 'vd1',
+        codigo: 'V101',
+        clienteId: 'c1',
+        clienteNome: 'TransRodrigues Transportes Ltda',
+        clienteDoc: '23.456.789/0001-12',
+        vendedorId: 'm1',
+        vendedorNome: 'Valdir (Mecânico Chefe)',
+        data: addDias(dHoje, -3),
+        prev: addDias(dHoje, -3),
+        tipo: 'Balcão',
+        formaPgto: 'Boleto',
+        desconto: 0,
+        total: 2160.00,
+        situacao: 'Finalizada',
+        pecas: [
+          { pecaId: 'p1', nome: 'Jogo de Pastilhas de Freio Scania Série R', qtd: 4, valor: 540.00 }
+        ],
+        servicos: []
+      },
+      {
+        id: 'vd2',
+        codigo: 'V102',
+        clienteId: 'c4',
+        clienteNome: 'Geraldo Antunes (Autônomo)',
+        clienteDoc: '123.456.789-00',
+        vendedorId: 'm2',
+        vendedorNome: 'Jonas (Especialista Freios)',
+        data: dHoje,
+        prev: dHoje,
+        tipo: 'Balcão',
+        formaPgto: 'Pix',
+        desconto: 50.00,
+        total: 910.00,
+        situacao: 'Finalizada',
+        pecas: [
+          { pecaId: 'p4', nome: 'Óleo Motor Diesel 15W40 CI-4 (Galão 20L)', qtd: 2, valor: 480.00 }
+        ],
+        servicos: []
+      }
+    ],
     zap: {
       ativo: true,
       soUteis: true,
@@ -775,4 +884,30 @@ function sementes() {
       api: { url: '', token: '' }
     }
   };
+}
+
+if (typeof window !== 'undefined') {
+  window.obterContasUnificadas = obterContasUnificadas;
+  window.obterMovimentosUnificados = obterMovimentosUnificados;
+  window.emAberto = emAberto;
+  window.saldoCaixa = saldoCaixa;
+  window.soma = soma;
+  window.totOS = totOS;
+  window.hoje = hoje;
+  window.dataBR = dataBR;
+  window.dataBRfull = dataBRfull;
+  window.horaBR = horaBR;
+  window.diasEntre = diasEntre;
+  window.addDias = addDias;
+  window.mesRef = mesRef;
+  window.esc = esc;
+  window.soDigitos = soDigitos;
+  window.torrar = torrar;
+  window.V = V;
+  window.C = C;
+  window.B = B;
+  window.P = P;
+  window.Srv = Srv;
+  window.salvar = salvar;
+  window.armazem = armazem;
 }

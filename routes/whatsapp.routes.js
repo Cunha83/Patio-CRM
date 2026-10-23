@@ -322,6 +322,7 @@ router.get('/api/whatsapp/config-grupos', async (req, res) => {
       envioAutomatico: cfg.envioAutomaticoRelatorio !== false && process.env.ENVIO_AUTOMATICO_RELATORIO !== 'false',
       apenasDiasUteis: cfg.relatorioApenasDiasUteis !== false && process.env.RELATORIO_APENAS_DIAS_UTEIS !== 'false',
       avisarCaixaWhatsapp: Boolean(cfg.avisarCaixaWhatsapp),
+      responderApenasGrupos: cfg.responderApenasGrupos !== false,
       wppStatus: wppStatus.status
     });
   } catch (err) {
@@ -336,7 +337,7 @@ router.post('/api/whatsapp/config-grupos', authMiddleware, async (req, res) => {
     if (!targetState.cfg) targetState.cfg = {};
     const currentCfg = targetState.cfg || {};
 
-    const { grupoAdminId, grupoOperacaoId, horaRelatorio, envioAutomatico, apenasDiasUteis, avisarCaixaWhatsapp } = req.body || {};
+    const { grupoAdminId, grupoOperacaoId, horaRelatorio, envioAutomatico, apenasDiasUteis, avisarCaixaWhatsapp, responderApenasGrupos } = req.body || {};
 
     const role = (req.securityContext?.role || '').toLowerCase();
     const isDono = ['dono', 'tenant_admin', 'owner', 'platform_admin', 'admin'].includes(role);
@@ -382,6 +383,10 @@ router.post('/api/whatsapp/config-grupos', authMiddleware, async (req, res) => {
       if (typeof avisarCaixaWhatsapp === 'boolean') {
         draft.cfg.avisarCaixaWhatsapp = avisarCaixaWhatsapp;
         changes.avisarCaixaWhatsapp = avisarCaixaWhatsapp;
+      }
+      if (typeof responderApenasGrupos === 'boolean') {
+        draft.cfg.responderApenasGrupos = responderApenasGrupos;
+        changes.responderApenasGrupos = responderApenasGrupos;
       }
 
       cfgAtualizada = draft.cfg;
