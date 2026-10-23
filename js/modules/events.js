@@ -844,7 +844,8 @@ document.addEventListener('click', e => {
     }
     case 'disparar-grupo-admin': {
       torrar('Disparando relatório completo + JPG para Grupo Admin...');
-      fetch('/api/whatsapp/disparar-grupo/admin', { method: 'POST' })
+      const headers = typeof obterHeadersRequisicao === 'function' ? obterHeadersRequisicao() : {};
+      fetch('/api/whatsapp/disparar-grupo/admin', { method: 'POST', headers })
         .then(r => r.json())
         .then(data => {
           if (data && data.success) {
@@ -858,7 +859,8 @@ document.addEventListener('click', e => {
     }
     case 'disparar-grupo-operacao': {
       torrar('Disparando relatório sem finanças para Grupo Operação...');
-      fetch('/api/whatsapp/disparar-grupo/operacao', { method: 'POST' })
+      const headers = typeof obterHeadersRequisicao === 'function' ? obterHeadersRequisicao() : {};
+      fetch('/api/whatsapp/disparar-grupo/operacao', { method: 'POST', headers })
         .then(r => r.json())
         .then(data => {
           if (data && data.success) {
@@ -872,7 +874,8 @@ document.addEventListener('click', e => {
     }
     case 'atualizar-grupos-wpp': {
       torrar('Buscando grupos no WhatsApp Web...');
-      fetch('/api/whatsapp/grupos')
+      const headers = typeof obterHeadersRequisicao === 'function' ? obterHeadersRequisicao() : {};
+      fetch('/api/whatsapp/grupos', { headers })
         .then(r => r.json())
         .then(d => {
           if (d && d.grupos) {
@@ -911,9 +914,13 @@ document.addEventListener('click', e => {
       S.cfg.responderApenasGrupos = apenasGruposBool;
       salvar();
 
+      const headers = typeof obterHeadersRequisicao === 'function'
+        ? obterHeadersRequisicao({ 'Content-Type': 'application/json' })
+        : { 'Content-Type': 'application/json' };
+
       fetch('/api/whatsapp/config-grupos', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           grupoAdminId: gAdminId,
           grupoOperacaoId: gOpId,
@@ -936,9 +943,12 @@ document.addEventListener('click', e => {
     }
     case 'disparar-relatorio-admin': {
       torrar('Disparando relatório executivo aos administradores...');
+      const headers = typeof obterHeadersRequisicao === 'function'
+        ? obterHeadersRequisicao({ 'Content-Type': 'application/json' })
+        : { 'Content-Type': 'application/json' };
       fetch('/api/whatsapp/disparar-relatorio-admin', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({})
       })
         .then(r => r.json())
@@ -969,9 +979,13 @@ document.addEventListener('click', e => {
       S.cfg.envioAutomaticoRelatorio = autoBool;
       salvar();
 
+      const headers = typeof obterHeadersRequisicao === 'function'
+        ? obterHeadersRequisicao({ 'Content-Type': 'application/json' })
+        : { 'Content-Type': 'application/json' };
+
       fetch('/api/whatsapp/config-relatorio', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ adminFones: fonesArr, horaRelatorio: horaStr, envioAutomatico: autoBool })
       })
         .then(r => r.json())

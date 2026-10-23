@@ -5,6 +5,7 @@ const {
   getOrLoadState,
   mutateTenantState,
   extractTenantId,
+  getTenantKey,
   requirePermission,
   authMiddleware,
   recordSecurityAudit
@@ -21,11 +22,13 @@ const {
 const {
   gerarRelatorioExecutivo,
   gerarMensagensAdmin,
+  gerarMensagensOperacao,
   gerarImagemIndicadoresJPG,
   enviarRelatorioGrupo,
   enviarRelatorioAdministradores
 } = require('../services/reportGenerationService');
 const { executarCicloDisparoRelatorioDiario } = require('../services/whatsapp/whatsappScheduler');
+const financialEngine = require('../services/financialEngine');
 
 // Middleware local para injetar wppClient e wppStatus no escopo da rota
 router.use((req, res, next) => {

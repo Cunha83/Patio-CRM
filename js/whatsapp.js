@@ -547,7 +547,8 @@ function blocoRelatorioAdmin() {
   // Carrega lista de grupos do WhatsApp do servidor se ainda não carregou
   if (!S.ui.gruposWppCarregados && wppStatusStr === 'pronto') {
     S.ui.gruposWppCarregados = true;
-    fetch('/api/whatsapp/grupos')
+    const headers = typeof obterHeadersRequisicao === 'function' ? obterHeadersRequisicao() : {};
+    fetch('/api/whatsapp/grupos', { headers })
       .then(r => r.json())
       .then(d => {
         if (d && d.grupos) {
