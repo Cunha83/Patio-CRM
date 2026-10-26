@@ -31,11 +31,53 @@ const {
   gerarResumoPatio,
   gerarImagemIndicadoresJPG
 } = require('../reportGenerationService');
+const { processarEntradaVeiculo } = require('../vehicleEntryService');
 const {
   getWhatsAppModules,
   resolverTenantPorChatId,
-  obterGruposWhatsApp
+  obterGruposWhatsApp,
+  isMensagemEnviadaPeloBot
 } = require('./whatsappState');
+
+async function responderMensagem(msg, texto, wppClient, targetChatId) {
+  if (!texto) return null;
+  try {
+    return await msg.reply(texto);
+  } catch (errReply) {
+    if (wppClient && targetChatId) {
+      return await wppClient.sendMessage(targetChatId, texto);
+    }
+    throw errReply;
+  }
+}
+
+function isBotPrefix(texto) {
+  if (!texto || typeof texto !== 'string') return false;
+  const t = texto.trim();
+  return (
+    t.startsWith('✅ *Ordem de Serviço') ||
+    t.startsWith('📋 *Status') ||
+    t.startsWith('📋 *Painel Geral') ||
+    t.startsWith('📋 *Veículo já presente') ||
+    t.startsWith('📸 *Foto') ||
+    t.startsWith('🎙️ *Áudio') ||
+    t.startsWith('💸 *Comprovante') ||
+    t.startsWith('🧾 *Nota Fiscal') ||
+    t.startsWith('⚠️ *Atenção') ||
+    t.startsWith('⚠️ Muitas mensagens') ||
+    t.startsWith('🔒 *Acesso Restrito') ||
+    t.startsWith('Olá! Sou o assistente virtual do *Pátio CRM*') ||
+    t.startsWith('Não localizei nenhuma OS') ||
+    t.startsWith('Nenhuma Ordem de Serviço ativa') ||
+    t.startsWith('Para abrir a Ordem de Serviço') ||
+    t.startsWith('Áudio processado pelo Pátio CRM') ||
+    t.startsWith('*Relatório Executivo*') ||
+    t.startsWith('*Resumo de Caixa*') ||
+    t.startsWith('*Ocupação do Pátio*') ||
+    t.startsWith('🤖') ||
+    t.startsWith('❌')
+  );
+}
 
 function formatarMoeda(val) {
   return (Number(val) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -3446,20 +3488,29 @@ _Pátio CRM — Gestão de Oficina Pesada_`;
  * Trata o evento 'message' do cliente WhatsApp Web
  */
 async function tratarMensagemWhatsApp(msg, wppClient) {
-  if (msg.from.includes('status') || msg.from.includes('@broadcast')) {
+  const msgId = (msg.id && (msg.id._serialized || msg.id.id)) || msg.id || null;
+
+  // Evita auto-resposta e loops infinitos quando o robô envia mensagens
+  if (msg.fromMe && (isMensagemEnviadaPeloBot(msgId) || isBotPrefix(msg.body))) {
     return;
   }
 
-  const isGroup = msg.from && msg.from.includes('@g.us');
-  const fromNumber = extrairTelefoneDeJid(msg);
+  const targetChatId = (msg.fromMe ? msg.to : msg.from) || msg.from;
+  if (!targetChatId || targetChatId.includes('status') || targetChatId.includes('@broadcast')) {
+    return;
+  }
 
-  const { tenantKey, state: tenantState } = await resolverTenantPorChatId(msg.from, fromNumber);
-  const msgId = (msg.id && (msg.id._serialized || msg.id.id)) || msg.id || null;
+  const isGroup = Boolean(targetChatId && targetChatId.includes('@g.us'));
+  const fromNumber = msg.fromMe
+    ? (wppClient?.info?.wid?.user || extrairTelefoneDeJid(msg))
+    : extrairTelefoneDeJid(msg);
+
+  const { tenantKey, state: tenantState } = await resolverTenantPorChatId(targetChatId, fromNumber);
   const idemCheck = await verificarIdempotencia(msgId, tenantKey);
   if (idemCheck.duplicada) {
     console.log(`[WhatsApp Idempotência] Mensagem duplicada ignorada para tenant ${tenantKey}:`, msgId);
     if (idemCheck.resposta) {
-      try { await msg.reply(idemCheck.resposta); } catch (_) {}
+      try { await responderMensagem(msg, idemCheck.resposta, wppClient, targetChatId); } catch (_) {}
     }
     return;
   }
@@ -3479,8 +3530,8 @@ async function tratarMensagemWhatsApp(msg, wppClient) {
     ...(process.env.WHATSAPP_GRUPO_OPERACAO_ID ? process.env.WHATSAPP_GRUPO_OPERACAO_ID.split(',') : [])
   ].map(s => String(s || '').trim()).filter(Boolean);
 
-  const isGrupoAdmin = isGroup && grupoAdminIds.includes(msg.from);
-  const isGrupoOperacao = isGroup && grupoOperacaoIds.includes(msg.from);
+  const isGrupoAdmin = isGroup && grupoAdminIds.includes(targetChatId);
+  const isGrupoOperacao = isGroup && grupoOperacaoIds.includes(targetChatId);
 
   const adminList = (process.env.WHATSAPP_ADMIN_NUMBERS || '')
     .split(',')
@@ -3493,26 +3544,28 @@ async function tratarMensagemWhatsApp(msg, wppClient) {
     });
   }
 
-  const isSenderAdmin = isAdminPhone(fromNumber, adminList);
+  const isSenderAdmin = msg.fromMe ? true : isAdminPhone(fromNumber, adminList);
 
-  const rateCheck = verificarRateLimit(fromNumber);
-  if (!rateCheck.permitido) {
-    console.warn(`[WhatsApp RateLimit] Número ${fromNumber} excedeu o limite de requisições.`);
-    try {
-      await msg.reply('⚠️ Muitas mensagens recebidas em sequência. Por favor, aguarde um momento antes de tentar novamente.');
-    } catch (_) {}
-    await auditarComandoWhatsApp({
-      tenantId: tenantKey,
-      numero: normalizePhone(fromNumber) || fromNumber,
-      comando: msg.body || (msg.hasMedia ? '[midia]' : ''),
-      resultado: 'rate_limit_excedido',
-      detalhes: { contagem: rateCheck.contagem }
-    });
-    return;
+  if (!msg.fromMe) {
+    const rateCheck = verificarRateLimit(fromNumber);
+    if (!rateCheck.permitido) {
+      console.warn(`[WhatsApp RateLimit] Número ${fromNumber} excedeu o limite de requisições.`);
+      try {
+        await responderMensagem(msg, '⚠️ Muitas mensagens recebidas em sequência. Por favor, aguarde um momento antes de tentar novamente.', wppClient, targetChatId);
+      } catch (_) {}
+      await auditarComandoWhatsApp({
+        tenantId: tenantKey,
+        numero: normalizePhone(fromNumber) || fromNumber,
+        comando: msg.body || (msg.hasMedia ? '[midia]' : ''),
+        resultado: 'rate_limit_excedido',
+        detalhes: { contagem: rateCheck.contagem }
+      });
+      return;
+    }
   }
 
   if (isGroup) {
-    if (msg.from === '120363428179962435@g.us' || msg.from === '120363428840376088@g.us') {
+    if (targetChatId === '120363428179962435@g.us' || targetChatId === '120363428840376088@g.us') {
       return;
     }
     if (!isGrupoAdmin && !isGrupoOperacao) {
@@ -3541,7 +3594,7 @@ async function tratarMensagemWhatsApp(msg, wppClient) {
 
     if (!isSenderAdmin) {
       // Número não cadastrado em adminFones recebe resposta neutra e nenhuma informação financeira
-      await msg.reply('Olá! Sou o assistente do Pátio CRM. No momento, o atendimento automatizado está disponível apenas para motoristas e clientes com veículos em serviço ou administradores autorizados. Para mais informações, entre em contato diretamente com a nossa recepção.');
+      await responderMensagem(msg, 'Olá! Sou o assistente do Pátio CRM. No momento, o atendimento automatizado está disponível apenas para motoristas e clientes com veículos em serviço ou administradores autorizados. Para mais informações, entre em contato diretamente com a nossa recepção.', wppClient, targetChatId);
       await auditarComandoWhatsApp({
         tenantId: tenantKey,
         numero: normalizePhone(fromNumber) || fromNumber,
@@ -3589,7 +3642,7 @@ async function tratarMensagemWhatsApp(msg, wppClient) {
   if (base64Audio) {
     const chavePendente = `${tenantKey}:${normalizePhone(fromNumber) || fromNumber}`;
     if (confirmacoesPendentes.has(chavePendente)) {
-      await msg.reply('⚠️ *Operação Financeira Pendente:* Para confirmar ou cancelar lançamentos financeiros, por favor envie o comando em texto digitado (*CONFIRMAR* ou *CANCELAR*). Comandos de áudio não são aceitos para confirmação.');
+      await responderMensagem(msg, '⚠️ *Operação Financeira Pendente:* Para confirmar ou cancelar lançamentos financeiros, por favor envie o comando em texto digitado (*CONFIRMAR* ou *CANCELAR*). Comandos de áudio não são aceitos para confirmação.', wppClient, targetChatId);
       return;
     }
 
@@ -3612,11 +3665,12 @@ async function tratarMensagemWhatsApp(msg, wppClient) {
         aiClient: ai
       });
 
-      await msg.reply(resVoz.resposta || 'Áudio processado pelo Pátio CRM.');
+      await responderMensagem(msg, resVoz.resposta || 'Áudio processado pelo Pátio CRM.', wppClient, targetChatId);
+      await registrarIdempotencia(msgId);
       return;
     } catch (errVoz) {
       console.error('[WhatsApp] Erro ao processar áudio no VoiceActionEngine:', errVoz);
-      await msg.reply('Não consegui compreender o áudio com clareza. Você pode repetir ou digitar a mensagem?');
+      await responderMensagem(msg, '🎙️ *Áudio recebido no Pátio CRM!*\n\nNão consegui transcrever a gravação de voz com clareza no momento. Você pode repetir ou enviar o comando por texto (ex: *Abrir OS placa ABC1234*)?', wppClient, targetChatId);
       return;
     }
   }
@@ -3633,7 +3687,8 @@ async function tratarMensagemWhatsApp(msg, wppClient) {
       tenantId: tenantKey
     });
     if (resOrcWpp.reconhecido && resOrcWpp.resposta) {
-      await msg.reply(resOrcWpp.resposta);
+      await responderMensagem(msg, resOrcWpp.resposta, wppClient, targetChatId);
+      await registrarIdempotencia(msgId);
       return;
     }
   }
@@ -3653,39 +3708,45 @@ async function tratarMensagemWhatsApp(msg, wppClient) {
 
   if (docAnalise && docAnalise.tipo === 'pedido_compra') {
     const dados = docAnalise.dados || {};
-    await msg.reply(
+    await responderMensagem(msg,
       `📋 *Pedido de Compra / Cotação Identificado!*\n\n` +
       `• *Fornecedor:* ${dados.fornecedor || 'Identificado'}\n` +
       `• *Número do Pedido:* ${dados.numero_documento || 'S/N'}\n` +
       `• *Valor Total:* ${formatarMoeda(dados.valor_total || 0)}\n\n` +
-      `_Documento recebido e provisionado para conferência no almoxarifado/compras._`
+      `_Documento recebido e provisionado para conferência no almoxarifado/compras._`,
+      wppClient, targetChatId
     );
+    await registrarIdempotencia(msgId);
     return;
   }
 
   if (docAnalise && docAnalise.tipo === 'nota_fiscal') {
     const dados = docAnalise.dados || {};
-    await msg.reply(
+    await responderMensagem(msg,
       `🧾 *Nota Fiscal (NF-e / DANFE) Identificada!*\n\n` +
       `• *Emitente:* ${dados.fornecedor || 'Fornecedor'}\n` +
       `• *Número da NF:* ${dados.numero_documento || 'S/N'}\n` +
       `• *Chave de Acesso:* ${dados.chave_acesso || 'Identificada na imagem'}\n` +
       `• *Valor Total:* ${formatarMoeda(dados.valor_total || 0)}\n\n` +
-      `_Registrado para conferência de entrada no estoque e escrituração fiscal._`
+      `_Registrado para conferência de entrada no estoque e escrituração fiscal._`,
+      wppClient, targetChatId
     );
+    await registrarIdempotencia(msgId);
     return;
   }
 
   if (docAnalise && docAnalise.tipo === 'comprovante_pagamento') {
     const dados = docAnalise.dados || {};
-    await msg.reply(
+    await responderMensagem(msg,
       `💸 *Comprovante de Pagamento Identificado!*\n\n` +
       `• *Favorecido:* ${dados.favorecido || dados.fornecedor || 'Favorecido'}\n` +
       `• *Forma de Pagamento:* ${dados.forma_pagamento || 'Pix'}\n` +
       `• *Valor Pago:* ${formatarMoeda(dados.valor_total || 0)}\n` +
       `• *Autenticação:* ${dados.autenticacao || 'Identificada'}\n\n` +
-      `_Comprovante recebido para conciliação financeira no Contas a Pagar/Caixa._`
+      `_Comprovante recebido para conciliação financeira no Contas a Pagar/Caixa._`,
+      wppClient, targetChatId
     );
+    await registrarIdempotencia(msgId);
     return;
   }
 
@@ -3783,10 +3844,12 @@ ${itensPec ? `\n📦 *Peças:* \n${itensPec}` : ''}`;
           }
 
           resposta += `\n\n_Para adicionar serviços à OS, digite: "Inclua [serviço]"_`;
-          await msg.reply(resposta);
+          await responderMensagem(msg, resposta, wppClient, targetChatId);
+          await registrarIdempotencia(msgId);
           return;
         } else {
-          await msg.reply(`Não localizei nenhuma OS em andamento para a placa *${placaAlvo}*. Para abrir uma nova OS, envie: *Abrir OS placa ${placaAlvo}*.`);
+          await responderMensagem(msg, `Não localizei nenhuma OS em andamento para a placa *${placaAlvo}*. Para abrir uma nova OS, envie: *Abrir OS placa ${placaAlvo}*.`, wppClient, targetChatId);
+          await registrarIdempotencia(msgId);
           return;
         }
       }
@@ -3798,10 +3861,60 @@ ${itensPec ? `\n📦 *Peças:* \n${itensPec}` : ''}`;
           return `• *OS #${o.num}* — Placa *${v.placa}*: ${o.st.toUpperCase()} (${b})`;
         }).join('\n');
 
-        await msg.reply(`📋 *Painel Geral de Ordens de Serviço:*\n\n${ultimas}\n\nPara consultar o status de um veículo específico, envie: *Status placa ABC1234*.`);
+        await responderMensagem(msg, `📋 *Painel Geral de Ordens de Serviço:*\n\n${ultimas}\n\nPara consultar o status de um veículo específico, envie: *Status placa ABC1234*.`, wppClient, targetChatId);
       } else {
-        await msg.reply('Nenhuma Ordem de Serviço ativa no momento. Para abrir uma nova OS, digite: *Abrir OS placa ABC1234*.');
+        await responderMensagem(msg, 'Nenhuma Ordem de Serviço ativa no momento. Para abrir uma nova OS, digite: *Abrir OS placa ABC1234*.', wppClient, targetChatId);
       }
+      await registrarIdempotencia(msgId);
+      return;
+    }
+
+    // ── ABERTURA DE OS / ENTRADA DE VEÍCULO (Foto da Placa ou Comando de Abertura) ──
+    const isFotoPlaca = Boolean(base64Image && placaIdentificada);
+    const isComandoAbrirComPlaca = Boolean(isAberturaOS && (placaIdentificada || placaContexto));
+    const isEnvioPlacaDiretoOperacao = Boolean(isGrupoOperacao && placaIdentificada && (textoLower.length <= 15 || base64Image));
+
+    if (isFotoPlaca || isComandoAbrirComPlaca || isEnvioPlacaDiretoOperacao) {
+      const placaFinal = placaIdentificada || placaContexto;
+
+      // Se for apenas envio de placa no grupo de operação (sem foto e sem "abrir"), verifica se já tem OS ativa
+      if (!isAberturaOS && !base64Image && placaFinal) {
+        const veicExistente = (tenantState?.veiculos || []).find(v => v.placa && v.placa.toUpperCase().replace(/[^A-Z0-9]/g, '') === placaFinal);
+        const osAtiva = veicExistente ? (tenantState?.os || []).find(o => o.vei === veicExistente.id && o.st !== 'finalizada') : null;
+        if (osAtiva) {
+          const boxInfo = osAtiva.box ? ((tenantState?.boxes || []).find(b => b.id === osAtiva.box) || { nome: 'Box Pátio' }).nome : 'Fila de Espera no Pátio';
+          let resposta = `📋 *Veículo já presente no pátio:* OS #${osAtiva.num} — Placa *${veicExistente.placa}*\n\n📍 *Localização:* ${boxInfo}\n⚙️ *Situação:* *${osAtiva.st.toUpperCase()}*\n\nPara consultar detalhes completos, envie: *Status placa ${placaFinal}*`;
+          await responderMensagem(msg, resposta, wppClient, targetChatId);
+          await registrarIdempotencia(msgId);
+          return;
+        }
+      }
+
+      console.log(`[WhatsApp] Processando abertura de OS para placa ${placaFinal} (Origem: ${base64Image ? 'Foto' : 'Texto'})...`);
+      try {
+        const resultadoOS = await processarEntradaVeiculo({
+          placa: placaFinal,
+          clienteNome: `Cliente WhatsApp (${placaFinal})`,
+          clienteFone: fromNumber,
+          textoOriginal: textoMensagem || (base64Image ? 'Check-in via foto da placa no WhatsApp' : `Entrada ${placaFinal}`),
+          req: { tenantId: tenantKey }
+        });
+
+        if (resultadoOS && resultadoOS.respostaWhatsApp) {
+          await responderMensagem(msg, resultadoOS.respostaWhatsApp, wppClient, targetChatId);
+          await registrarIdempotencia(msgId);
+          return;
+        }
+      } catch (errOS) {
+        console.error('[WhatsApp] Erro ao abrir OS via processarEntradaVeiculo:', errOS);
+        await responderMensagem(msg, `❌ Não foi possível abrir a OS para a placa *${placaFinal}* no momento. Detalhe: ${errOS.message}`, wppClient, targetChatId);
+        return;
+      }
+    }
+
+    if (isAberturaOS && !placaIdentificada && !placaContexto) {
+      await responderMensagem(msg, 'Para abrir a Ordem de Serviço, por favor informe a placa do veículo (ex: *Abrir OS placa ABC1234*) ou envie uma foto do caminhão/placa.', wppClient, targetChatId);
+      await registrarIdempotencia(msgId);
       return;
     }
 
@@ -3814,7 +3927,9 @@ ${itensPec ? `\n📦 *Peças:* \n${itensPec}` : ''}`;
       textoLower.includes('passar para o box')
     ) && !textoLower.includes('abrir os') && !textoLower.includes('abrir nova os');
 
-    if (isRedirecionamentoBox || placaFinalParaAbrir || (textoLower.includes('inclua') || textoLower.includes('incluir') || textoLower.includes('adicione') || textoLower.includes('adicionar') || textoLower.includes('lance') || textoLower.includes('lancar') || textoLower.includes('lançar')) || isFalaNatural || (!isGroup && textoMensagem.length > 5)) {
+    const isFalaNatural = textoLower.includes('favor') || textoLower.includes('preciso') || textoLower.includes('pode ') || textoLower.includes('trocar') || textoLower.includes('consertar') || textoLower.includes('revisar');
+
+    if (isRedirecionamentoBox || isLancamentoItem || isFalaNatural || (!isGroup && textoMensagem.length > 5)) {
       const resNat = await voiceActionEngine.interpretarEExecutar({
         input: { text: textoMensagem },
         context: {
@@ -3832,8 +3947,9 @@ ${itensPec ? `\n📦 *Peças:* \n${itensPec}` : ''}`;
         aiClient: ai
       });
 
-      if (resNat.ok) {
-        await msg.reply(resNat.resposta);
+      if (resNat.ok && resNat.resposta) {
+        await responderMensagem(msg, resNat.resposta, wppClient, targetChatId);
+        await registrarIdempotencia(msgId);
         return;
       }
     }
@@ -3846,12 +3962,8 @@ ${itensPec ? `\n📦 *Peças:* \n${itensPec}` : ''}`;
         `• 🧾 *Foto ou DANFE de Nota Fiscal (NF-e)*\n` +
         `• 💸 *Comprovante de Pagamento (Pix / Boleto / TED)*\n` +
         `• 🚛 *Foto da Placa do Caminhão (Ex: ABC1D23)*`;
-      await msg.reply(resposta);
-      return;
-    }
-
-    if (textoLower.includes('abrir') && textoLower.includes('os')) {
-      await msg.reply('Para abrir a Ordem de Serviço, por favor informe a placa do veículo (ex: *Abrir OS placa ABC1234*) ou envie uma foto do caminhão/placa.');
+      await responderMensagem(msg, resposta, wppClient, targetChatId);
+      await registrarIdempotencia(msgId);
       return;
     }
 
@@ -3862,23 +3974,26 @@ ${itensPec ? `\n📦 *Peças:* \n${itensPec}` : ''}`;
         `2️⃣ *Para consultar status:* Digite *Status placa ABC1234*.\n` +
         `3️⃣ *Para incluir serviços:* Digite *Inclua [serviço]*.\n` +
         `4️⃣ *Para ver a ocupação:* Digite *!patio*`;
-      await msg.reply(saudacao);
+      await responderMensagem(msg, saudacao, wppClient, targetChatId);
+      await registrarIdempotencia(msgId);
       return;
     }
 
     if (!isGroup && !responderApenasGrupos) {
-      await msg.reply(
+      await responderMensagem(msg,
         `Mensagem recebida no *Pátio CRM*! 🚛\n\n` +
         `• Digite *!ajuda* para ver todos os comandos disponíveis.\n` +
         `• Digite *!relatorio* para o relatório executivo matinal.\n` +
-        `• Digite *!caixa* para a posição financeira.`
+        `• Digite *!caixa* para a posição financeira.`,
+        wppClient, targetChatId
       );
+      await registrarIdempotencia(msgId);
     }
   } catch (localErr) {
     console.error('[WhatsApp] Erro no processamento de mensagem:', localErr);
     if (isGroup || !responderApenasGrupos) {
       try {
-        await msg.reply('Recebemos sua mensagem! Nossa equipe já está verificando no sistema.');
+        await responderMensagem(msg, 'Recebemos sua mensagem! Nossa equipe já está verificando no sistema.', wppClient, targetChatId);
       } catch (_) {}
     }
   }

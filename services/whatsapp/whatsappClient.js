@@ -146,6 +146,13 @@ function iniciarWhatsApp() {
     await tratarMensagemWhatsApp(msg, wppClient);
   });
 
+  wppClient.on('message_create', async (msg) => {
+    // Processa mensagens enviadas pelo próprio usuário cadastrado / conectado
+    if (msg.fromMe) {
+      await tratarMensagemWhatsApp(msg, wppClient);
+    }
+  });
+
   try {
     wppClient.initialize();
   } catch (err) {

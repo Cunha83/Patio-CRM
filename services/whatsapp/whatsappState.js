@@ -28,12 +28,41 @@ const wppStatus = {
   ultimoUpdate: new Date().toISOString()
 };
 
+const botSentMessages = new Set();
+
+function registrarMensagemEnviadaPeloBot(msgId) {
+  if (!msgId) return;
+  const str = typeof msgId === 'string' ? msgId : (msgId._serialized || msgId.id || String(msgId));
+  botSentMessages.add(str);
+  if (botSentMessages.size > 3000) {
+    const it = botSentMessages.values();
+    for (let i = 0; i < 500; i++) botSentMessages.delete(it.next().value);
+  }
+}
+
+function isMensagemEnviadaPeloBot(msgId) {
+  if (!msgId) return false;
+  const str = typeof msgId === 'string' ? msgId : (msgId._serialized || msgId.id || String(msgId));
+  return botSentMessages.has(str);
+}
+
 function getWppClient() {
   return wppClient;
 }
 
 function setWppClient(client) {
   wppClient = client;
+  if (client && !client._botSendIntercepted && typeof client.sendMessage === 'function') {
+    client._botSendIntercepted = true;
+    const origSend = client.sendMessage.bind(client);
+    client.sendMessage = async function(chatId, content, options) {
+      const sent = await origSend(chatId, content, options);
+      if (sent && sent.id) {
+        registrarMensagemEnviadaPeloBot(sent.id._serialized || sent.id.id || sent.id);
+      }
+      return sent;
+    };
+  }
 }
 
 function getWppStatus() {
@@ -232,5 +261,7 @@ module.exports = {
   obterGruposWhatsApp,
   fecharModaisWhatsAppWeb,
   registrarIdMensagem,
+  registrarMensagemEnviadaPeloBot,
+  isMensagemEnviadaPeloBot,
   resolverTenantPorChatId
 };

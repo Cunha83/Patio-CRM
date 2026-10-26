@@ -1011,6 +1011,14 @@ async function interpretarComando({ input, context = {}, state = {}, aiClient = 
   }
 
   // Fallback por regras heurísticas caso o Gemini não esteja configurado ou ocorra falha de rede/cota
+  if (audioBase64 && !text) {
+    return {
+      intencao: 'falha_transcricao_audio',
+      risco: 'baixo',
+      resposta_falada: '🎙️ *Áudio recebido no Pátio CRM!*\n\nNão foi possível transcrever a gravação de voz no momento. Por favor, envie o comando em texto (ex: *Abrir OS placa ABC1234*) ou envie a foto da placa do caminhão.'
+    };
+  }
+
   return interpretarPorRegras(text || '', context, state);
 }
 
@@ -1032,6 +1040,14 @@ async function executarAcao({ interpretado, input, context = {}, state = {} }) {
 
   const dataHoje = new Date().toISOString().slice(0, 10);
   const intencao = interpretado.intencao || 'duvida_geral';
+
+  if (intencao === 'falha_transcricao_audio') {
+    return {
+      ok: true,
+      acao: 'falha_transcricao_audio',
+      resposta: interpretado.resposta_falada
+    };
+  }
 
   // ── 1. CONFIRMAÇÃO DE AÇÃO DE ALTO RISCO / PRÉ-OS ───────
   if (intencao === 'confirmar_acao') {
