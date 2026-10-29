@@ -32,6 +32,10 @@ function obterHeadersRequisicao(customHeaders = {}) {
     if (tid && !headers['x-tenant-id']) {
       headers['x-tenant-id'] = tid;
     }
+    const token = window.localStorage?.getItem('patio_auth_token') || window.sessionStorage?.getItem('patio_auth_token');
+    if (token && !headers['authorization'] && !headers['Authorization']) {
+      headers['authorization'] = `Bearer ${token}`;
+    }
     if (window.__PATIO_TEST_CONSULTA_ADAPTER && !headers['x-test-consulta-adapter']) {
       headers['x-test-consulta-adapter'] = window.__PATIO_TEST_CONSULTA_ADAPTER;
     }

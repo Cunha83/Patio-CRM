@@ -53,8 +53,8 @@
     return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
   }
 
-  // Aplica o conjunto de variáveis CSS no DOM
-  function aplicarTemaCamaleao(paleta) {
+  // Aplica o conjunto de variáveis CSS no DOM e sincroniza com o backend
+  function aplicarTemaCamaleao(paleta, sincronizarServidor = true) {
     if (!paleta || !paleta.primary) return;
     const root = document.documentElement;
     root.style.setProperty('--brand-primary', paleta.primary);
@@ -75,6 +75,16 @@
       S.cfg.identidadeVisual = S.cfg.identidadeVisual || {};
       S.cfg.identidadeVisual.paleta = paleta;
     }
+
+    if (sincronizarServidor && typeof fetch === 'function') {
+      try {
+        fetch('/api/tenant/theme', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(paleta)
+        }).catch(() => {});
+      } catch (_) {}
+    }
   }
 
   // Restaura o tema salvo no localStorage ou configuração
@@ -83,14 +93,25 @@
       const salvo = localStorage.getItem('patio_brand_theme');
       if (salvo) {
         const paleta = JSON.parse(salvo);
-        aplicarTemaCamaleao(paleta);
-        return paleta;
+        aplicarTemaCamaleao(paleta, false);
       }
     } catch (_) {}
 
     if (typeof S !== 'undefined' && S && S.cfg && S.cfg.identidadeVisual && S.cfg.identidadeVisual.paleta) {
-      aplicarTemaCamaleao(S.cfg.identidadeVisual.paleta);
+      aplicarTemaCamaleao(S.cfg.identidadeVisual.paleta, false);
       return S.cfg.identidadeVisual.paleta;
+    }
+
+    // Busca tema corporativo do tenant no backend para garantir sincronização entre navegadores
+    if (typeof fetch === 'function') {
+      fetch('/api/tenant/theme')
+        .then(r => r.json())
+        .then(d => {
+          if (d && d.success && d.theme) {
+            aplicarTemaCamaleao(d.theme, false);
+          }
+        })
+        .catch(() => {});
     }
 
     // Default Corporativo Azul Royal / Âmbar
@@ -100,7 +121,7 @@
       primaryLight: '#eff6ff',
       accent: '#f59e0b'
     };
-    aplicarTemaCamaleao(def);
+    aplicarTemaCamaleao(def, false);
     return def;
   }
 

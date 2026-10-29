@@ -668,12 +668,12 @@ function processarFaturamentoOS(o) {
 /* =====================================================================
    IMPRESSÃO PROFISSIONAL DE OS / ORÇAMENTO
 ===================================================================== */
-function imprimirOS(o) {
+function imprimirOS(o, formato = 'a4') {
   if (!o) o = OSatual();
   if (!o) return;
 
   const v = V(o.vei), c = C(o.cli);
-  const cfg = S.cfg;
+  const cfg = S.cfg || {};
   const isMec = isPerfilMecanico();
   const total = totOS(o);
   const totServ = soma(o.servicos, i => (i.qtd || 1) * (i.valor || 0));
@@ -685,6 +685,56 @@ function imprimirOS(o) {
     return;
   }
 
+  if (formato === 'termica') {
+    // Layout Compacto para Impressora Térmica 80mm
+    janela.document.write(`
+    <!DOCTYPE html>
+    <html lang="pt-BR">
+    <head>
+      <meta charset="utf-8">
+      <title>Cupom OS ${esc(o.num)}</title>
+      <style>
+        @page { size: 80mm auto; margin: 0; }
+        body { font-family: 'Courier New', Courier, monospace; font-size: 11px; width: 72mm; margin: 0 auto; padding: 6px; color: #000; line-height: 1.3; }
+        .c { text-align: center; }
+        .d { display: flex; justify-content: space-between; }
+        .b { font-weight: bold; }
+        .sep { border-top: 1px dashed #000; margin: 6px 0; }
+      </style>
+    </head>
+    <body>
+      <div class="c b" style="font-size:13px">${esc(cfg.empresa || 'PÁTIO CRM')}</div>
+      <div class="c">CNPJ: ${esc(cfg.cnpj || '—')}</div>
+      <div class="c">Tel: ${esc(cfg.fone || '—')}</div>
+      <div class="sep"></div>
+      <div class="c b">CUPOM DE ATENDIMENTO · OS #${esc(o.num)}</div>
+      <div class="d"><span>Data:</span><span>${dataBRfull(o.abertura)}</span></div>
+      <div class="d"><span>Placa:</span><span class="b">${esc(v.placa)}</span></div>
+      <div class="d"><span>Veículo:</span><span>${esc(v.modelo || '')}</span></div>
+      <div class="d"><span>Cliente:</span><span>${esc(c.nome)}</span></div>
+      <div class="sep"></div>
+      <div class="b">SERVIÇOS / MÃO DE OBRA:</div>
+      ${(o.servicos || []).map(s => `<div class="d"><span>${esc(s.nome)} (${s.qtd}x)</span><span>${brl(s.qtd * s.valor)}</span></div>`).join('')}
+      <div class="sep"></div>
+      <div class="b">PEÇAS / INSUMOS:</div>
+      ${(o.pecas || []).map(p => `<div class="d"><span>${esc(p.nome)} (${p.qtd}x)</span><span>${brl(p.qtd * p.valor)}</span></div>`).join('')}
+      <div class="sep"></div>
+      <div class="d"><span>Subtotal Serv.:</span><span>${brl(totServ)}</span></div>
+      <div class="d"><span>Subtotal Peças:</span><span>${brl(totPec)}</span></div>
+      ${o.desc ? `<div class="d"><span>Desconto:</span><span>-${brl(o.desc)}</span></div>` : ''}
+      <div class="d b" style="font-size:14px;margin-top:4px"><span>TOTAL:</span><span>${brl(total)}</span></div>
+      ${cfg.chavePix ? `<div class="sep"></div><div class="c">Chave Pix: <b>${esc(cfg.chavePix)}</b></div>` : ''}
+      <div class="sep"></div>
+      <div class="c mini">Garantia legal: 90 dias conforme CDC</div>
+      <div class="c" style="margin-top:8px">Obrigado pela preferência!</div>
+      <script>window.onload = () => window.print();<\/script>
+    </body>
+    </html>`);
+    janela.document.close();
+    return;
+  }
+
+  // Layout A4 Completo
   janela.document.write(`
   <!DOCTYPE html>
   <html lang="pt-BR">

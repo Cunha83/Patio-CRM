@@ -212,6 +212,38 @@ router.get('/api/os/:id/custos', requirePermission('costing:read', 'productivity
   }
 });
 
+router.delete('/api/os/:id', requirePermission('os:delete'), async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    if (id === 'lote') return next();
+    let removido = false;
+    const saveRes = await mutateTenantState(req, (draft) => {
+      draft.os = Array.isArray(draft.os) ? draft.os : [];
+      const antes = draft.os.length;
+      draft.os = draft.os.filter(x => x.id !== id && String(x.num) !== id);
+      removido = draft.os.length < antes;
+
+      draft.auditoria = Array.isArray(draft.auditoria) ? draft.auditoria : [];
+      draft.auditoria.push({
+        id: 'aud_' + Date.now(),
+        tipo: 'EXCLUSAO_OS',
+        entidade: 'os',
+        osId: id,
+        timestamp: new Date().toISOString(),
+        usuario: req.securityContext?.actorId || 'operador'
+      });
+    });
+
+    if (!saveRes || !saveRes.ok) {
+      return res.status(saveRes?.status || 500).json({ success: false, error: saveRes?.error || 'Erro ao excluir OS.' });
+    }
+
+    res.json({ success: true, removido });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 /* ── Precificação Assistida e Análise de Rentabilidade ──────── */
 
 module.exports = router;

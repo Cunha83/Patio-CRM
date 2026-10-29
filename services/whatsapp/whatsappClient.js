@@ -154,7 +154,11 @@ function iniciarWhatsApp() {
   });
 
   try {
-    wppClient.initialize();
+    wppClient.initialize().catch((err) => {
+      console.warn('[WhatsApp] Aviso: Não foi possível conectar ao WhatsApp Web (Puppeteer/Chrome):', err.message);
+      wppStatus.status = 'erro';
+      wppStatus.erro = err.message;
+    });
   } catch (err) {
     console.error('[WhatsApp] Erro ao chamar wppClient.initialize():', err);
   }

@@ -36,6 +36,11 @@ function caiuNoTextarea(t) {
 
 function textoOrcamento(o) {
   const v = V(o.vei), c = C(o.cli);
+  if (!o.tokenAprovacao) {
+    o.tokenAprovacao = 'orc_' + (typeof uid === 'function' ? uid('tok') : Date.now().toString(36));
+    if (typeof salvar === 'function') salvar();
+  }
+  const linkAprovacao = (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000') + '/orcamento/' + o.tokenAprovacao;
   const l = [`*${S.cfg.empresa}* — Orçamento OS ${o.num}`, `${v.placa} · ${v.modelo}`, `Cliente: ${c.nome}`, ''];
   if (o.servicos.length) {
     l.push('*Serviços*');
@@ -50,6 +55,9 @@ function textoOrcamento(o) {
   if (o.desc) l.push(`Desconto: −${brl(o.desc)}`);
   l.push(`*Total: ${brl(totOS(o))}*`);
   l.push(`Previsão de entrega: ${dataBRfull(o.prev)}`);
+  l.push('');
+  l.push('📝 *Aprovação Digital do Orçamento:*');
+  l.push(`Acesse o link abaixo para aprovar seu orçamento online:\n${linkAprovacao}`);
   return l.join('\n');
 }
 
@@ -174,7 +182,133 @@ document.addEventListener('click', e => {
     case 'aba-os': S.ui.abaOS = b.dataset.k; S.ui.picker = null; S.ui.busca = ''; renderFolha(); break;
     case 'nova-os': S.ui.rascunho = null; abrirFolha(() => novaOSFolha(b.dataset.box)); break;
     case 'voltar-os': S.ui.rascVeiculo = null; abrirFolha(novaOSFolha); break;
-    case 'imprimir-os': imprimirOS(o); break;
+    case 'imprimir-os': imprimirOS(o, b.dataset.formato || 'a4'); break;
+    case 'imprimir-os-termica': imprimirOS(o, 'termica'); break;
+    case 'checkout-pix': {
+      const osId = b.dataset.osId || (o && o.id);
+      const vlr = b.dataset.valor || (o && (o.total || totOS(o)));
+      const cli = b.dataset.cliente || (o && o.cliente);
+      if (typeof abrirModalCheckoutPix === 'function') abrirModalCheckoutPix(osId, vlr, cli);
+      break;
+    }
+    case 'simular-webhook-pix': {
+      const txid = b.dataset.txid;
+      const osId = b.dataset.osId;
+      b.disabled = true;
+      b.textContent = 'Processando liquidação via webhook...';
+      fetch('/api/webhooks/pix', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ txid, status: 'PAGO' })
+      })
+        .then(r => r.json())
+        .then(d => {
+          if (d.success) {
+            if (o) {
+              o.pago = true;
+              o.formaPgto = 'pix';
+              o.saldoPendente = 0;
+            }
+            if (osId && Array.isArray(S.os)) {
+              const target = S.os.find(x => x.id === osId || String(x.num) === String(osId));
+              if (target) {
+                target.pago = true;
+                target.formaPgto = 'pix';
+                target.saldoPendente = 0;
+              }
+            }
+            salvar();
+            document.getElementById('modal-checkout-pix-overlay')?.remove();
+            render();
+            torrar('⚡ Pagamento Pix conciliado e liquidado com sucesso!', 'sucesso');
+          } else {
+            torrar(d.error || 'Erro na conciliação Pix.', 'erro');
+            b.disabled = false;
+            b.textContent = '⚡ Simular Confirmação Webhook Pix';
+          }
+        })
+        .catch(() => {
+          torrar('Falha de conexão com webhook Pix.', 'erro');
+          b.disabled = false;
+          b.textContent = '⚡ Simular Confirmação Webhook Pix';
+        });
+      break;
+    }
+    case 'duplicar-os': {
+      const osId = b.dataset.id || (o && o.id);
+      if (!osId) break;
+      fetch('/api/os/duplicar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: osId })
+      })
+        .then(r => r.json())
+        .then(d => {
+          if (d.success && d.item) {
+            S.os.push(d.item);
+            salvar();
+            render();
+            torrar(`OS duplicada com sucesso! Nova OS #${d.item.num}`, 'sucesso');
+          } else {
+            torrar(d.error || 'Erro ao duplicar OS.', 'erro');
+          }
+        })
+        .catch(() => torrar('Erro de rede ao duplicar OS.', 'erro'));
+      break;
+    }
+    case 'duplicar-produto': {
+      const prodId = b.dataset.id;
+      if (!prodId) break;
+      fetch('/api/produtos/duplicar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: prodId })
+      })
+        .then(r => r.json())
+        .then(d => {
+          if (d.success && d.item) {
+            S.pecas.push(d.item);
+            salvar();
+            render();
+            torrar(`Produto duplicado com sucesso: ${d.item.nome}`, 'sucesso');
+          } else {
+            torrar(d.error || 'Erro ao duplicar produto.', 'erro');
+          }
+        })
+        .catch(() => torrar('Erro de rede ao duplicar produto.', 'erro'));
+      break;
+    }
+    case 'excluir-lote': {
+      const entidade = b.dataset.entidade || 'os';
+      const checkboxes = document.querySelectorAll(`input[name="sel-${entidade}"]:checked`);
+      const ids = Array.from(checkboxes).map(c => c.value);
+      if (!ids.length) {
+        torrar('Selecione ao menos um item para excluir.');
+        break;
+      }
+      pedirConfirmacao('lote_' + entidade, `Confirmar exclusão de ${ids.length} item(ns)?`, () => {
+        fetch(`/api/${entidade}/lote`, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids })
+        })
+          .then(r => r.json())
+          .then(d => {
+            if (d.success) {
+              const idsSet = new Set(ids);
+              if (entidade === 'os') S.os = S.os.filter(x => !idsSet.has(x.id));
+              else if (entidade === 'produtos' || entidade === 'pecas') S.pecas = S.pecas.filter(x => !idsSet.has(x.id));
+              salvar();
+              render();
+              torrar(`${d.count} item(ns) excluído(s) com sucesso!`, 'sucesso');
+            } else {
+              torrar(d.error || 'Erro ao excluir itens em lote.', 'erro');
+            }
+          })
+          .catch(() => torrar('Erro de rede ao excluir em lote.', 'erro'));
+      });
+      break;
+    }
     case 'excluir-os': pedirConfirmacao('os' + o.id, 'Toque de novo para excluir a OS permanentemente', () => {
       S._excluidos = S._excluidos || {};
       S._excluidos.os = S._excluidos.os || [];
@@ -1432,6 +1566,13 @@ document.addEventListener('change', e => {
       }
       salvar();
       render();
+      if (typeof fetch === 'function') {
+        fetch('/api/patio/box-update', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ boxId: alvo.box, osId: alvo.id, placa: alvo.placa, status: novoSt })
+        }).catch(() => {});
+      }
     }
   }
 
@@ -1449,6 +1590,13 @@ document.addEventListener('change', e => {
     }
     salvar();
     renderFolha();
+    if (typeof fetch === 'function') {
+      fetch('/api/patio/box-update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ boxId: novoBox, osId: o.id, placa: o.placa, status: o.st })
+      }).catch(() => {});
+    }
     render();
   }
   if (a === 'campo-os' && o) { renderFolha(); render(); }

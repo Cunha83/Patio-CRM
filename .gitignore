@@ -11,6 +11,8 @@ patio.db*
 *.db-shm
 *.sqlite*
 *.log
+data/*.tmp
+data/*.bak
 whatsapp_screen.png
 *.zip
 *.code-workspace

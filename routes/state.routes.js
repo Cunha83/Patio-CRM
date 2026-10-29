@@ -29,18 +29,17 @@ router.get('/api/estado', async (req, res) => {
     }
     if (req.securityContext) {
       filteredState.user = {
-        id: req.securityContext.actorId,
+        id: req.securityContext.userId || req.securityContext.actorId,
         username: req.securityContext.actorId,
+        nome: req.securityContext.nome || req.securityContext.actorId,
+        cargo: req.securityContext.cargo || req.securityContext.role,
         role: req.securityContext.role,
+        tenantId: req.securityContext.tenantId,
         permissions: req.securityContext.permissions
       };
       filteredState.perfil = req.securityContext.role;
       filteredState.ui = filteredState.ui || {};
-      if (req.securityContext.role === 'mecanico') {
-        filteredState.ui.perfilAtivo = 'mecanico';
-      } else {
-        filteredState.ui.perfilAtivo = 'todos';
-      }
+      filteredState.ui.perfilAtivo = req.securityContext.role;
     }
     res.json(filteredState);
   } catch (error) {
@@ -72,18 +71,17 @@ router.post('/api/estado', async (req, res) => {
     const filteredState = filterStateByRole(result.state, req.securityContext);
     if (req.securityContext) {
       filteredState.user = {
-        id: req.securityContext.actorId,
+        id: req.securityContext.userId || req.securityContext.actorId,
         username: req.securityContext.actorId,
+        nome: req.securityContext.nome || req.securityContext.actorId,
+        cargo: req.securityContext.cargo || req.securityContext.role,
         role: req.securityContext.role,
+        tenantId: req.securityContext.tenantId,
         permissions: req.securityContext.permissions
       };
       filteredState.perfil = req.securityContext.role;
       filteredState.ui = filteredState.ui || {};
-      if (req.securityContext.role === 'mecanico') {
-        filteredState.ui.perfilAtivo = 'mecanico';
-      } else {
-        filteredState.ui.perfilAtivo = 'todos';
-      }
+      filteredState.ui.perfilAtivo = req.securityContext.role;
     }
     return res.status(200).json({ success: true, versao: result.versao, state: filteredState });
   } catch (error) {

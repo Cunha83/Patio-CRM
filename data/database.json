@@ -1,0 +1,232 @@
+{
+  "_timestamp": "2026-10-29T03:01:02.714Z",
+  "_versao": 1793242862713,
+  "tenant_config": {
+    "empresa": "Oficina Auto Molas Fort Test",
+    "chavePix": "financeiro@automolas.com.br",
+    "identidadeVisual": {
+      "paleta": {
+        "primary": "#059669",
+        "primaryHover": "#047857",
+        "primaryLight": "#ecfdf5",
+        "accent": "#d97706"
+      },
+      "updatedAt": "2026-10-29T03:01:02.639Z"
+    }
+  },
+  "boxes": [
+    {
+      "id": "b1",
+      "nome": "Box 01 — Molas",
+      "status": "executando",
+      "veiculo": "BRA2E19",
+      "osId": "os_101",
+      "atualizadoEm": "2026-10-29T03:01:02.659Z"
+    }
+  ],
+  "ordens_servico": [
+    {
+      "id": "os_101",
+      "num": 101,
+      "placa": "BRA2E19",
+      "cliente": "Transportadora Fort Ltda",
+      "st": "executando",
+      "etapaPatio": "em_execucao",
+      "total": 1250,
+      "tokenAprovacao": "tok_teste_123",
+      "pecas": [
+        {
+          "id": "p_mola1",
+          "nome": "Feixe de Mola Dianteiro",
+          "qtd": 2,
+          "valor": 450
+        }
+      ],
+      "servicos": [
+        {
+          "id": "s_troca",
+          "nome": "Troca de Mola",
+          "qtd": 1,
+          "valor": 350
+        }
+      ],
+      "box": "b1",
+      "atualizadoEm": "2026-10-29T03:01:02.659Z",
+      "aprovacaoDigital": {
+        "aprovado": true,
+        "data": "2026-10-29T03:01:02.685Z",
+        "ip": "127.0.0.1",
+        "userAgent": "node"
+      },
+      "pago": true,
+      "formaPgto": "pix",
+      "saldoPendente": 0,
+      "txid": "OS101SYI0DG"
+    }
+  ],
+  "clientes": [
+    {
+      "id": "cli_01",
+      "nome": "Transportadora Fort Ltda",
+      "doc": "12.345.678/0001-90"
+    }
+  ],
+  "fornecedores": [],
+  "transportadores": [],
+  "produtos_servicos": {
+    "pecas": [
+      {
+        "id": "p_mola1",
+        "codigo": "MOLA-001",
+        "nome": "Feixe de Mola Dianteiro",
+        "qtd": 5,
+        "custo": 290,
+        "venda": 450
+      }
+    ],
+    "servicos": []
+  },
+  "kardex_movimentacoes": [
+    {
+      "id": "kdx_1793242862669_9ewi",
+      "tipo": "SAIDA_OS",
+      "osId": "os_101",
+      "produtoId": "p_mola1",
+      "produtoNome": "Feixe de Mola Dianteiro",
+      "qtd": 2,
+      "saldoAnterior": 5,
+      "saldoAtual": 3,
+      "data": "2026-10-29T03:01:02.669Z",
+      "usuario": "api_master",
+      "motivo": "Baixa automática OS #os_101"
+    },
+    {
+      "id": "kdx_1793242862676_hnlp",
+      "tipo": "ENTRADA_COMPRA",
+      "osId": null,
+      "compraId": "cp_1793242862676",
+      "produtoId": "p_mola1",
+      "produtoNome": "Feixe de Mola Dianteiro",
+      "qtd": 4,
+      "saldoAnterior": 3,
+      "saldoAtual": 7,
+      "data": "2026-10-29T03:01:02.676Z",
+      "usuario": "api_master",
+      "motivo": "Entrada por Compra #cp_1793242862676 (Molas Fabril)"
+    },
+    {
+      "id": "kdx_1793242862686_xset",
+      "tipo": "SAIDA_OS",
+      "osId": "os_101",
+      "produtoId": "p_mola1",
+      "produtoNome": "Feixe de Mola Dianteiro",
+      "qtd": 2,
+      "saldoAnterior": 7,
+      "saldoAtual": 5,
+      "data": "2026-10-29T03:01:02.686Z",
+      "usuario": "cliente_frotista_digital",
+      "motivo": "Aprovação Digital da OS #101"
+    }
+  ],
+  "financeiro_lancamentos": {
+    "contas": [
+      {
+        "id": "ct_1793242862676",
+        "tipo": "despesa",
+        "desc": "Compra #cp_1793242862676 - Molas Fabril",
+        "parte": "Molas Fabril",
+        "valor": 1160,
+        "venc": "2026-11-28",
+        "pago": false,
+        "cat": "Peças & Insumos",
+        "doc": "cp_1793242862676"
+      },
+      {
+        "id": "rec_1793242862699",
+        "tipo": "receita",
+        "desc": "Recebimento Pix OS #101",
+        "parte": "Transportadora Fort Ltda",
+        "valor": 1250,
+        "venc": "2026-10-29",
+        "pago": true,
+        "pagoEm": "2026-10-29T03:01:02.699Z",
+        "formaPgto": "pix",
+        "cat": "Ordem de Serviço",
+        "txid": "OS101SYI0DG"
+      }
+    ],
+    "movimentos": [
+      {
+        "id": "mov_1793242862699",
+        "tipo": "entrada",
+        "valor": 1250,
+        "desc": "Recebimento Pix OS #101",
+        "data": "2026-10-29T03:01:02.699Z",
+        "cat": "OS",
+        "txid": "OS101SYI0DG"
+      }
+    ],
+    "pix_transacoes": [
+      {
+        "txid": "OS101SYI0DG",
+        "osId": "os_101",
+        "valor": 1250,
+        "cliente": "",
+        "status": "PAGO",
+        "criadoEm": "2026-10-29T03:01:02.692Z",
+        "pagoEm": "2026-10-29T03:01:02.699Z"
+      }
+    ]
+  },
+  "compras": [
+    {
+      "id": "cp_1793242862676",
+      "fornecedorId": "forn_1",
+      "fornecedorNome": "Molas Fabril",
+      "itens": [
+        {
+          "produtoId": "p_mola1",
+          "qtd": 4,
+          "valorUnitario": 290
+        }
+      ],
+      "total": 1160,
+      "condicaoPgto": "30 dias",
+      "vencimento": "2026-11-28",
+      "obs": "",
+      "data": "2026-10-29T03:01:02.676Z",
+      "status": "recebido"
+    }
+  ],
+  "notas_fiscais": [],
+  "usuarios": [],
+  "auditoria": [
+    {
+      "id": "aud_1793242862712",
+      "tipo": "EXCLUSAO_LOTE",
+      "entidade": "os",
+      "ids": [
+        "os_1793242862706"
+      ],
+      "timestamp": "2026-10-29T03:01:02.712Z",
+      "usuario": "api_master"
+    },
+    {
+      "id": "aud_1793242862686_913p",
+      "tipo": "ORCAMENTO_APROVADO_DIGITAL",
+      "osId": "os_101",
+      "timestamp": "2026-10-29T03:01:02.686Z",
+      "usuario": "cliente_digital"
+    },
+    {
+      "id": "aud_1793242862659_fugb",
+      "tipo": "BOX_UPDATE",
+      "boxId": "b1",
+      "osId": "os_101",
+      "placa": "BRA2E19",
+      "status": "executando",
+      "timestamp": "2026-10-29T03:01:02.659Z",
+      "usuario": "api_master"
+    }
+  ]
+}

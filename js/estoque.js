@@ -365,20 +365,42 @@ function abrirModalAjusteEstoque(tipo) {
   `);
 }
 
-function confirmarAjusteEstoque(tipo) {
+async function confirmarAjusteEstoque(tipo) {
   const pecaId = document.getElementById('ajuste_peca_id')?.value;
   const qtd = Number(document.getElementById('ajuste_qtd')?.value || 1);
+  const motivo = document.getElementById('ajuste_motivo')?.value || '';
   const peca = (S.pecas || []).find(p => p.id === pecaId);
   if (!peca) return;
-  if (tipo === 'saida') {
-    peca.qtd = Math.max(0, (peca.qtd || 0) - qtd);
-  } else {
-    peca.qtd = (peca.qtd || 0) + qtd;
+
+  const tipoMov = (tipo === 'saida') ? 'SAIDA_OS' : 'AJUSTE';
+  const novaQtd = (tipo === 'saida') ? Math.max(0, (Number(peca.qtd) || 0) - qtd) : ((Number(peca.qtd) || 0) + qtd);
+
+  try {
+    const resp = await fetch('/api/estoque/movimentar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tipo: tipoMov,
+        produtoId: pecaId,
+        qtd: (tipoMov === 'AJUSTE') ? novaQtd : qtd,
+        motivo: motivo || `Ajuste manual (${tipo})`
+      })
+    });
+    const dados = await resp.json();
+    if (!dados.success) {
+      if (typeof torrar === 'function') torrar(dados.error || 'Erro ao movimentar estoque.', 'erro');
+      return;
+    }
+    peca.qtd = dados.saldoAtual !== undefined ? dados.saldoAtual : novaQtd;
+  } catch (e) {
+    peca.qtd = novaQtd;
   }
-  salvarLocal();
-  fecharModalGenerico();
-  render();
-  torrar(`Ajuste no estoque de ${peca.nome} efetuado com sucesso!`, 'sucesso');
+
+  if (typeof salvar === 'function') salvar();
+  else if (typeof salvarLocal === 'function') salvarLocal();
+  if (typeof fecharModalGenerico === 'function') fecharModalGenerico();
+  if (typeof render === 'function') render();
+  if (typeof torrar === 'function') torrar(`Ajuste no estoque de ${peca.nome} persistido com sucesso! Saldo: ${peca.qtd}`, 'sucesso');
 }
 
 function viewNecessidadesCompra() {

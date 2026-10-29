@@ -745,6 +745,36 @@ async function boot() {
   S.historicoCaixa = S.historicoCaixa || [];
   if (!S.zap || !S.zap.regua) S.zap = zapPadrao();
 
+  // Verifica autenticação ativa
+  try {
+    const token = (typeof localStorage !== 'undefined' && localStorage.getItem('patio_auth_token')) ||
+                  (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('patio_auth_token'));
+    if (!token) {
+      if (typeof abrirModalLogin === 'function') {
+        setTimeout(abrirModalLogin, 60);
+      }
+    } else {
+      const meRes = await fetch('/api/auth/me', {
+        headers: typeof obterHeadersRequisicao === 'function' ? obterHeadersRequisicao() : { 'Authorization': `Bearer ${token}` }
+      });
+      if (meRes.ok) {
+        const meData = await meRes.json();
+        if (meData.user) {
+          S.user = meData.user;
+          S.perfil = meData.user.role;
+          S.ui = S.ui || {};
+          S.ui.perfilAtivo = meData.user.role;
+        }
+      } else if (meRes.status === 401 || meRes.status === 403) {
+        if (typeof localStorage !== 'undefined') localStorage.removeItem('patio_auth_token');
+        if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem('patio_auth_token');
+        if (typeof abrirModalLogin === 'function') {
+          setTimeout(abrirModalLogin, 60);
+        }
+      }
+    }
+  } catch (_) {}
+
   render();
 
   // Sincronização Periódica em Tempo Real com o Servidor (Auto-Refresh quando chegar OS do WhatsApp)
