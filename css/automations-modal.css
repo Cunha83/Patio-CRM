@@ -1,0 +1,183 @@
+/* =====================================================================
+   PÁTIO CRM — MODAL DO CENTRO DE AUTOMAÇÕES MONDAY
+===================================================================== */
+
+.monday-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(3px);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: fadeIn 0.15s ease;
+}
+
+.monday-modal-container {
+  background: #ffffff;
+  border-radius: 10px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  width: 100%;
+  max-width: 960px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--monday-border);
+}
+
+.monday-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--monday-border);
+}
+
+.monday-modal-header h2 {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0;
+  color: var(--monday-text-dark);
+}
+
+.monday-modal-close {
+  background: transparent;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  color: var(--monday-text-muted);
+  line-height: 1;
+}
+
+.monday-modal-content {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.monday-modal-sidebar {
+  width: 220px;
+  background: #fafbfc;
+  border-right: 1px solid var(--monday-border);
+  padding: 16px 10px;
+  overflow-y: auto;
+}
+
+.monday-cat-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--monday-text-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  margin-bottom: 2px;
+  transition: all 0.12s ease;
+}
+
+.monday-cat-btn:hover {
+  background: var(--monday-hover);
+  color: var(--monday-text-dark);
+}
+
+.monday-cat-btn.active {
+  background: #eff6ff;
+  color: var(--monday-blue);
+  font-weight: 600;
+}
+
+.monday-modal-recipes {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+  background: #ffffff;
+}
+
+/* Banner de Destaque */
+.monday-featured-banner {
+  background: linear-gradient(135deg, #ede9fe 0%, #e0e7ff 100%);
+  border-radius: 8px;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  border: 1px solid #ddd6fe;
+}
+
+.monday-recipe-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.monday-recipe-card {
+  background: #ffffff;
+  border: 1px solid var(--monday-border);
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 150px;
+  transition: all 0.15s ease;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+}
+
+.monday-recipe-card:hover {
+  border-color: var(--monday-blue);
+  box-shadow: 0 4px 12px rgba(0, 134, 192, 0.12);
+  transform: translateY(-2px);
+}
+
+.monday-recipe-text {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--monday-text-dark);
+}
+
+.monday-param {
+  color: var(--monday-blue);
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.monday-recipe-footer {
+  margin-top: 14px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.monday-btn-recipe-add {
+  background: #ffffff;
+  border: 1px solid var(--monday-border);
+  color: var(--monday-text-dark);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.monday-btn-recipe-add:hover {
+  background: var(--monday-blue);
+  border-color: var(--monday-blue);
+  color: #ffffff;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+

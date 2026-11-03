@@ -1,0 +1,27 @@
+/* =====================================================================
+   PÁTIO CRM — RESPONSIVIDADE & MOBILE FIRST PARA CHÃO DE OFICINA
+===================================================================== */
+
+@media (max-width: 480px) {
+  .topo {
+    padding: 8px 12px;
+  }
+  .topo .sub,
+  .topo-titulo-desktop {
+    display: none;
+  }
+  .pill-topo {
+    font-size: 11px;
+    padding: 2px 8px;
+  }
+  .btn {
+    min-height: 38px;
+  }
+  .card {
+    padding: 12px;
+  }
+  .grid-2, .grid-3, .grid-4 {
+    grid-template-columns: 1fr !important;
+  }
+}
+

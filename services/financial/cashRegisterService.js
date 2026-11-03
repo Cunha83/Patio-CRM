@@ -8,7 +8,7 @@ const {
   normalizarTipoMovimentacao,
   obterCaixaAberto
 } = require('./financialHelpers');
-const { formatarBoletimFechamentoWhatsapp } = require('./cashRegisterBoletimService');
+const { formatarBoletimFechamentoWhatsapp, apurarMovimentacoesCaixa } = require('./cashRegisterBoletimService');
 
 /**
  * Abre um novo turno de caixa diário
@@ -191,56 +191,18 @@ function fecharCaixa(state = {}, payload = {}) {
     return { ok: false, code: 'CAIXA_JA_FECHADO', status: 409, error: 'Não há nenhum turno de caixa aberto no momento para ser encerrado.' };
   }
 
-  const movimentos = Array.isArray(state.movimentos) ? state.movimentos : [];
-  const movsCaixa = movimentos.filter(m =>
-    (m.caixaId === caixaAberto.id) ||
-    (Array.isArray(caixaAberto.movimentacoesIds) && caixaAberto.movimentacoesIds.includes(m.id))
-  );
-
-  const totaisPorForma = {
-    dinheiro: 0,
-    pix: 0,
-    cartao: 0,
-    cartao_credito: 0,
-    cartao_debito: 0,
-    boleto: 0,
-    transferencia: 0,
-    outros: 0
-  };
-
-  let totalEntradas = 0;
-  let totalSaidas = 0;
-  let totalSangrias = 0;
-  let qtdSangrias = 0;
-  let totalSuprimentos = 0;
-  let qtdSuprimentos = 0;
-
-  for (const m of movsCaixa) {
-    const val = Number(m.valor) || 0;
-    const f = normalizarFormaPagamento(m.forma || m.formaPagamento);
-    const nat = m.naturezaOperacao || (m.subtipo === 'sangria' ? 'sangria' : (m.subtipo === 'suprimento' ? 'suprimento' : (m.subtipo === 'estorno' || m.estornoDeId ? 'estorno' : 'operacional')));
-
-    if (!m.estornado) {
-      if (nat === 'sangria' || m.subtipo === 'sangria') {
-        qtdSangrias++;
-        totalSangrias = arredondar(totalSangrias + val);
-      } else if (nat === 'suprimento' || m.subtipo === 'suprimento') {
-        qtdSuprimentos++;
-        totalSuprimentos = arredondar(totalSuprimentos + val);
-      }
-    }
-
-    if (m.tipo === 'entrada') {
-      totalEntradas = arredondar(totalEntradas + val);
-      totaisPorForma[f] = arredondar((totaisPorForma[f] || 0) + val);
-    } else {
-      totalSaidas = arredondar(totalSaidas + val);
-      totaisPorForma[f] = arredondar((totaisPorForma[f] || 0) - val);
-    }
-  }
-
-  const saldoInicial = Number(caixaAberto.saldoInicial) || 0;
-  const saldoEsperado = arredondar(saldoInicial + totalEntradas - totalSaidas);
+  const {
+    totaisPorForma,
+    totalEntradas,
+    totalSaidas,
+    totalSangrias,
+    qtdSangrias,
+    totalSuprimentos,
+    qtdSuprimentos,
+    resumoOrigem,
+    saldoInicial,
+    saldoEsperado
+  } = apurarMovimentacoesCaixa(caixaAberto, Array.isArray(state.movimentos) ? state.movimentos : []);
 
   let diferenca = 0;
   let statusConferencia = 'sem_conferencia_cega';
@@ -273,30 +235,6 @@ function fecharCaixa(state = {}, payload = {}) {
   const totalInformado = (valoresInformados && typeof valoresInformados === 'object')
     ? Object.values(valoresInformados).reduce((acc, v) => acc + (Number(v) || 0), 0)
     : saldoEsperado;
-
-  const resumoOrigem = {
-    totalWhatsapp: 0,
-    qtdWhatsapp: 0,
-    totalWeb: 0,
-    qtdWeb: 0,
-    totalEstornados: 0,
-    qtdEstornados: 0
-  };
-
-  for (const m of movsCaixa) {
-    const v = Number(m.valor) || 0;
-    if (m.estornado) {
-      resumoOrigem.qtdEstornados++;
-      resumoOrigem.totalEstornados = arredondar(resumoOrigem.totalEstornados + v);
-    }
-    if (m.origem === 'whatsapp') {
-      resumoOrigem.qtdWhatsapp++;
-      resumoOrigem.totalWhatsapp = arredondar(resumoOrigem.totalWhatsapp + v);
-    } else {
-      resumoOrigem.qtdWeb++;
-      resumoOrigem.totalWeb = arredondar(resumoOrigem.totalWeb + v);
-    }
-  }
 
   const boletimWhatsappTexto = formatarBoletimFechamentoWhatsapp({
     caixaId: caixaAberto.id,

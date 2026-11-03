@@ -99,18 +99,12 @@ function formatarBoletimFechamentoWhatsapp({
 }
 
 /**
- * Computa o resumo / fechamento parcial do turno de caixa atualmente aberto
+ * Apura os movimentos do caixa calculando totais de entrada, saída, sangrias, suprimentos e formas
  */
-function obterResumoFechamentoParcial(state = {}, tenantId = 'default') {
-  const caixaAberto = obterCaixaAberto(state, tenantId);
-  if (!caixaAberto) {
-    return { ok: false, code: 'CAIXA_FECHADO', error: 'Não há nenhum turno de caixa aberto no momento.' };
-  }
-
-  const movimentos = Array.isArray(state.movimentos) ? state.movimentos : [];
+function apurarMovimentacoesCaixa(caixa = {}, movimentos = []) {
   const movsCaixa = movimentos.filter(m =>
-    (m.caixaId === caixaAberto.id) ||
-    (Array.isArray(caixaAberto.movimentacoesIds) && caixaAberto.movimentacoesIds.includes(m.id))
+    (m.caixaId === caixa.id) ||
+    (Array.isArray(caixa.movimentacoesIds) && caixa.movimentacoesIds.includes(m.id))
   );
 
   const totaisPorForma = {
@@ -175,25 +169,51 @@ function obterResumoFechamentoParcial(state = {}, tenantId = 'default') {
     }
   }
 
-  const saldoInicial = Number(caixaAberto.saldoInicial) || 0;
+  const saldoInicial = Number(caixa.saldoInicial) || 0;
   const saldoEsperado = arredondar(saldoInicial + totalEntradas - totalSaidas);
-  const agoraInfo = financialEngine.obterAgoraSP();
 
-  const boletimTexto = formatarBoletimFechamentoWhatsapp({
-    caixaId: caixaAberto.id,
-    operadorNome: caixaAberto.abertoPorNome || caixaAberto.abertoPor || 'Operador',
-    saldoInicial,
+  return {
+    movsCaixa,
+    totaisPorForma,
     totalEntradas,
     totalSaidas,
     totalSangrias,
     qtdSangrias,
     totalSuprimentos,
     qtdSuprimentos,
-    saldoEsperado,
+    resumoOrigem,
+    saldoInicial,
+    saldoEsperado
+  };
+}
+
+/**
+ * Computa o resumo / fechamento parcial do turno de caixa atualmente aberto
+ */
+function obterResumoFechamentoParcial(state = {}, tenantId = 'default') {
+  const caixaAberto = obterCaixaAberto(state, tenantId);
+  if (!caixaAberto) {
+    return { ok: false, code: 'CAIXA_FECHADO', error: 'Não há nenhum turno de caixa aberto no momento.' };
+  }
+
+  const apuracao = apurarMovimentacoesCaixa(caixaAberto, Array.isArray(state.movimentos) ? state.movimentos : []);
+  const agoraInfo = financialEngine.obterAgoraSP();
+
+  const boletimTexto = formatarBoletimFechamentoWhatsapp({
+    caixaId: caixaAberto.id,
+    operadorNome: caixaAberto.abertoPorNome || caixaAberto.abertoPor || 'Operador',
+    saldoInicial: apuracao.saldoInicial,
+    totalEntradas: apuracao.totalEntradas,
+    totalSaidas: apuracao.totalSaidas,
+    totalSangrias: apuracao.totalSangrias,
+    qtdSangrias: apuracao.qtdSangrias,
+    totalSuprimentos: apuracao.totalSuprimentos,
+    qtdSuprimentos: apuracao.qtdSuprimentos,
+    saldoEsperado: apuracao.saldoEsperado,
     diferenca: 0,
     statusConferencia: 'parcial',
-    resumoOrigem,
-    totaisPorForma,
+    resumoOrigem: apuracao.resumoOrigem,
+    totaisPorForma: apuracao.totaisPorForma,
     dataFechamento: agoraInfo.dataBR,
     horaFechamento: agoraInfo.horaBR,
     isParcial: true
@@ -202,21 +222,22 @@ function obterResumoFechamentoParcial(state = {}, tenantId = 'default') {
   return {
     ok: true,
     caixa: caixaAberto,
-    saldoInicial,
-    totalEntradas,
-    totalSaidas,
-    totalSangrias,
-    qtdSangrias,
-    totalSuprimentos,
-    qtdSuprimentos,
-    saldoAtual: saldoEsperado,
-    resumoOrigem,
-    totaisPorForma,
+    saldoInicial: apuracao.saldoInicial,
+    totalEntradas: apuracao.totalEntradas,
+    totalSaidas: apuracao.totalSaidas,
+    totalSangrias: apuracao.totalSangrias,
+    qtdSangrias: apuracao.qtdSangrias,
+    totalSuprimentos: apuracao.totalSuprimentos,
+    qtdSuprimentos: apuracao.qtdSuprimentos,
+    saldoAtual: apuracao.saldoEsperado,
+    resumoOrigem: apuracao.resumoOrigem,
+    totaisPorForma: apuracao.totaisPorForma,
     resumoTextoWhatsapp: boletimTexto
   };
 }
 
 module.exports = {
   formatarBoletimFechamentoWhatsapp,
+  apurarMovimentacoesCaixa,
   obterResumoFechamentoParcial
 };

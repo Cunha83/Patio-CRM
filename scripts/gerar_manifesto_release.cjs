@@ -41,6 +41,7 @@ const includePatterns = [
   'db.js',
   'index.html',
   'style.css',
+  'css',
   'package.json',
   'package-lock.json',
   'lib',

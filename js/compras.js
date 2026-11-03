@@ -83,7 +83,7 @@ function viewCompras() {
         ${ico('mais', 14)} + Nova Compra
       </button>
       <button class="btn btn-neutro" onclick="document.getElementById('xml-compra-input').click()" style="font-weight:600;display:inline-flex;align-items:center;gap:6px" title="Importar XML SEFAZ da NF-e do Fornecedor">
-        ${ico('upload', 14)} Importar XML
+        ${ico('upload', 14)} Carregar XML (NF-e)
       </button>
       <button class="btn btn-neutro" onclick="acaoEmLoteCompras('duplicar')" title="Duplicar compra selecionada">
         ${ico('doc', 14)} Duplicar

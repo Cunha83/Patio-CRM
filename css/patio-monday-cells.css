@@ -1,0 +1,160 @@
+/* =====================================================================
+   PÁTIO CRM — MONDAY.COM WORK OS: CÉLULAS, STATUS, RATINGS & FOOTER
+===================================================================== */
+
+/* Células de Status & Prioridade com Preenchimento Total */
+.monday-status-pill {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 10px;
+  border-radius: 4px;
+  color: #ffffff !important;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+  min-height: 30px;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.15);
+  box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+  letter-spacing: 0.01em;
+}
+
+/* Chips de Vínculo (Empresa, Frota, Box, Mecânico) */
+.monday-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: 12px;
+  background: var(--monday-hover);
+  border: 1px solid var(--monday-border);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--monday-text-dark);
+}
+
+.monday-chip-blue {
+  background: #e0f2fe;
+  border-color: #bae6fd;
+  color: #0369a1;
+}
+
+.monday-chip-purple {
+  background: #f3e8ff;
+  border-color: #e9d5ff;
+  color: #7e22ce;
+}
+
+.monday-chip-amber {
+  background: #fef3c7;
+  border-color: #fde68a;
+  color: #b45309;
+}
+
+/* Barra de Progresso Interna */
+.monday-progress-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.monday-progress-track {
+  flex: 1;
+  height: 8px;
+  background: #e2e8f0;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.monday-progress-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+/* Rating de Estrelas */
+.monday-stars {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: #f59e0b;
+  font-size: 14px;
+}
+
+/* Telefone com Bandeira e Ação WhatsApp */
+.monday-phone-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  text-decoration: none;
+  color: var(--monday-text-dark);
+  font-size: 12.5px;
+  font-weight: 500;
+  padding: 3px 6px;
+  border-radius: 4px;
+  transition: background 0.15s ease;
+}
+
+.monday-phone-pill:hover {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.monday-flag {
+  font-size: 14px;
+}
+
+/* Linha Final de Adicionar Item */
+.monday-add-row {
+  display: flex;
+  align-items: center;
+  padding: 8px 14px;
+  background: #ffffff;
+  border-top: 1px solid var(--monday-border);
+  color: var(--monday-text-light);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.monday-add-row:hover {
+  background: var(--monday-hover);
+  color: var(--monday-blue);
+  font-weight: 500;
+}
+
+/* Rodapé de Cálculos (Summary Footer) */
+.monday-footer-row {
+  display: flex;
+  align-items: center;
+  background: #fafbfc;
+  border-top: 2px solid var(--monday-border);
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--monday-text-muted);
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.monday-footer-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.monday-footer-value {
+  color: var(--monday-text-dark);
+  font-weight: 700;
+}
+
+.monday-distribution-bar {
+  display: flex;
+  height: 6px;
+  border-radius: 3px;
+  overflow: hidden;
+  width: 140px;
+  background: #e2e8f0;
+}
+

@@ -12,6 +12,20 @@ const {
 const financialEngine = require('../../financialEngine');
 const financialAnalystService = require('../../financialAnalystService');
 
+async function auditarSeguranca({ tenantKey, senderNorm, action, entity, entityId, details }) {
+  try {
+    await recordSecurityAudit({
+      tenantId: tenantKey,
+      actorId: `whatsapp:${senderNorm}`,
+      actorType: 'whatsapp_sender',
+      action,
+      entity,
+      entityId: String(entityId),
+      details: { ...details, operador: senderNorm, origem: 'whatsapp' }
+    });
+  } catch (_) {}
+}
+
 /**
  * Trata resolução (confirmação ou cancelamento) de ação financeira pendente de confirmação em 2 etapas
  */
@@ -137,24 +151,20 @@ async function resolverConfirmacaoPendente(msg, ctx) {
         });
         if (resOp.ok) {
           msgSucesso = `↩️ *Estorno Realizado com Sucesso!*\n\n• Movimento Original: #${resOp.movimentoEstornado?.id} (Estornado)\n• Compensatório: #${resOp.movimentoCompensatorio?.id} (${financialEngine.formatarMoeda(resOp.movimentoCompensatorio?.valor)})\n• Saldo Atual do Caixa: ${financialEngine.formatarMoeda(resOp.saldoAtual != null ? resOp.saldoAtual : 0)}\n• Motivo: ${pendente.descricao}`;
-          try {
-            await recordSecurityAudit({
-              tenantId: tenantKey,
-              actorId: `whatsapp:${senderNorm}`,
-              actorType: 'whatsapp_sender',
-              action: 'financeiro:movimento:estornar',
-              entity: 'movimento_financeiro',
-              entityId: pendente.movimentoId,
-              details: {
-                movimentoId: pendente.movimentoId,
-                compensatorioId: resOp.movimentoCompensatorio?.id,
-                valor: resOp.movimentoCompensatorio?.valor,
-                motivo: pendente.descricao,
-                origemOriginal: resOp.movimentoEstornado?.origem || 'web',
-                operador: senderNorm
-              }
-            });
-          } catch (_) {}
+          await auditarSeguranca({
+            tenantKey,
+            senderNorm,
+            action: 'financeiro:movimento:estornar',
+            entity: 'movimento_financeiro',
+            entityId: pendente.movimentoId,
+            details: {
+              movimentoId: pendente.movimentoId,
+              compensatorioId: resOp.movimentoCompensatorio?.id,
+              valor: resOp.movimentoCompensatorio?.valor,
+              motivo: pendente.descricao,
+              origemOriginal: resOp.movimentoEstornado?.origem || 'web'
+            }
+          });
         } else {
           msgSucesso = `⚠️ Não foi possível realizar o estorno: ${resOp.error}`;
         }
@@ -177,23 +187,19 @@ async function resolverConfirmacaoPendente(msg, ctx) {
         });
         if (resOp.ok) {
           msgSucesso = `🏦 *Sangria de Caixa Realizada com Sucesso!*\n\n• Valor Retirado: ${financialEngine.formatarMoeda(pendente.valor)}\n• Motivo: ${pendente.descricao}\n• Saldo Atual do Caixa: ${financialEngine.formatarMoeda(resOp.saldoCaixaAtual || 0)}`;
-          try {
-            await recordSecurityAudit({
-              tenantId: tenantKey,
-              actorId: `whatsapp:${senderNorm}`,
-              actorType: 'whatsapp_sender',
-              action: 'financeiro:caixa:sangria',
-              entity: 'caixa_diario',
-              entityId: resOp.caixa?.id || null,
-              details: {
-                movimentoId: resOp.movimentacao?.id,
-                valor: pendente.valor,
-                motivo: pendente.descricao,
-                saldoRestante: resOp.saldoCaixaAtual,
-                operador: senderNorm
-              }
-            });
-          } catch (_) {}
+          await auditarSeguranca({
+            tenantKey,
+            senderNorm,
+            action: 'financeiro:caixa:sangria',
+            entity: 'caixa_diario',
+            entityId: resOp.caixa?.id || 'caixa',
+            details: {
+              movimentoId: resOp.movimentacao?.id,
+              valor: pendente.valor,
+              motivo: pendente.descricao,
+              saldoRestante: resOp.saldoCaixaAtual
+            }
+          });
         } else {
           msgSucesso = `⚠️ Não foi possível realizar a sangria: ${resOp.error}`;
         }
@@ -216,23 +222,19 @@ async function resolverConfirmacaoPendente(msg, ctx) {
         });
         if (resOp.ok) {
           msgSucesso = `🪙 *Suprimento de Caixa Realizado com Sucesso!*\n\n• Valor Aportado: ${financialEngine.formatarMoeda(pendente.valor)}\n• Motivo: ${pendente.descricao}\n• Saldo Atual do Caixa: ${financialEngine.formatarMoeda(resOp.saldoCaixaAtual || 0)}`;
-          try {
-            await recordSecurityAudit({
-              tenantId: tenantKey,
-              actorId: `whatsapp:${senderNorm}`,
-              actorType: 'whatsapp_sender',
-              action: 'financeiro:caixa:suprimento',
-              entity: 'caixa_diario',
-              entityId: resOp.caixa?.id || null,
-              details: {
-                movimentoId: resOp.movimentacao?.id,
-                valor: pendente.valor,
-                motivo: pendente.descricao,
-                saldoAtual: resOp.saldoCaixaAtual,
-                operador: senderNorm
-              }
-            });
-          } catch (_) {}
+          await auditarSeguranca({
+            tenantKey,
+            senderNorm,
+            action: 'financeiro:caixa:suprimento',
+            entity: 'caixa_diario',
+            entityId: resOp.caixa?.id || 'caixa',
+            details: {
+              movimentoId: resOp.movimentacao?.id,
+              valor: pendente.valor,
+              motivo: pendente.descricao,
+              saldoAtual: resOp.saldoCaixaAtual
+            }
+          });
         } else {
           msgSucesso = `⚠️ Não foi possível registrar o suprimento: ${resOp.error}`;
         }
@@ -251,26 +253,21 @@ async function resolverConfirmacaoPendente(msg, ctx) {
           const tit = resOp.titulo;
           const isReceber = tit.tipo === 'receber';
           msgSucesso = `✅ *Título Liquidado com Sucesso!*\n\n• Título: #${tit.id} (${isReceber ? 'Recebimento' : 'Pagamento'})\n• Descrição: ${tit.desc || tit.descricao || '-'}\n• Valor: ${financialEngine.formatarMoeda(tit.valor)}\n• Forma: ${String(tit.meioLiquidacao || pendente.formaPagamento).toUpperCase()}\n• Saldo Atual do Caixa: ${financialEngine.formatarMoeda(resOp.saldoCaixaAtual || 0)}`;
-          try {
-            await recordSecurityAudit({
-              tenantId: tenantKey,
-              actorId: `whatsapp:${senderNorm}`,
-              actorType: 'whatsapp_sender',
-              action: 'financeiro:titulo:liquidar',
-              entity: 'contas_financeiras',
-              entityId: tit.id,
-              details: {
-                tituloId: tit.id,
-                tipo: tit.tipo,
-                valor: tit.valor,
-                meioPagamento: tit.meioLiquidacao,
-                movimentoId: resOp.movimentacao?.id,
-                saldoCaixaAtual: resOp.saldoCaixaAtual,
-                operador: senderNorm,
-                origem: 'whatsapp'
-              }
-            });
-          } catch (_) {}
+          await auditarSeguranca({
+            tenantKey,
+            senderNorm,
+            action: 'financeiro:titulo:liquidar',
+            entity: 'contas_financeiras',
+            entityId: tit.id,
+            details: {
+              tituloId: tit.id,
+              tipo: tit.tipo,
+              valor: tit.valor,
+              meioPagamento: tit.meioLiquidacao,
+              movimentoId: resOp.movimentacao?.id,
+              saldoCaixaAtual: resOp.saldoCaixaAtual
+            }
+          });
         } else {
           msgSucesso = `⚠️ Não foi possível liquidar o título: ${resOp.error}`;
         }
@@ -287,24 +284,20 @@ async function resolverConfirmacaoPendente(msg, ctx) {
         });
         if (resOp.ok && resOp.autorizado) {
           msgSucesso = `🔓 *Liberação Excepcional de Pátio Concedida!*\n\n• OS: #${resOp.osId}\n• Status: Liberado em Exceção\n• Saldo Pendente: ${financialEngine.formatarMoeda(resOp.saldoRestante || 0)}\n• Justificativa: ${pendente.justificativa}\n• Autorizado por: ${resOp.liberacaoExcepcional?.autorizadoPor}`;
-          try {
-            await recordSecurityAudit({
-              tenantId: tenantKey,
-              actorId: `whatsapp:${senderNorm}`,
-              actorType: 'whatsapp_sender',
-              action: 'financeiro:os:liberar_saida_excepcional',
-              entity: 'ordem_servico',
-              entityId: String(resOp.osId),
-              details: {
-                osId: resOp.osId,
-                saldoPendenteNaSaida: resOp.saldoRestante,
-                justificativa: pendente.justificativa,
-                perfil: pendente.perfil?.role || 'dono',
-                autorizadoPor: `WhatsApp (${senderNorm})`,
-                origem: 'whatsapp'
-              }
-            });
-          } catch (_) {}
+          await auditarSeguranca({
+            tenantKey,
+            senderNorm,
+            action: 'financeiro:os:liberar_saida_excepcional',
+            entity: 'ordem_servico',
+            entityId: String(resOp.osId),
+            details: {
+              osId: resOp.osId,
+              saldoPendenteNaSaida: resOp.saldoRestante,
+              justificativa: pendente.justificativa,
+              perfil: pendente.perfil?.role || 'dono',
+              autorizadoPor: `WhatsApp (${senderNorm})`
+            }
+          });
         } else {
           msgSucesso = `⚠️ Não foi possível autorizar a liberação da OS: ${resOp.error || resOp.message}`;
         }

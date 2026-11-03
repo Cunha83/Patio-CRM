@@ -1,0 +1,321 @@
+/* =====================================================================
+   PÁTIO CRM — OVERHAUL ENTERPRISE: SUB-HEADER, FOLDER TABS & TABELAS DENSAS
+===================================================================== */
+
+/* Topbar Global */
+.topbar-enterprise {
+  background: #1e293b;
+  color: #ffffff;
+  padding: 10px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+  position: sticky;
+  top: 0;
+  z-index: 40;
+}
+
+.busca-global-wrap {
+  position: relative;
+  flex: 1;
+  max-width: 500px;
+  margin: 0 16px;
+}
+
+.busca-global-input {
+  width: 100%;
+  height: 36px;
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  padding: 0 42px 0 34px;
+  color: #fff;
+  font-size: 13px;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.busca-global-input:focus {
+  border-color: var(--brand-primary);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.25);
+  background: #0b1120;
+}
+
+.busca-global-ico {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #94a3b8;
+  pointer-events: none;
+}
+
+.busca-global-atalho {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: #334155;
+  color: #cbd5e1;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 5px;
+  border-radius: 4px;
+  pointer-events: none;
+  font-family: var(--mono);
+}
+
+/* Dropdown + Novo Rápido */
+.dropdown-novo-wrap {
+  position: relative;
+  display: inline-block;
+}
+
+.dropdown-novo-menu {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  margin-top: 6px;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  min-width: 220px;
+  z-index: 100;
+  display: none;
+  padding: 6px 0;
+}
+
+.dropdown-novo-menu.aberto {
+  display: block;
+  animation: fadeInDown 0.15s ease-out;
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  color: #1e293b;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: none;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.dropdown-item:hover {
+  background: #f1f5f9;
+  color: var(--brand-primary);
+}
+
+/* Faixa Sub-Header Contextual */
+.sub-header-contextual {
+  background: linear-gradient(90deg, #334155 0%, #475569 100%);
+  color: #ffffff;
+  padding: 12px 20px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 5px rgba(15, 23, 42, 0.15);
+}
+
+.sub-header-contextual h2 {
+  color: #ffffff;
+  font-size: 16.5px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+
+.sub-header-acoes {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Folder Tabs */
+.folder-tabs {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  border-bottom: 2px solid #cbd5e1;
+  margin-bottom: 16px;
+  overflow-x: auto;
+  padding-left: 4px;
+}
+
+.folder-tab {
+  background: #e2e8f0;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+  border-bottom: none;
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+  padding: 9px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+  position: relative;
+  bottom: -2px;
+}
+
+.folder-tab:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.folder-tab.ativo {
+  background: #ffffff;
+  color: var(--brand-primary);
+  border-top: 3px solid var(--brand-primary);
+  border-bottom: 2px solid #ffffff;
+  font-weight: 700;
+  box-shadow: 0 -2px 6px rgba(0, 0, 0, 0.04);
+}
+
+/* Barra de Ações em Lote e Filtros */
+.barra-acoes-lote {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 14px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.barra-acoes-grupo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Navegador de Período (Mês Atual | < Outubro 2026 >) */
+.navegador-periodo {
+  display: inline-flex;
+  align-items: center;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.navegador-periodo button {
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #334155;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.navegador-periodo button:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.navegador-periodo .periodo-label {
+  padding: 6px 12px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #0f172a;
+  background: #ffffff;
+  border-left: 1px solid #cbd5e1;
+  border-right: 1px solid #cbd5e1;
+}
+
+/* Tabela Densa de Alto Contraste */
+.tabela-densa {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  background: #ffffff;
+}
+
+.tabela-densa th {
+  background: #f8fafc;
+  color: #334155;
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  padding: 10px 12px;
+  border-bottom: 2px solid #cbd5e1;
+  text-align: left;
+}
+
+.tabela-densa td {
+  padding: 9px 12px;
+  border-bottom: 1px solid #e2e8f0;
+  color: #0f172a;
+  vertical-align: middle;
+}
+
+.tabela-densa tr:hover td {
+  background: #f8fafc;
+}
+
+/* Badges Semânticos Vívidos */
+.badge-vivid {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.badge-sucesso {
+  background: #ecfdf5;
+  color: #047857;
+  border: 1px solid #6ee7b7;
+}
+
+.badge-alerta {
+  background: #fffbeb;
+  color: #b45309;
+  border: 1px solid #fcd34d;
+}
+
+.badge-perigo {
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fca5a5;
+}
+
+.badge-info {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #93c5fd;
+}
+
+@keyframes fadeInDown {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+

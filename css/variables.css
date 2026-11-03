@@ -1,0 +1,91 @@
+/* =====================================================================
+   PÁTIO CRM — DESIGN SYSTEM: VARIÁVEIS, TEMA & RESET
+===================================================================== */
+
+:root {
+  /* Fundo de trabalho claro e superfícies de alto contraste */
+  --bg-canvas: #f1f5f9;
+  --bg-surface: #ffffff;
+  --texto-principal: #0f172a;
+  --texto-secundario: #334155;
+  --texto-suave: #64748b;
+  --borda-suave: #e2e8f0;
+  --borda-forte: #cbd5e1;
+
+  --aco-900: #0f172a;
+  --aco-800: #1e293b;
+  --aco-700: #334155;
+  --aco-600: #475569;
+  --aco-500: #64748b;
+  --aco-400: #94a3b8;
+  --aco-300: #cbd5e1;
+  --aco-200: #e2e8f0;
+  --aco-150: #f1f5f9;
+  --aco-100: #f8fafc;
+  --aco-050: #fbfcfe;
+  --branco: #ffffff;
+
+  /* Paleta Dinâmica Camaleão (White-Label) */
+  --brand-primary: #2563eb;
+  --brand-primary-hover: #1d4ed8;
+  --brand-primary-light: #eff6ff;
+  --brand-accent: #f59e0b;
+
+  /* Mapeamento para compatibilidade total com módulos existentes */
+  --petroleo: var(--brand-primary);
+  --petroleo-hover: var(--brand-primary-hover);
+  --petroleo-fraco: var(--brand-primary-light);
+  
+  /* Cores Semânticas Vívidas (Sem opacidade lavada) */
+  --verde: #10b981;
+  --verde-hover: #059669;
+  --verde-fraco: #ecfdf5;
+
+  --sinal: #f59e0b;
+  --sinal-hover: #d97706;
+  --sinal-fraco: #fffbeb;
+
+  --tijolo: #ef4444;
+  --tijolo-hover: #dc2626;
+  --tijolo-fraco: #fef2f2;
+
+  --azul: #3b82f6;
+  --azul-hover: #2563eb;
+  --azul-fraco: #eff6ff;
+
+  --ardosia: #8b5cf6;
+  --ardosia-fraco: #f5f3ff;
+
+  --sombra: 0 4px 6px -1px rgba(15, 23, 42, 0.07), 0 2px 4px -2px rgba(15, 23, 42, 0.05);
+  --sombra-md: 0 10px 15px -3px rgba(15, 23, 42, 0.1), 0 4px 6px -4px rgba(15, 23, 42, 0.05);
+  --sombra-hover: 0 20px 25px -5px rgba(15, 23, 42, 0.12), 0 8px 10px -6px rgba(15, 23, 42, 0.06);
+  
+  --raio: 12px;
+  --raio-sm: 6px;
+  --mono: ui-monospace, "SF Mono", "Roboto Mono", Menlo, monospace;
+  --ui: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --safe-b: env(safe-area-inset-bottom, 0px);
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: var(--ui);
+  background: var(--bg-canvas);
+  color: var(--texto-principal);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  padding-left: 240px;
+}
+
+@media (max-width: 840px) {
+  body { padding-left: 0; padding-bottom: calc(68px + var(--safe-b)); }
+}
+
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; border: 0; background: none; }
+h1, h2, h3, h4 { margin: 0; letter-spacing: -0.02em; font-weight: 700; color: var(--texto-principal); }
+.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.num { font-family: var(--mono); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+

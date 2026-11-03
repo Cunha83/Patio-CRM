@@ -1,0 +1,89 @@
+/* =====================================================================
+   PÁTIO CRM — MODAL DE CONFIGURAÇÃO DO ASSISTENTE DE VOZ
+===================================================================== */
+
+.folha.folha-assistente,
+.folha:has(.modal-assistente-card) {
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  width: min(640px, 95vw) !important;
+  height: auto !important;
+  max-height: 92vh !important;
+  border-radius: 14px !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+@media (min-width: 768px) {
+  .folha.folha-assistente,
+  .folha:has(.modal-assistente-card) {
+    bottom: 4vh !important;
+  }
+}
+@media (max-width: 767px) {
+  .folha.folha-assistente,
+  .folha:has(.modal-assistente-card) {
+    bottom: 0 !important;
+    width: 100vw !important;
+    max-height: 96vh !important;
+    border-radius: 16px 16px 0 0 !important;
+  }
+}
+.modal-assistente-card {
+  max-width: 640px;
+  width: 100%;
+  height: min(720px, 86vh);
+  max-height: 86vh;
+  margin: 0 auto;
+  background: #182235;
+  color: #fff;
+  border-radius: 14px;
+  border: 1px solid #334155;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.65);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.modal-assistente-header {
+  flex-shrink: 0;
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.modal-assistente-body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.modal-assistente-body::-webkit-scrollbar {
+  width: 6px;
+}
+.modal-assistente-body::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.6);
+  border-radius: 4px;
+}
+.modal-assistente-body::-webkit-scrollbar-thumb {
+  background: #475569;
+  border-radius: 4px;
+}
+.modal-assistente-body::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+.modal-assistente-footer {
+  flex-shrink: 0;
+  padding: 14px 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  background: #111927;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
