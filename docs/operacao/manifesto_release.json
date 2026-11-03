@@ -2,9 +2,9 @@
   "projeto": "Patio-CRM",
   "versao": "1.0.1",
   "fase": "Fase 3 — Piloto Controlado em Ambiente Operacional",
-  "dataGeracao": "2026-11-03T19:06:15.990Z",
+  "dataGeracao": "2026-11-03T19:15:31.323Z",
   "git": {
-    "commit": "05efbb49b6658182f684f9e7058c8f4efff1588a",
+    "commit": "25944dbc140df54adf6161b1960140db45fdff0e",
     "branch": "main"
   },
   "ambienteExecucao": {
@@ -248,7 +248,7 @@
     "services/voice/voiceCRMActions.js": "7a55cda30411ae7c937de3bb8ab643966ee5985c3b49ce81ae85836e058f22bd",
     "services/voice/voiceConfirmationActions.js": "10883d7049c528cc27e7a8b05d254d931a7fc9247109d8226dd28c6156814690",
     "services/voice/voiceExecutiveActions.js": "bcf23bef9fc9e8815cb29a1d722eb9f4407e9ad8d1caea901d732a6ebbb48fcc",
-    "services/voice/voiceFinancialActions.js": "f8df466e208872d2fde166cf3124b63e8177cb859673f1e682cc02822c92957f",
+    "services/voice/voiceFinancialActions.js": "4784045f467531453a6fa6185de8817dd516546f2ad55c5ff21ab4e9007a5d62",
     "services/voice/voiceInventoryActions.js": "9f00c1bcda5ad2c10e9172c074eb08059b28d32b581d4951e5116de30a07fc10",
     "services/voice/voiceLaborActions.js": "b6d8fb14b3523fba74799704c7405da34fd6793047390f0abaf608646dfade96",
     "services/voice/voiceLaborCostActions.js": "6ba82c19d5e9755fcd6df8832422098ca9f3e8ea4cd17cdbbd1be9b83aa65ba1",
@@ -284,6 +284,6 @@
     "services/whatsapp/whatsappHandlers.js": "04a7a36497dafc83500acd152e0287d6e54f2319b624482f35e4bc540d154bd8",
     "services/whatsapp/whatsappScheduler.js": "e8cc82ce5584ca4b6d4000122ddd48a95bb34cfe3a85ff89bbc42891388710f6",
     "services/whatsapp/whatsappState.js": "f8fcc6613b16bf71ee8084e3732bf009bccf2fa71cbc2d8fbf4f6fd9fac2a46e",
-    "style.css": "028e1172bb401a4189f61f5e8c74925c168012bc5e9effbd8c1e6a75dadf851b"
+    "style.css": "7f4cf4be67e04b35abd1ece558e1c41a54807560bae903694b9eb9d9f459c825"
   }
 }
