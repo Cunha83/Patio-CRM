@@ -40,7 +40,7 @@ test('SIMULAÇÃO LOCAL — Ciclo de Vida Fiscal, Numeração Atômica, Eventos 
       provider: 'mock_homologacao',
       providerToken: 'token-secreto-focus-123',
       certPassword: 'senha-do-certificado-a1',
-      cnpj: '12.345.678/0001-90',
+      cnpj: '12.345.678/0001-95',
       razaoSocial: 'Auto Molas & Freios Diesel Ltda',
       nomeFantasia: 'Auto Molas Diesel',
       inscricaoEstadual: '123456789110',
@@ -53,7 +53,7 @@ test('SIMULAÇÃO LOCAL — Ciclo de Vida Fiscal, Numeração Atômica, Eventos 
       nfeProximoNumero: 100
     });
 
-    assert.equal(saved.cnpj, '12345678000190');
+    assert.equal(saved.cnpj, '12345678000195');
     assert.equal(saved.providerToken, 'token-secreto-focus-123');
 
     // Verifica que no banco bruto do SQLite o token e a senha estão criptografados (não existem em texto claro)

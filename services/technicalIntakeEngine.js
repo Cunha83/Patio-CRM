@@ -178,8 +178,10 @@ function iniciarIntake({
     lastQueryInterruption: null,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-    expiresAt: Date.now() + (24 * 60 * 60 * 1000)
+    expiresAt: Date.now() + (24 * 60 * 60 * 1000),
+    dataReferencia: dataReferencia || null
   };
+  preOS.dataReferencia = dataReferencia || null;
 
   registrarAuditoria(state, {
     acao: 'intake_iniciado',
@@ -245,6 +247,10 @@ function iniciarIntake({
     concluirTriagemSessao({ session, preOS, resumo, state, actorId });
   }
 
+  if (!Array.isArray(state.preOS)) state.preOS = [];
+  if (!state.preOS.some(p => p.id === preOS.id)) {
+    state.preOS.unshift(preOS);
+  }
   state.intakeSessions.unshift(session);
 
   return {
@@ -351,7 +357,8 @@ function corrigirCampo({
   const recorrencia = detectarRecorrencia({
     reclamacao: preOS.reclamacaoOriginal,
     kmAtual: preOS.kmAtual,
-    historicoVeiculo: hist
+    historicoVeiculo: hist,
+    dataReferencia: session.dataReferencia || preOS.dataReferencia || null
   });
 
   let garantia = null;
@@ -505,7 +512,8 @@ function responderPergunta({
   const recorrencia = detectarRecorrencia({
     reclamacao: preOS.reclamacaoOriginal,
     kmAtual: preOS.kmAtual,
-    historicoVeiculo: hist
+    historicoVeiculo: hist,
+    dataReferencia: session.dataReferencia || preOS.dataReferencia || null
   });
 
   let garantia = null;

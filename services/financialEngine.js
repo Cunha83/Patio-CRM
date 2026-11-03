@@ -1118,6 +1118,16 @@ function calcularDRESimplificado(state = {}, options = {}) {
       } else if (m.tipo === 'saida' || m.tipo === 'despesa') {
         despesasOperacionais = +(despesasOperacionais + val).toFixed(2);
         qtdDespesas++;
+      } else if ((m.cat || m.categoria) && Array.isArray(state.cfg?.planoDeContas)) {
+        const catNome = String(m.cat || m.categoria).toLowerCase();
+        const conta = state.cfg.planoDeContas.find(c => typeof c === 'object' && c.nome && c.nome.toLowerCase() === catNome);
+        if (conta?.tipo === 'receita') {
+          receitaOperacionalBruta = +(receitaOperacionalBruta + val).toFixed(2);
+          qtdReceitas++;
+        } else {
+          despesasOperacionais = +(despesasOperacionais + val).toFixed(2);
+          qtdDespesas++;
+        }
       }
     }
   }
