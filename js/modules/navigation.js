@@ -182,6 +182,11 @@ function renderTopo() {
 
     <!-- Direita: Perfil do Usuário com Dropdown + Botão Rápido + Novo -->
     <div style="display:flex;align-items:center;gap:10px">
+      <!-- Botão Central de Automações Monday.com -->
+      <button type="button" class="monday-btn-automations" onclick="abrirCentroAutomacoes()" style="height:32px;padding:4px 12px;font-size:12px;background:#ffffff;border:1px solid #d8b4fe;border-radius:6px;box-shadow:0 1px 2px rgba(0,0,0,0.1);display:inline-flex;align-items:center;gap:6px;cursor:pointer">
+        <span>⚡</span>
+        <span style="font-weight:700;color:var(--monday-purple, #a25ddc)">Automações</span>
+      </button>
       <!-- Dropdown do Usuário -->
       <div class="user-dropdown-wrap" style="position:relative">
         <button type="button" onclick="toggleDropdownUsuario()" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:4px 10px;cursor:pointer;display:flex;align-items:center;gap:8px;text-align:right">
@@ -239,6 +244,9 @@ function renderTopo() {
             <button class="dropdown-item" onclick="toggleDropdownNovo();abrirModalNovoCliente()">
               ${ico('gente', 16)} <span>Novo Cliente / Frota</span>
             </button>
+            <button class="dropdown-item" onclick="toggleDropdownNovo();abrirModalNovaCompra()">
+              ${ico('box', 16)} <span>Nova Compra / Entrada de Peças</span>
+            </button>
             <button class="dropdown-item" onclick="toggleDropdownNovo();abrirModalNovoLancamento('pagar')">
               ${ico('grana', 16)} <span>Nova Despesa / Conta a Pagar</span>
             </button>
@@ -251,6 +259,9 @@ function renderTopo() {
             </button>
             <button class="dropdown-item" onclick="toggleDropdownNovo();abrirModalNovoCliente()">
               ${ico('gente', 16)} <span>Novo Cliente / Frota</span>
+            </button>
+            <button class="dropdown-item" onclick="toggleDropdownNovo();abrirModalNovaCompra()">
+              ${ico('box', 16)} <span>Nova Compra / Entrada de Peças</span>
             </button>
             <button class="dropdown-item" onclick="toggleDropdownNovo();abrirModalNovoLancamento('pagar')">
               ${ico('grana', 16)} <span>Nova Despesa / Conta a Pagar</span>
@@ -437,7 +448,56 @@ function selecionarItemBuscaGlobal(rota, id) {
 // Toggle Dropdown + Novo
 function toggleDropdownNovo() {
   const el = document.getElementById('dropdown-novo-menu');
-  if (el) el.classList.toggle('aberto');
+  if (el) {
+    const aberto = el.classList.contains('aberto') || el.style.display === 'block';
+    if (aberto) {
+      el.classList.remove('aberto');
+      el.style.display = 'none';
+    } else {
+      el.classList.add('aberto');
+      el.style.display = 'block';
+    }
+  }
+}
+
+function fecharDropdownNovo() {
+  const el = document.getElementById('dropdown-novo-menu');
+  if (el) {
+    el.classList.remove('aberto');
+    el.style.display = 'none';
+  }
+}
+
+function abrirModalNovaOS(boxId = null) {
+  S.ui.rascunho = null;
+  if (typeof abrirFolha === 'function' && typeof novaOSFolha === 'function') {
+    abrirFolha(() => novaOSFolha(boxId));
+  } else {
+    S.ui.view = 'patio';
+    if (typeof render === 'function') render();
+  }
+}
+
+function abrirModalNovoCliente() {
+  S.ui.cadTipo = 'clientes';
+  S.ui.rascCad = {};
+  if (typeof abrirFolha === 'function' && typeof folhaCadastro === 'function') {
+    abrirFolha(folhaCadastro);
+  } else {
+    S.ui.view = 'cadastros';
+    if (typeof render === 'function') render();
+  }
+}
+
+function abrirModalNovoLancamento(tipo = 'pagar') {
+  S.ui.contaTipo = tipo;
+  S.ui.rascConta = { venc: typeof hoje === 'function' ? hoje() : new Date().toISOString().substring(0, 10), valor: '' };
+  if (typeof abrirFolha === 'function' && typeof folhaConta === 'function') {
+    abrirFolha(folhaConta);
+  } else {
+    S.ui.view = 'financeiro';
+    if (typeof render === 'function') render();
+  }
 }
 
 // Fecha dropdowns se clicar fora
@@ -445,8 +505,7 @@ if (typeof document !== 'undefined') {
   document.addEventListener('click', (e) => {
     const wrap = e.target.closest('.dropdown-novo-wrap');
     if (!wrap) {
-      const el = document.getElementById('dropdown-novo-menu');
-      if (el && el.classList.contains('aberto')) el.classList.remove('aberto');
+      fecharDropdownNovo();
     }
     const buscaWrap = e.target.closest('.busca-global-wrap');
     if (!buscaWrap) {
@@ -558,13 +617,6 @@ function renderOnboardingBanner() {
 }
 
 /* ---------------- Gestão de Sessão, RBAC & Login White-Label ---------------- */
-function toggleDropdownNovo() {
-  const el = document.getElementById('dropdown-novo-menu');
-  if (el) {
-    el.style.display = el.style.display === 'none' || !el.style.display ? 'block' : 'none';
-  }
-}
-
 function toggleDropdownUsuario() {
   const el = document.getElementById('dropdown-usuario-menu');
   if (el) {
@@ -574,10 +626,6 @@ function toggleDropdownUsuario() {
 
 if (typeof document !== 'undefined') {
   document.addEventListener('click', (e) => {
-    if (!e.target.closest('.dropdown-novo-wrap')) {
-      const el = document.getElementById('dropdown-novo-menu');
-      if (el) el.style.display = 'none';
-    }
     if (!e.target.closest('.user-dropdown-wrap')) {
       const el = document.getElementById('dropdown-usuario-menu');
       if (el) el.style.display = 'none';
@@ -768,6 +816,10 @@ if (typeof window !== 'undefined') {
   window.renderTopo = renderTopo;
   window.renderOnboardingBanner = renderOnboardingBanner;
   window.toggleDropdownNovo = toggleDropdownNovo;
+  window.fecharDropdownNovo = fecharDropdownNovo;
+  window.abrirModalNovaOS = abrirModalNovaOS;
+  window.abrirModalNovoCliente = abrirModalNovoCliente;
+  window.abrirModalNovoLancamento = abrirModalNovoLancamento;
   window.toggleDropdownUsuario = toggleDropdownUsuario;
   window.abrirModalLogin = abrirModalLogin;
   window.fecharModalLogin = fecharModalLogin;

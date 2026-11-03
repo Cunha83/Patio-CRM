@@ -452,6 +452,58 @@ const saldoCaixa = () => {
   return +(ini + ent - sai).toFixed(2);
 };
 
+function normalizarPlanoDeContas(lista) {
+  const padraoClonado = () => [
+    { id: 'pc_1', codigo: '1', nome: 'Receitas Operacionais', tipo: 'receita', classe: 'sintetica', paiId: null, ativo: true, padrao: true },
+    { id: 'pc_1_01', codigo: '1.01', nome: 'Serviços', tipo: 'receita', classe: 'analitica', paiId: 'pc_1', ativo: true, padrao: true },
+    { id: 'pc_1_02', codigo: '1.02', nome: 'Peças', tipo: 'receita', classe: 'analitica', paiId: 'pc_1', ativo: true, padrao: true },
+    { id: 'pc_2', codigo: '2', nome: 'Custos e Despesas', tipo: 'despesa', classe: 'sintetica', paiId: null, ativo: true, padrao: true },
+    { id: 'pc_2_01', codigo: '2.01', nome: 'Pessoal', tipo: 'despesa', classe: 'analitica', paiId: 'pc_2', ativo: true, padrao: true },
+    { id: 'pc_2_02', codigo: '2.02', nome: 'Fixas', tipo: 'despesa', classe: 'analitica', paiId: 'pc_2', ativo: true, padrao: true },
+    { id: 'pc_2_03', codigo: '2.03', nome: 'Impostos', tipo: 'despesa', classe: 'analitica', paiId: 'pc_2', ativo: true, padrao: true },
+    { id: 'pc_2_04', codigo: '2.04', nome: 'Outros', tipo: 'despesa', classe: 'analitica', paiId: 'pc_2', ativo: true, padrao: true }
+  ];
+  if (!Array.isArray(lista) || lista.length === 0) {
+    return padraoClonado();
+  }
+  const temStrings = lista.some(item => typeof item === 'string');
+  if (temStrings) {
+    const padrao = padraoClonado();
+    const nomesPadrao = new Set(padrao.map(p => p.nome.toLowerCase()));
+    let proximoSeq = 5;
+    lista.forEach((item) => {
+      const nomeStr = typeof item === 'string' ? item.trim() : (item && item.nome ? String(item.nome).trim() : '');
+      if (!nomeStr) return;
+      if (!nomesPadrao.has(nomeStr.toLowerCase())) {
+        const cod = 2.;
+        padrao.push({
+          id: pc_2_,
+          codigo: cod,
+          nome: nomeStr,
+          tipo: 'despesa',
+          classe: 'analitica',
+          paiId: 'pc_2',
+          ativo: true,
+          padrao: false
+        });
+        nomesPadrao.add(nomeStr.toLowerCase());
+      }
+    });
+    return padrao;
+  }
+  return lista.map((c, idx) => {
+    const id = c.id || ('pc_' + (idx + 1) + '_' + Date.now());
+    const codigo = String(c.codigo || (idx + 1)).trim();
+    const nome = String(c.nome || c.descricao || ('Conta ' + codigo)).trim();
+    const tipo = (c.tipo === 'receita' || c.tipo === 'entrada') ? 'receita' : 'despesa';
+    const classe = (c.classe === 'sintetica' || c.sintetica) ? 'sintetica' : 'analitica';
+    const paiId = c.paiId || null;
+    const ativo = c.ativo !== false && c.status !== 'inativo';
+    const padrao = !!c.padrao;
+    return { id, codigo, nome, tipo, classe, paiId, ativo, padrao };
+  });
+}
+
 /* ---------------- Dados Iniciais Demonstrativos (Oficina Pesada) ---------------- */
 function sementes() {
   const dHoje = hoje();
@@ -490,7 +542,7 @@ function sementes() {
       ie: '123.456.789.000',
       im: '98765-4',
       cnae: '4520-0/01',
-      planoDeContas: ['Serviços', 'Peças', 'Pessoal', 'Fixas', 'Impostos', 'Outros'],
+      planoDeContas: normalizarPlanoDeContas(),
       formasPgto: ['Dinheiro', 'Pix', 'Cartão de Crédito', 'Cartão de Débito', 'Boleto', 'Transferência'],
       contasCaixa: [{id: 'cx1', nome: 'Caixa Interno (Dinheiro)'}, {id: 'cx2', nome: 'Banco do Brasil'}],
       usuarios: [{id: 'u1', nome: 'Administrador Principal', login: 'admin', papel: 'Gerente'}],
@@ -914,4 +966,5 @@ if (typeof window !== 'undefined') {
   window.Srv = Srv;
   window.salvar = salvar;
   window.armazem = armazem;
+  window.normalizarPlanoDeContas = normalizarPlanoDeContas;
 }

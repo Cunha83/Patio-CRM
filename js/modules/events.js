@@ -181,6 +181,7 @@ document.addEventListener('click', e => {
     case 'abrir-os': S.ui.osAberta = b.dataset.id; S.ui.abaOS = 'servicos'; S.ui.picker = null; S.ui.busca = ''; abrirFolha(folhaOS); break;
     case 'aba-os': S.ui.abaOS = b.dataset.k; S.ui.picker = null; S.ui.busca = ''; renderFolha(); break;
     case 'nova-os': S.ui.rascunho = null; abrirFolha(() => novaOSFolha(b.dataset.box)); break;
+    case 'nova-compra': if (typeof abrirModalNovaCompra === 'function') abrirModalNovaCompra(); break;
     case 'voltar-os': S.ui.rascVeiculo = null; abrirFolha(novaOSFolha); break;
     case 'imprimir-os': imprimirOS(o, b.dataset.formato || 'a4'); break;
     case 'imprimir-os-termica': imprimirOS(o, 'termica'); break;

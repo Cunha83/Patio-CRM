@@ -1672,6 +1672,61 @@ function imprimirRecibo(contaId) {
   janela.document.close();
 }
 
+
+function renderOptionsPlanoDeContas(selecionado, tipoSugerido = null) {
+  const lista = (typeof normalizarPlanoDeContas === 'function')
+    ? normalizarPlanoDeContas(S.cfg?.planoDeContas)
+    : (S.cfg?.planoDeContas || []);
+
+  if (!lista.length) return '<option value="Outros">Outros</option>';
+
+  if (typeof lista[0] === 'string') {
+    return lista.map(x => `<option value="${esc(x)}" ${selecionado === x ? 'selected' : ''}>${esc(x)}</option>`).join('');
+  }
+
+  const baseLista = (tipoSugerido && lista.some(c => c.tipo === tipoSugerido))
+    ? lista.filter(c => c.tipo === tipoSugerido || c.nome === selecionado)
+    : lista;
+  const sinteticas = baseLista.filter(c => c.classe === 'sintetica');
+  const analiticas = baseLista.filter(c => c.classe === 'analitica' && (c.ativo !== false || c.nome === selecionado));
+
+  let html = '';
+
+  if (sinteticas.length) {
+    sinteticas.forEach(s => {
+      const filhas = analiticas.filter(a => a.paiId === s.id || (a.codigo && s.codigo && a.codigo.startsWith(s.codigo + '.')));
+      if (filhas.length) {
+        html += `<optgroup label="${esc(s.codigo)} - ${esc(s.nome)}">`;
+        filhas.forEach(f => {
+          const sel = (selecionado === f.nome || selecionado === f.id) ? 'selected' : '';
+          html += `<option value="${esc(f.nome)}" data-id="${esc(f.id)}" ${sel}>${esc(f.codigo)} - ${esc(f.nome)}</option>`;
+        });
+        html += '</optgroup>';
+      }
+    });
+
+    const filhasSemPai = analiticas.filter(a => !sinteticas.some(s => a.paiId === s.id || (a.codigo && s.codigo && a.codigo.startsWith(s.codigo + '.'))));
+    if (filhasSemPai.length) {
+      html += '<optgroup label="Outras Contas">';
+      filhasSemPai.forEach(f => {
+        const sel = (selecionado === f.nome || selecionado === f.id) ? 'selected' : '';
+        html += `<option value="${esc(f.nome)}" data-id="${esc(f.id)}" ${sel}>${esc(f.codigo)} - ${esc(f.nome)}</option>`;
+      });
+      html += '</optgroup>';
+    }
+  } else {
+    analiticas.forEach(f => {
+      const sel = (selecionado === f.nome || selecionado === f.id) ? 'selected' : '';
+      html += `<option value="${esc(f.nome)}" data-id="${esc(f.id)}" ${sel}>${esc(f.codigo)} - ${esc(f.nome)}</option>`;
+    });
+  }
+
+  return html;
+}
+if (typeof window !== 'undefined') {
+  window.renderOptionsPlanoDeContas = renderOptionsPlanoDeContas;
+}
+
 function folhaConta() {
   const tipo = S.ui.contaTipo || 'receber';
   const r = S.ui.rascConta = S.ui.rascConta || { venc: hoje(), valor: '' };
@@ -1708,7 +1763,7 @@ function folhaConta() {
       <div>
         <label style="font-weight:600;display:block;margin-bottom:4px">Categoria de Centro de Custo:</label>
         <select class="campo-select" data-act="rct" data-c="cat" style="width:100%;height:34px">
-          ${(S.cfg.planoDeContas || []).map(x => `<option value="${esc(x)}" ${r.cat===x?'selected':''}>${esc(x)}</option>`).join('')}
+          ${renderOptionsPlanoDeContas(r.cat, tipo === 'receber' ? 'receita' : 'despesa')}
         </select>
       </div>
     </div>
@@ -1756,7 +1811,7 @@ function folhaMov() {
         <div>
           <label style="font-weight:600;display:block;margin-bottom:4px">Categoria / Centro de Custo:</label>
           <select class="campo-select" data-act="rmv" data-c="cat" style="width:100%;height:34px">
-            ${(S.cfg.planoDeContas || []).map(x => `<option value="${esc(x)}" ${r.cat===x?'selected':''}>${esc(x)}</option>`).join('')}
+            ${renderOptionsPlanoDeContas(r.cat, r.tipo === 'entrada' ? 'receita' : 'despesa')}
           </select>
         </div>
         <div>

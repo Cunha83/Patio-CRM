@@ -699,6 +699,9 @@ function fecharFolha() {
 async function boot() {
   const salvo = await armazem.ler();
   S = salvo && salvo.os ? salvo : sementes();
+  if (S.cfg) {
+    S.cfg.planoDeContas = typeof normalizarPlanoDeContas === 'function' ? normalizarPlanoDeContas(S.cfg.planoDeContas) : S.cfg.planoDeContas;
+  }
 
   // Hidrata e sincroniza configurações do assistente de voz a partir de cache persistente
   try {

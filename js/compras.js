@@ -377,9 +377,15 @@ async function processarXMLCompra(arquivo) {
           venc: dVenc,
           tipo: 'pagar',
           st: 'pendente',
+          pago: false,
+          cat: 'Peças',
+          categoria: 'Peças',
+          doc: String(nNF || ''),
           origem: 'compra_xml'
         };
         S.contasPagar.push(conta);
+        S.contas = S.contas || [];
+        if (!S.contas.some(x => x.id === conta.id)) S.contas.push(conta);
         duplicatasImportadas.push(conta);
       }
     } else {
@@ -395,9 +401,15 @@ async function processarXMLCompra(arquivo) {
         venc: dataVenc.toISOString().substring(0, 10),
         tipo: 'pagar',
         st: 'pendente',
+        pago: false,
+        cat: 'Peças',
+        categoria: 'Peças',
+        doc: String(nNF || ''),
         origem: 'compra_xml'
       };
       S.contasPagar.push(conta);
+      S.contas = S.contas || [];
+      if (!S.contas.some(x => x.id === conta.id)) S.contas.push(conta);
       duplicatasImportadas.push(conta);
     }
 
@@ -437,6 +449,7 @@ function abrirModalNovaCompra() {
     fornecedorId: (S.fornecedores && S.fornecedores[0]?.id) || '',
     num: '',
     data: hoje(),
+    cat: 'Peças',
     itens: []
   };
   abrirFolha(folhaNovaCompra);
@@ -460,7 +473,7 @@ function folhaNovaCompra() {
     </div>
 
     <!-- Cabeçalho da Compra -->
-    <div style="display:grid;grid-template-columns:1.5fr 1fr 1fr;gap:12px;margin-bottom:16px">
+    <div style="display:grid;grid-template-columns:1.2fr 1fr 1fr 1.2fr;gap:12px;margin-bottom:16px">
       <div>
         <label class="mini" style="font-weight:700">Fornecedor</label>
         <select class="campo-texto" onchange="S.ui.rascCompra.fornecedorId=this.value" style="width:100%;height:36px;font-size:13px">
@@ -475,6 +488,12 @@ function folhaNovaCompra() {
       <div>
         <label class="mini" style="font-weight:700">Data da Compra</label>
         <input type="date" class="campo-texto" value="${r.data || hoje()}" onchange="S.ui.rascCompra.data=this.value" style="width:100%;height:36px;font-size:13px">
+      </div>
+      <div>
+        <label class="mini" style="font-weight:700">Plano de Contas / Categoria</label>
+        <select class="campo-texto" onchange="S.ui.rascCompra.cat=this.value" style="width:100%;height:36px;font-size:13px">
+          ${typeof renderOptionsPlanoDeContas === 'function' ? renderOptionsPlanoDeContas(r.cat || 'Peças', 'despesa') : '<option value="Peças">Peças</option>'}
+        </select>
       </div>
     </div>
 
@@ -589,21 +608,36 @@ function salvarNovaCompraConfirmada() {
     }
   });
 
-  // 2. Gera Conta a Pagar
+  // 2. Gera Conta a Pagar vinculada ao Plano de Contas
   S.contasPagar = S.contasPagar || [];
+  S.contas = S.contas || [];
   const dataVenc = new Date();
   dataVenc.setDate(dataVenc.getDate() + 28);
-  S.contasPagar.push({
-    id: uid('cp'),
+  const idContaPagar = uid('cp');
+  const catCompra = r.cat || 'Peças';
+  const descConta = `Compra ${r.num ? 'NF-e ' + r.num : 'de Peças'}`;
+  const vencStr = dataVenc.toISOString().substring(0, 10);
+
+  const novaContaPagar = {
+    id: idContaPagar,
     parte: forn.nome || 'Fornecedor',
     fornecedorId: forn.id,
-    desc: `Compra ${r.num ? 'NF-e ' + r.num : 'de Peças'}`,
+    desc: descConta,
     valor: total,
-    venc: dataVenc.toISOString().substring(0, 10),
+    venc: vencStr,
     tipo: 'pagar',
     st: 'pendente',
+    pago: false,
+    cat: catCompra,
+    categoria: catCompra,
+    doc: r.num || '',
     origem: 'compra_manual'
-  });
+  };
+
+  S.contasPagar.push(novaContaPagar);
+  if (!S.contas.some(x => x.id === idContaPagar)) {
+    S.contas.push(novaContaPagar);
+  }
 
   // 3. Salva a compra
   S.compras = S.compras || [];
@@ -615,6 +649,8 @@ function salvarNovaCompraConfirmada() {
     fornecedorNome: forn.nome,
     fornecedorDoc: forn.doc,
     data: r.data || hoje(),
+    cat: catCompra,
+    categoria: catCompra,
     total,
     itens: r.itens,
     situacao: 'Finalizada',

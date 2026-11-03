@@ -93,8 +93,9 @@ function viewCadastros() {
   } else if (a === 'empresa') { 
     corpo = viewEmpresa(); 
     acoes = `<button class="btn btn-primario" data-act="salvar-cfg">${ico('check', 14)} Salvar Dados</button>`; 
-  } else if (a === 'planocontas') { 
-    corpo = viewPlanoContas(); 
+  } else if (a === 'planocontas') {
+    corpo = viewPlanoContas();
+    acoes = `<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-neutro" onclick="restaurarPlanoContasPadrao()" title="Restaurar contas padrão">${ico('recarregar', 14) || '↺'} Restaurar Padrões</button><button class="btn btn-primario" onclick="abrirFolhaPlanoConta()" style="font-weight:600">${ico('mais', 14) || '+'} Nova Conta</button></div>`;
   } else if (a === 'contascaixa') { 
     corpo = viewContasCaixa(); 
   } else if (a === 'operacoes') { 
@@ -247,6 +248,135 @@ function viewContatosUnificados(abaAtiva) {
              (item.cidade || '').toLowerCase().includes(busca) ||
              tagsStr.includes(busca);
     });
+  }
+
+  // Separar em Contatos Ativos e Inativos (conforme padrão visual Monday.com)
+  const contatosAtivos = [];
+  const contatosInativos = [];
+
+  listaAtual.forEach(item => {
+    if (item.inativo || item.status === 'inativo') {
+      contatosInativos.push(item);
+    } else {
+      contatosAtivos.push(item);
+    }
+  });
+
+  // Se o motor MondayBoard estiver disponível, renderiza o Board completo
+  if (typeof renderMondayBoard === 'function' || (typeof MondayBoard !== 'undefined' && MondayBoard.renderMondayBoard)) {
+    const fnBoard = typeof renderMondayBoard === 'function' ? renderMondayBoard : MondayBoard.renderMondayBoard;
+
+    const mapItemToMonday = (item) => {
+      const veicsDoCli = (S.veiculos || []).filter(v => v.cli === item.id || v.clienteId === item.id);
+      const qtdVeics = veicsDoCli.length;
+      
+      // Tipo visual
+      let tipoLabel = 'Cliente Frota';
+      let tipoCor = '#03a9f4';
+      if (item.tipo === 'parceiro' || item.tipoParceria) {
+        tipoLabel = 'Parceiro';
+        tipoCor = '#fdab3d';
+      } else if (subAba === 'fornecedores') {
+        tipoLabel = 'Fornecedor';
+        tipoCor = '#a25ddc';
+      } else if (subAba === 'transportadores') {
+        tipoLabel = 'Transportador';
+        tipoCor = '#00c875';
+      }
+
+      // Prioridade
+      const prioridade = item.prioridade || (qtdVeics >= 3 ? 'Alta' : (qtdVeics >= 1 ? 'Média' : 'Normal'));
+      const corPrioridade = prioridade === 'Alta' ? '#e2445c' : (prioridade === 'Média' ? '#fdab3d' : '#00c875');
+
+      return {
+        id: item.id,
+        raw: item,
+        contato: `
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="width:28px;height:28px;border-radius:50%;background:#e0f2fe;color:#0369a1;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px">
+              ${(item.nome || 'C').charAt(0).toUpperCase()}
+            </div>
+            <div>
+              <div style="font-weight:700;color:var(--monday-text-dark,#323338)">${esc(item.nome)}</div>
+              <div class="mini mono" style="color:#64748b">#${esc(item.codigo || item.id)} ${item.doc ? '· ' + esc(item.doc) : ''}</div>
+            </div>
+          </div>
+        `,
+        tipo: { label: tipoLabel, color: tipoCor },
+        empresa: {
+          label: item.fantasia || item.nome,
+          icon: '🏢',
+          class: 'monday-chip-blue'
+        },
+        veiculos: qtdVeics,
+        cargo: item.contato || item.cargo || 'Gestor de Frota',
+        prioridade: { label: prioridade, color: corPrioridade },
+        fone: item.fone || '',
+        estrelas: item.estrelas || (prioridade === 'Alta' ? 5 : (prioridade === 'Média' ? 4 : 3)),
+        cidade: `${esc(item.cidade || '—')}${item.uf ? '/' + esc(item.uf) : ''}`,
+        acoes: `
+          <div style="display:inline-flex;gap:4px">
+            ${subAba === 'clientes' ? `
+              <button class="btn-icone" data-act="ver-cliente" data-id="${item.id}" title="Ficha do Cliente" style="padding:4px">${ico('doc', 13)}</button>
+            ` : ''}
+            <button class="btn-icone" data-act="editar-cad" data-t="${singularTipo}" data-id="${item.id}" title="Editar" style="padding:4px">${ico('edit', 13)}</button>
+            <button class="btn-icone-perigo" data-act="excluir-cad" data-t="${singularTipo}" data-id="${item.id}" title="Excluir" style="padding:4px">${ico('lixo', 13)}</button>
+          </div>
+        `
+      };
+    };
+
+    const columns = [
+      { key: 'contato', label: 'Contato', width: '220px' },
+      { key: 'tipo', label: 'Tipo', type: 'status', width: '130px', aggregator: 'distribution' },
+      { key: 'empresa', label: 'Empresa / Frota', type: 'chip', width: '170px' },
+      { key: 'veiculos', label: 'Veículos / OS', type: 'money', width: '120px', aggregator: 'sum', render: it => `<span class="monday-chip monday-chip-amber">🚛 ${it.veiculos} veíc.</span>` },
+      { key: 'cargo', label: 'Cargo / Função', width: '140px' },
+      { key: 'prioridade', label: 'Prioridade', type: 'status', width: '110px' },
+      { key: 'fone', label: 'Telefone / WhatsApp', type: 'phone', width: '170px', flag: '🇧🇷' },
+      { key: 'estrelas', label: 'Qualidade / Rating', type: 'stars', width: '130px', aggregator: 'avg' },
+      { key: 'acoes', label: 'Ações', type: 'actions', width: '100px', align: 'center' }
+    ];
+
+    const groups = [
+      {
+        id: 'ativos',
+        title: 'Active Contacts (Contatos Ativos)',
+        color: '#00c875',
+        items: contatosAtivos.map(mapItemToMonday),
+        addLabel: '+ Adicionar Contato',
+        onAdd: `abrirFormCad('${singularTipo}')`
+      },
+      {
+        id: 'inativos',
+        title: 'Inactive Contacts (Inativos / Pendentes)',
+        color: '#e2445c',
+        items: contatosInativos.map(mapItemToMonday),
+        addLabel: '+ Adicionar Inativo',
+        onAdd: `abrirFormCad('${singularTipo}')`
+      }
+    ];
+
+    const boardHtml = fnBoard({
+      title: subAba === 'clientes' ? 'Contacts (Clientes & Frotas)' : (subAba === 'fornecedores' ? 'Fornecedores' : 'Transportadores'),
+      badge: `${listaAtual.length} Registros`,
+      views: [
+        { id: 'table', label: 'Main Table', icon: '📋' },
+        { id: 'cards', label: 'Cards', icon: '🗂️' }
+      ],
+      activeView: 'table',
+      newButtonLabel: labelNovo,
+      onNewItem: `abrirFormCad('${singularTipo}')`,
+      onSearch: `(function(v){S.ui.buscaCad=v;if(typeof render==='function')render();})`,
+      searchValue: esc(S.ui.buscaCad || ''),
+      groups: groups,
+      columns: columns
+    });
+
+    return `
+      ${renderSubnavCadastros(subAba)}
+      ${boardHtml}
+    `;
   }
 
   return `
