@@ -22,7 +22,7 @@ test('servidor real: autenticação, concorrência, backup, upload e persistênc
     child.stdout.on('data',d=>{logs+=d;}); child.stderr.on('data',d=>{logs+=d;});
     for (let i=0;i<500;i++) {
       if (child.exitCode !== null) throw Error(logs);
-      try { const res=await fetch(`http://127.0.0.1:${port}/`); if(res.status===401) return; } catch (_) {}
+      try { const res=await fetch(`http://127.0.0.1:${port}/`); if(res.status===200 || res.status===401) return; } catch (_) {}
       await new Promise(r=>setTimeout(r,100));
     }
     throw Error('Servidor não iniciou: '+logs);

@@ -31,7 +31,9 @@ test('Fase A: Validação do Core Loop, White-Label e Persistência Real', { tim
         API_KEY: 'test-fase-a-key',
         GEMINI_API_KEY: '',
         DISABLE_INTEGRATIONS: 'true',
-        DB_PATH: path.join(temp, 'test.db')
+        DB_PATH: path.join(temp, 'test.db'),
+        DATA_DIR: temp,
+        DATA_FILE: path.join(temp, 'database.json')
       }
     });
 
@@ -235,7 +237,7 @@ test('Fase A: Validação do Core Loop, White-Label e Persistência Real', { tim
   assert.equal(delData.count, 1);
 
   // 10. Persistência Snapshot data/database.json
-  const dataFile = path.resolve(root, 'data/database.json');
+  const dataFile = path.join(temp, 'database.json');
   assert.ok(fs.existsSync(dataFile), 'Arquivo data/database.json deve ter sido criado');
   const snap = JSON.parse(fs.readFileSync(dataFile, 'utf8'));
   assert.ok(snap.tenant_config);

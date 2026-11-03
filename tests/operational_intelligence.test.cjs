@@ -803,7 +803,7 @@ test('20. Servidor Real E2E: REST API, permissões, isolamento multi-tenant e sc
       if (child.exitCode !== null) throw Error('Falha ao iniciar servidor de teste');
       try {
         const res = await fetch(`http://127.0.0.1:${port}/`);
-        if (res.status === 401) return;
+        if (res.status === 200 || res.status === 401) return;
       } catch (_) {}
       await new Promise(r => setTimeout(r, 100));
     }
