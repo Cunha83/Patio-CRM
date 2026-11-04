@@ -635,10 +635,10 @@ function viewConfiguracoes() {
         <div class="mini" style="margin-bottom:10px">Controle o banner de ativação e carregue ou limpe os dados de demonstração.</div>
         <div style="display:flex;gap:10px;flex-wrap:wrap">
           <button class="btn btn-neutro btn-pequeno" type="button" data-act="${cfg.onboardingConcluido ? 'reabrir-onboarding' : 'concluir-onboarding'}">
-            ${cfg.onboardingConcluido ? 'Reabrir Checklist de Onboarding' : 'Marcar Onboarding Concluído'}
+            ${cfg.onboardingConcluido ? 'Reabrir Guia de Implantação' : 'Marcar Guia Concluído'}
           </button>
-          <button class="btn btn-neutro btn-pequeno" type="button" data-act="carregar-demo">Carregar Dados Demo</button>
-          <button class="btn btn-perigo btn-pequeno" type="button" data-act="remover-demo">Remover Dados Demo</button>
+          <button class="btn btn-neutro btn-pequeno" type="button" data-act="carregar-demo">Carregar Dados de Exemplo</button>
+          <button class="btn btn-perigo btn-pequeno" type="button" data-act="remover-demo">Remover Dados de Exemplo</button>
         </div>
       </div>
 

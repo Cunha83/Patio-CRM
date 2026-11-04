@@ -257,7 +257,7 @@
    */
   function renderMondayBoard(options) {
     const {
-      title = 'Board',
+      title = 'Quadro de Serviços',
       badge = '',
       views = [{ id: 'table', label: 'Tabela Principal', icon: '📋' }],
       activeView = 'table',
@@ -315,7 +315,7 @@
 
             <div class="monday-search-box">
               <span>🔍</span>
-              <input type="text" placeholder="Buscar no board..." value="${searchValue}" 
+              <input type="text" placeholder="Pesquisar ordens ou veículos..." value="${searchValue}" 
                      oninput="${onSearch ? `${onSearch}(this.value)` : ''}">
             </div>
 
@@ -339,12 +339,6 @@
     `;
   }
 
-  return {
-    renderMondayBoard,
-    toggleMondayGroup,
-    renderCell,
-    renderGroup,
-    renderFooter
-  };
+  return { renderMondayBoard, toggleMondayGroup, renderCell, renderGroup, renderFooter };
 }));
 

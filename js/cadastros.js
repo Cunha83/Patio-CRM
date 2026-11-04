@@ -334,14 +334,14 @@ function viewContatosUnificados(abaAtiva) {
       { key: 'cargo', label: 'Cargo / Função', width: '140px' },
       { key: 'prioridade', label: 'Prioridade', type: 'status', width: '110px' },
       { key: 'fone', label: 'Telefone / WhatsApp', type: 'phone', width: '170px', flag: '🇧🇷' },
-      { key: 'estrelas', label: 'Qualidade / Rating', type: 'stars', width: '130px', aggregator: 'avg' },
+      { key: 'estrelas', label: 'Avaliação', type: 'stars', width: '130px', aggregator: 'avg' },
       { key: 'acoes', label: 'Ações', type: 'actions', width: '100px', align: 'center' }
     ];
 
     const groups = [
       {
         id: 'ativos',
-        title: 'Active Contacts (Contatos Ativos)',
+        title: 'Contatos Ativos',
         color: '#00c875',
         items: contatosAtivos.map(mapItemToMonday),
         addLabel: '+ Adicionar Contato',
@@ -349,7 +349,7 @@ function viewContatosUnificados(abaAtiva) {
       },
       {
         id: 'inativos',
-        title: 'Inactive Contacts (Inativos / Pendentes)',
+        title: 'Inativos / Pendentes',
         color: '#e2445c',
         items: contatosInativos.map(mapItemToMonday),
         addLabel: '+ Adicionar Inativo',
@@ -358,11 +358,11 @@ function viewContatosUnificados(abaAtiva) {
     ];
 
     const boardHtml = fnBoard({
-      title: subAba === 'clientes' ? 'Contacts (Clientes & Frotas)' : (subAba === 'fornecedores' ? 'Fornecedores' : 'Transportadores'),
+      title: subAba === 'clientes' ? 'Clientes & Frotistas' : (subAba === 'fornecedores' ? 'Fornecedores' : 'Transportadores'),
       badge: `${listaAtual.length} Registros`,
       views: [
-        { id: 'table', label: 'Main Table', icon: '📋' },
-        { id: 'cards', label: 'Cards', icon: '🗂️' }
+        { id: 'table', label: 'Tabela Completa', icon: '📋' },
+        { id: 'cards', label: 'Cartões', icon: '🗂️' }
       ],
       activeView: 'table',
       newButtonLabel: labelNovo,

@@ -255,7 +255,7 @@ function viewPatio() {
       { key: 'cliente', label: 'Cliente / Frota', width: '180px' },
       { key: 'box', label: 'Box Alocado', width: '140px' },
       { key: 'mecanico', label: 'Mecânico', width: '140px' },
-      { key: 'status', label: 'Status Monday', type: 'status', width: '160px', aggregator: 'distribution' },
+      { key: 'status', label: 'Situação da OS', type: 'status', width: '160px', aggregator: 'distribution' },
       { key: 'checklist', label: 'Vistoria Técnica', width: '130px' },
       { key: 'total', label: 'Total Estimado', type: 'money', width: '130px', aggregator: 'sum' },
       { key: 'whatsapp', label: 'Contato Frotista', type: 'phone', width: '160px', flag: '🇧🇷' },
@@ -300,7 +300,7 @@ function viewPatio() {
       title: 'Pátio Operacional & Boxes de Oficina',
       badge: `${filtradas.length} Veículos no Pátio`,
       views: [
-        { id: 'monday', label: 'Tabela Monday', icon: '📋' },
+        { id: 'monday', label: 'Quadro de Serviços', icon: '📋' },
         { id: 'boxes', label: 'Boxes Físicos', icon: '🏗️' }
       ],
       activeView: visao,

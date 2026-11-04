@@ -1,7 +1,7 @@
 /* =====================================================================
-   PÁTIO CRM — CENTRO DE AUTOMAÇÕES MONDAY.COM (WORKFLOW RECIPES)
-   Inspirado no modal 'Centre des automatisations' com receitas operacionais
-   para oficina pesada (WhatsApp, alertas de gargalos, vistorias e peças).
+   PÁTIO CRM — CENTRAL DE AUTOMAÇÕES DA OFICINA
+   Gatilhos operacionais para oficina pesada (WhatsApp, alertas de
+   gargalos nos boxes, vistorias técnicas e requisição de peças).
 ===================================================================== */
 
 (function (root, factory) {
@@ -152,7 +152,7 @@
             <div class="monday-modal-sidebar">
               <button class="monday-cat-btn ${categoriaAtiva === 'todas' ? 'active' : ''}" data-cat="todas" onclick="filtrarCategoriaAutomacao('todas')">
                 <span>📋</span>
-                <span>Todas as Receitas</span>
+                <span>Todas as Regras</span>
               </button>
               <button class="monday-cat-btn ${categoriaAtiva === 'whatsapp' ? 'active' : ''}" data-cat="whatsapp" onclick="filtrarCategoriaAutomacao('whatsapp')">
                 <span>💬</span>
@@ -164,7 +164,7 @@
               </button>
               <button class="monday-cat-btn ${categoriaAtiva === 'status' ? 'active' : ''}" data-cat="status" onclick="filtrarCategoriaAutomacao('status')">
                 <span>🔄</span>
-                <span>Mudança de Status</span>
+                <span>Mudança de Situação</span>
               </button>
               <button class="monday-cat-btn ${categoriaAtiva === 'pecas' ? 'active' : ''}" data-cat="pecas" onclick="filtrarCategoriaAutomacao('pecas')">
                 <span>🔩</span>
@@ -172,9 +172,9 @@
               </button>
             </div>
 
-            <!-- Grid de Receitas -->
+            <!-- Grid de Regras -->
             <div class="monday-modal-recipes">
-              <!-- Banner Destaque Monday -->
+              <!-- Banner Destaque de Automação -->
               <div class="monday-featured-banner">
                 <div style="display:flex;align-items:center;gap:12px">
                   <span style="font-size:26px">🔔</span>
@@ -183,7 +183,7 @@
                     <div style="font-size:12.5px;color:#4b5563">Ao aprovar o checklist de freios e molas, gerar laudo e enviar instantaneamente ao WhatsApp do frotista.</div>
                   </div>
                 </div>
-                <button class="monday-btn-new" style="background:#4f46e5;font-size:12px;padding:6px 14px" onclick="if(typeof torrada==='function')torrada('⚡ Receita em destaque habilitada!');">
+                <button class="monday-btn-new" style="background:#4f46e5;font-size:12px;padding:6px 14px" onclick="if(typeof torrada==='function')torrada('⚡ Regra em destaque ativada!');">
                   Habilitar
                 </button>
               </div>

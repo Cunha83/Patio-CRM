@@ -422,7 +422,7 @@ function blocoVeronicaAnalista() {
       <div class="entre" style="border-bottom:1px solid var(--aco-150);padding-bottom:10px;margin-bottom:14px;flex-wrap:wrap;gap:10px">
         <div>
           <div style="font-weight:700;font-size:16px;color:var(--aco-900)">
-            📈 Previsão de Fluxo de Caixa (Forecast 7, 15 e 30 Dias)
+            📈 Previsão de Fluxo de Caixa (7, 15 e 30 Dias)
           </div>
           <div class="mini">Combina saldo de tesouraria, contas a receber/pagar e a <b>receita potencial das OSs em execução no pátio</b>.</div>
         </div>
@@ -1636,7 +1636,7 @@ function dashboardBiProdutividadeHtml() {
       <div class="entre" style="border-bottom:1px solid var(--aco-150);padding-bottom:10px;margin-bottom:14px;flex-wrap:wrap;gap:10px">
         <div>
           <div style="font-weight:700;font-size:16px;color:var(--aco-900);display:flex;align-items:center;gap:6px">
-            <span>📈</span> <b>Dashboard BI & Produtividade</b>
+            <span>📈</span> <b>Painel de Produtividade & Indicadores</b><!-- Dashboard BI & Produtividade -->
           </div>
           <div class="mini">Indicadores de desempenho operacional de boxes, ranking de mecânicos e provisão de comissões.</div>
         </div>

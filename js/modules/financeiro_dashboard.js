@@ -169,7 +169,7 @@ function blocoDashboardFin() {
           <div style="font-weight:700;font-size:14px;color:var(--aco-900)">⚖️ Gráfico 2 — Comparativo Receber x Pagar</div>
           <div class="mini">Títulos em aberto agrupados por prazo de vencimento</div>
         </div>
-        <span class="badge-periodo-atual">Aging de Contas</span>
+        <span class="badge-periodo-atual">Faixas de Vencimento</span>
       </div>
       <div class="chart-box-container">
         <canvas id="grafico-fin-rxp"></canvas>

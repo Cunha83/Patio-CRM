@@ -132,7 +132,7 @@ function renderTopo() {
   const badgeAtual = perfilBadges[role] || { label: 'Operador', cor: '#64748b' };
 
   const titulos = {
-    operacao: { tit: 'Dashboard Operacional em Tempo Real', icone: 'relogio', novo: 'nova-os', novoLabel: '+ Nova OS' },
+    operacao: { tit: 'Painel Operacional em Tempo Real', icone: 'relogio', novo: 'nova-os', novoLabel: '+ Nova OS' },
     patio: { tit: 'Pátio Operacional & Boxes', icone: 'patio', novo: 'nova-os', novoLabel: '+ Nova OS' },
     painel: { tit: 'Painel Inicial Executivo & KPIs', icone: 'painel', novo: 'nova-os', novoLabel: '+ Nova OS' },
     estoque: { tit: 'Catálogo de Produtos & Almoxarifado', icone: 'pecas', novo: 'novo-produto', novoLabel: '+ Novo Produto' },
@@ -162,7 +162,7 @@ function renderTopo() {
       <div>
         <div style="font-weight:700;font-size:14px;color:#fff;line-height:1.2;display:flex;align-items:center;gap:6px">
           <span>${esc(empresaNome)}</span>
-          ${(S._isDemo || (S.cfg && S.cfg.empresa && S.cfg.empresa.includes('Demonstração'))) ? '<span style="background:#eab308;color:#000;font-size:9.5px;font-weight:800;padding:1px 5px;border-radius:4px">DEMO</span>' : ''}
+          ${(S._isDemo || (S.cfg && S.cfg.empresa && S.cfg.empresa.includes('Demonstração'))) ? '<span style="background:#eab308;color:#000;font-size:9.5px;font-weight:800;padding:1px 5px;border-radius:4px">EXEMPLO</span>' : ''}
         </div>
         <div style="font-size:11px;color:#94a3b8">Sistema de Gestão de Veículos Pesados</div>
       </div>
@@ -182,7 +182,7 @@ function renderTopo() {
 
     <!-- Direita: Perfil do Usuário com Dropdown + Botão Rápido + Novo -->
     <div style="display:flex;align-items:center;gap:10px">
-      <!-- Botão Central de Automações Monday.com -->
+      <!-- Botão Central de Automações -->
       <button type="button" class="monday-btn-automations" onclick="abrirCentroAutomacoes()" style="height:32px;padding:4px 12px;font-size:12px;background:#ffffff;border:1px solid #d8b4fe;border-radius:6px;box-shadow:0 1px 2px rgba(0,0,0,0.1);display:inline-flex;align-items:center;gap:6px;cursor:pointer">
         <span>⚡</span>
         <span style="font-weight:700;color:var(--monday-purple, #a25ddc)">Automações</span>
@@ -530,7 +530,7 @@ if (typeof document !== 'undefined') {
 // Modal / Toast de Tutoriais do Módulo
 function abrirTutorialModulo(view) {
   const dicas = {
-    patio: 'Dica do Pátio: Arraste os cards entre as colunas para atualizar o status do box. Clique sobre o veículo para editar serviços e peças.',
+    patio: 'Dica do Pátio: Arraste os veículos entre as colunas para atualizar a situação do box. Clique sobre o veículo para editar serviços e peças.',
     vendas: 'Dica de Vendas: Utilize as abas de Vendas e Devoluções para separar faturamento e devoluções de balcão. O botão WhatsApp envia o link direto ao cliente.',
     compras: 'Dica de Compras: Arraste um arquivo XML da SEFAZ para importar o cabeçalho, duplicatas e dar entrada automática no estoque.',
     estoque: 'Dica de Almoxarifado: Controle estoque mínimo de molas e peças críticas. Itens com estoque zerado são sinalizados em vermelho.',
@@ -601,15 +601,15 @@ function renderOnboardingBanner() {
       <div style="display:flex;flex-direction:column;gap:6px;align-self:center">
         ${!temDemo ? `
           <button class="btn btn-neutro btn-pequeno" data-act="carregar-demo" style="white-space:nowrap">
-            ${ico('pecas', 14)} Carregar Dados Demo
+            ${ico('pecas', 14)} Carregar Dados de Exemplo
           </button>
         ` : `
           <button class="btn btn-perigo btn-pequeno" data-act="remover-demo" style="white-space:nowrap">
-            Remover Dados Demo
+            Remover Dados de Exemplo
           </button>
         `}
         <button class="btn btn-primario btn-pequeno" data-act="concluir-onboarding" style="white-space:nowrap">
-          Concluir Onboarding
+          Concluir Guia Inicial
         </button>
       </div>
     </div>

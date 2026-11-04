@@ -18,14 +18,14 @@ function viewFinanceiro() {
   const totalRec = fSoma(rec, c => c.valor);
   const totalPag = fSoma(pag, c => c.valor);
   const abas = [
-    ['dashboard', 'Dashboard Executivo 📊'],
+    ['dashboard', 'Painel Geral 📊'],
     ['analista', 'Verônica Analista 🤖'],
     ['receber', 'A Receber (' + rec.length + ')'],
     ['pagar', 'A Pagar (' + pag.length + ')'],
     ['caixa', 'Fluxo de Caixa'],
     ['dre', 'Resultado Gerencial de Caixa'],
     ['banco', 'Conciliação Bancária'],
-    ['recebimentos', 'Hub Pix, Boletos & Cartão 💳']
+    ['recebimentos', 'Cobrança Pix, Boletos & Cartão 💳']
   ];
   const a = S.ui?.abaFin || 'dashboard';
 

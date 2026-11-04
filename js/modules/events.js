@@ -80,10 +80,10 @@ document.addEventListener('click', e => {
             torrar('Dados de demonstração carregados!', 'sucesso');
             setTimeout(() => location.reload(), 500);
           } else {
-            torrar(d.erro || 'Erro ao carregar dados demo.', 'erro');
+            torrar(d.erro || 'Erro ao carregar dados de exemplo.', 'erro');
           }
         })
-        .catch(() => torrar('Erro de comunicação ao carregar dados demo.', 'erro'));
+        .catch(() => torrar('Erro de comunicação ao carregar dados de exemplo.', 'erro'));
       break;
     }
     case 'remover-demo': {
@@ -96,10 +96,10 @@ document.addEventListener('click', e => {
               torrar('Dados de demonstração removidos!', 'sucesso');
               setTimeout(() => location.reload(), 500);
             } else {
-              torrar(d.erro || 'Erro ao remover dados demo.', 'erro');
+              torrar(d.erro || 'Erro ao remover dados de exemplo.', 'erro');
             }
           })
-          .catch(() => torrar('Erro de comunicação ao remover dados demo.', 'erro'));
+          .catch(() => torrar('Erro de comunicação ao remover dados de exemplo.', 'erro'));
       });
       break;
     }
@@ -108,7 +108,7 @@ document.addEventListener('click', e => {
       S.cfg.onboardingConcluido = true;
       salvar();
       render();
-      torrar('Onboarding concluído! Bom trabalho na oficina.', 'sucesso');
+      torrar('Guia de implantação concluído! Bom trabalho na oficina.', 'sucesso');
       break;
     }
     case 'reabrir-onboarding': {
