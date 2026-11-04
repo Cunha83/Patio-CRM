@@ -94,3 +94,4 @@ Qualquer alteração neste repositório DEVE ser validada pelos Quality Gates au
 - **Evidência antes de afirmações:** Nunca declare uma tarefa concluída ou um teste passando sem executar o comando e checar o exit code e logs reais.
 - **Princípio da Menor Alteração Suficiente:** Não crie abstrações desnecessárias, novas bibliotecas não autorizadas ou arquivos fora do escopo.
 - **Preservação de Docstrings e Comentários:** Preserve comentários técnicos e contratos públicos existentes.
+

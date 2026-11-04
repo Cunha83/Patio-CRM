@@ -21,3 +21,4 @@ Consulte o documento mestre de arquitetura e convenções:
    node --require ./scripts/test-preload.cjs --test tests/clean_install_manifest.test.cjs
    ```
 5. **Suíte Geral:** `npm test` deve sempre retornar Exit Code 0 com 100% dos testes aprovados.
+

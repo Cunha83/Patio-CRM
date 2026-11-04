@@ -15,6 +15,7 @@ router.use('/motion', express.static(path.join(ROOT_DIR, 'public', 'motion'), { 
 
 /* ── Servir Arquivos Estáticos do Frontend ────────────────── */
 router.use('/js', express.static(path.join(ROOT_DIR, 'js'), { dotfiles: 'deny' }));
+router.use('/css', express.static(path.join(ROOT_DIR, 'css'), { dotfiles: 'deny' }));
 router.use('/uploads', (req,res,next)=>{
   const tenant=req.securityContext?.tenantId;
   let requested;try{requested=decodeURIComponent(req.path);}catch(_){return res.status(400).end();}

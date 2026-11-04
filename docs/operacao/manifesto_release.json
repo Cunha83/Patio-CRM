@@ -2,9 +2,9 @@
   "projeto": "Patio-CRM",
   "versao": "1.0.1",
   "fase": "Fase 3 — Piloto Controlado em Ambiente Operacional",
-  "dataGeracao": "2026-11-03T19:15:31.323Z",
+  "dataGeracao": "2026-11-04T13:55:06.809Z",
   "git": {
-    "commit": "25944dbc140df54adf6161b1960140db45fdff0e",
+    "commit": "401b0c265bb51210cb8a09e78a0756bd8aa43fb5",
     "branch": "main"
   },
   "ambienteExecucao": {
@@ -37,7 +37,7 @@
     "css/voice-drawer.css": "e23f1da831b5bb4e30d1f4c2ba888387b7dfe1bb15712b94d779835ff0c889bd",
     "css/voice-modal.css": "8d39b98ce292b541cbe89e5662e9c30f4513789e3ba75d7a354f681bac5f3b96",
     "db.js": "c7dcf6aea0e5d593a3c74e70eaa88ff896b8c6b48fbdb08ceb7276360e889178",
-    "index.html": "eb34955e8d4a8cd1e43b0c21a50c76c468a123d8b8e54c42092e8c900854d6e6",
+    "index.html": "0c39fcc423dfa9c51f1360b7e03841db4c8f345477e35a1445a3ffc5549d3e89",
     "js/.eslintrc.json": "836f600602e4b1e54d0800bd6f6c28e9252532c10c0893790bfa63688aa473b4",
     "js/app.js": "f2fe16e9965e66e70cbcc3186397afc3198670f9deeb7e33758aed423b9800cf",
     "js/cadastros.js": "b70578a7e89be725a4a879677f62dbd2b29326ebd8a8eb0cffe7c263b6a1da5b",
@@ -76,7 +76,7 @@
     "js/vendas.js": "b7fdfa971b0464e2b465e5213b1515c07af826aefd36859a62377be6e22efe29",
     "js/voz.js": "1b4d4e727388f63b74a767718c9dadbd0430a215d3938caa4b8eeddc00863a50",
     "js/whatsapp.js": "ff8ce5c3832efadd7d52f5f1fa8887d2a495134d36d067a83e3688d8401efdc9",
-    "lib/auth/context.js": "361435efcb669b96ca27838377593674ed69214ae8604a30be2657646558ca79",
+    "lib/auth/context.js": "66c4814e1868a31f34fb918a25c337ee9d0d8aea47a5cee6051b002ba49860f1",
     "lib/auth/identity.js": "23bf513e3e7c882cac45d1bc7a1eb7090daaddf66e341b348d97c87230309b14",
     "lib/auth/tokenService.js": "0f33a694875d9303881f4cbded526151b078f6dea7fa476611dd4ad27fdfe97b",
     "lib/auth/userRepository.js": "728a877faa538ccbca67d3fbd3009ceec8ed231b1d4f4d3acfc828c12713b168",
@@ -127,7 +127,7 @@
     "routes/pricing.routes.js": "bb1ade5624ac17399af8db0e474c7b9ec6b46136eb052921b8b7a273a05f42db",
     "routes/quotation.routes.js": "a383f9ca4538c094f8963b4caebfe7a20b2b1e5fa4c85e9f71e3ae307f97b1db",
     "routes/state.routes.js": "2d986552f00c669a66bf66b63d677e3affa946700cb54d02c6f5500852349e9b",
-    "routes/static.routes.js": "80a3da65bc8afd991014bf7759f254894ea07af3abfbf767acef87db9308bf5c",
+    "routes/static.routes.js": "d00d1cb807f4a7e165cd75ef6fb537261384e857f466c05d413ef875dcc12257",
     "routes/team.routes.js": "15f035ceb4d9d0f81ce8a54fbb393c14c3e3fa455884a492c4d355e6b35623fb",
     "routes/voice.routes.js": "ede4da16ee269340fe755b9ddc240697130793c8c709983980838b83d964afd7",
     "routes/whatsapp.routes.js": "b2059fc48d326ca195b6396b58c0bc679b4f42fddf40063b2969982da7557a13",
