@@ -87,6 +87,26 @@ Nenhum módulo individual do sistema deve ultrapassar o limite de **350 linhas**
 - **Agregador Mestre:** `style.css` (< 30 linhas via `@import`).
 - **Folhas Temáticas:** `css/variables.css`, `css/base-layout.css`, `css/components.css`, `css/voice-drawer.css`, `css/voice-modal.css`, `css/financeiro.css`, `css/dashboard-operacional.css`, `css/patio-monday.css`, `css/patio-monday-cells.css`, `css/enterprise-nav.css`, `css/automations-modal.css`, `css/responsive.css`.
 
+### I. Almoxarifado e Estoque (`js/` e `js/modules/`)
+- **Fachada Central:** `js/estoque.js` (< 50 linhas) — sincronização e binds em `window`/`globalThis`.
+- **Submódulos:** `js/modules/`
+  - `estoque_catalogo_ui.js`: Catálogo de peças e serviços pesados, saldo disponível/físico/reservado, filtros e KPIs.
+  - `estoque_movimentacoes.js`: Ajustes manuais de saldo, necessidades de compra, cotações, pedidos e fichas cadastrais de peças.
+  - `estoque_ocr_notas.js`: Importação e parsing de XML de NF-e, lançamento em contas a pagar e leitor OCR inteligente de Danfe.
+
+### J. Vendas Balcão e PDV (`js/` e `js/modules/`)
+- **Fachada e Listagem Central:** `js/vendas.js` (< 250 linhas) — tabela densa de vendas, filtros de situação, navegador de períodos e KPIs.
+- **Submódulos:** `js/modules/`
+  - `vendas_pdv_form.js`: Modal de nova venda, carrinho dinâmico de peças e serviços, dedução de estoque e geração de contas a receber.
+  - `vendas_lote_acoes.js`: Detalhes completos da venda, cancelamento, faturamento de vendas em espera, espelho de impressão, envio por WhatsApp e ações em lote.
+
+### K. Controller Principal e Ciclo de Vida SPA (`js/` e `js/modules/`)
+- **Controller Orquestrador:** `js/app.js` (< 200 linhas) — inicialização `boot()`, roteamento central `render()` e painel inicial executivo com KPIs e DRE.
+- **Submódulos:** `js/modules/`
+  - `app_modals_sheets.js`: Gerenciador de folhas laterais (`abrirFolha`, `fecharFolha`), modais genéricos e notificações toast.
+  - `app_sync_auth.js`: Verificação de sessão/token JWT, headers HTTP seguros e polling de sincronização com o backend.
+  - `app_onboarding_tour.js`: Parâmetros da oficina, logotipo, identidade visual, assistente de voz, briefings executivos, manutenção preventiva e gráficos Chart.js.
+
 ---
 
 ## 2. Quality Gates e Harness de Verificação Ativos
@@ -97,7 +117,7 @@ Qualquer alteração neste repositório DEVE ser validada pelos Quality Gates au
    ```bash
    node --test tests/modular_file_size_gate.test.cjs
    ```
-   Valida 8 categorias arquiteturais: fachadas e submódulos em `services/whatsapp/`, `services/financial/`, `services/voice/`, `js/modules/financeiro_*.js` (+ `analista_*.js`), `css/*.css`, `js/modules/cadastros_fiscal*.js` (+ `plano_contas*.js`) e `js/modules/events*.js` — todos estritamente $\le 350$ linhas.
+   Valida 10 categorias arquiteturais: fachadas e submódulos em `services/whatsapp/`, `services/financial/`, `services/voice/`, `js/modules/financeiro_*.js` (+ `analista_*.js`), `css/*.css`, `js/modules/cadastros_fiscal*.js` (+ `plano_contas*.js`), `js/modules/events*.js`, `estoque*.js`, `vendas*.js` e `app*.js` — todos estritamente $\le 350$ linhas.
 
 2. **Gate de Auditoria de Ações e Zero Cliques Mortos:**
    ```bash

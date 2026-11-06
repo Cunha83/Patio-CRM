@@ -191,5 +191,58 @@ test('Quality Gate de Tamanho Modular de Arquivo (Teto <= 350 Linhas)', async (t
       );
     }
   });
+
+  await t.test('8. Módulos e fachada de Estoque e Almoxarifado (estoque.js e estoque_*.js)', () => {
+    const estoqueFiles = [
+      path.join(rootDir, 'js', 'estoque.js'),
+      path.join(rootDir, 'js', 'modules', 'estoque_catalogo_ui.js'),
+      path.join(rootDir, 'js', 'modules', 'estoque_movimentacoes.js'),
+      path.join(rootDir, 'js', 'modules', 'estoque_ocr_notas.js')
+    ];
+
+    for (const file of estoqueFiles) {
+      assert.ok(fs.existsSync(file), `Arquivo de estoque ${path.basename(file)} deve existir`);
+      const lines = countLines(file);
+      assert.ok(
+        lines <= MAX_LINES,
+        `Arquivo ${path.basename(file)} tem ${lines} linhas, excedendo o teto de ${MAX_LINES}`
+      );
+    }
+  });
+
+  await t.test('9. Módulos e fachada de Vendas e PDV Balcão (vendas.js e vendas_*.js)', () => {
+    const vendasFiles = [
+      path.join(rootDir, 'js', 'vendas.js'),
+      path.join(rootDir, 'js', 'modules', 'vendas_pdv_form.js'),
+      path.join(rootDir, 'js', 'modules', 'vendas_lote_acoes.js')
+    ];
+
+    for (const file of vendasFiles) {
+      assert.ok(fs.existsSync(file), `Arquivo de vendas ${path.basename(file)} deve existir`);
+      const lines = countLines(file);
+      assert.ok(
+        lines <= MAX_LINES,
+        `Arquivo ${path.basename(file)} tem ${lines} linhas, excedendo o teto de ${MAX_LINES}`
+      );
+    }
+  });
+
+  await t.test('10. Módulos e controller principal SPA (app.js e app_*.js)', () => {
+    const appFiles = [
+      path.join(rootDir, 'js', 'app.js'),
+      path.join(rootDir, 'js', 'modules', 'app_modals_sheets.js'),
+      path.join(rootDir, 'js', 'modules', 'app_sync_auth.js'),
+      path.join(rootDir, 'js', 'modules', 'app_onboarding_tour.js')
+    ];
+
+    for (const file of appFiles) {
+      assert.ok(fs.existsSync(file), `Arquivo do controller ${path.basename(file)} deve existir`);
+      const lines = countLines(file);
+      assert.ok(
+        lines <= MAX_LINES,
+        `Arquivo ${path.basename(file)} tem ${lines} linhas, excedendo o teto de ${MAX_LINES}`
+      );
+    }
+  });
 });
 
