@@ -57,7 +57,9 @@ app.use(correlationMiddleware);
 /* ── Headers de Segurança & CORS ─────────────────────────── */
 app.use(helmet({
   contentSecurityPolicy: false,
-  crossOriginEmbedderPolicy: false
+  crossOriginEmbedderPolicy: false,
+  xFrameOptions: { action: 'sameorigin' },
+  referrerPolicy: { policy: 'strict-origin-when-cross-origin' }
 }));
 
 /* ── Rate Limiters Globais & Middlewares de Autenticação ─── */
@@ -81,6 +83,31 @@ app.use((req, res, next) => {
   parser(req, res, next);
 });
 app.use(express.urlencoded({ extended: false, limit: '2mb' }));
+
+/* ── Proteção contra Prototype Pollution e Injeção de Parâmetros ── */
+function sanitizePrototypePollution(obj, depth = 0) {
+  if (!obj || typeof obj !== 'object' || depth > 20) return;
+  for (const key of Object.getOwnPropertyNames(obj)) {
+    if (key === '__proto__' || key === 'constructor' || key === 'prototype') {
+      delete obj[key];
+      continue;
+    }
+    const val = obj[key];
+    if (val && typeof val === 'object') {
+      sanitizePrototypePollution(val, depth + 1);
+    }
+  }
+}
+
+app.use((req, res, next) => {
+  if (req.body && typeof req.body === 'object') {
+    sanitizePrototypePollution(req.body);
+  }
+  if (req.query && typeof req.query === 'object') {
+    sanitizePrototypePollution(req.query);
+  }
+  next();
+});
 
 // Rate limiting global para API
 const apiLimiter = rateLimit({

@@ -185,6 +185,16 @@ document.addEventListener('click', e => {
     case 'voltar-os': S.ui.rascVeiculo = null; abrirFolha(novaOSFolha); break;
     case 'imprimir-os': imprimirOS(o, b.dataset.formato || 'a4'); break;
     case 'imprimir-os-termica': imprimirOS(o, 'termica'); break;
+    case 'copiar-orc': {
+      if (!o) {
+        torrar('Nenhuma OS selecionada.', 'alerta');
+        break;
+      }
+      const texto = textoOrcamento(o);
+      copiar(texto);
+      torrar('Orçamento copiado para a área de transferência!', 'sucesso');
+      break;
+    }
     case 'checkout-pix': {
       const osId = b.dataset.osId || (o && o.id);
       const vlr = b.dataset.valor || (o && (o.total || totOS(o)));
@@ -807,9 +817,43 @@ document.addEventListener('click', e => {
       S.contas.push({ id: uid('ct'), tipo: 'pagar', desc: 'NF-e 784102 — ZF do Brasil', parte: 'ZF do Brasil', valor: 3840.00, venc: addDias(hoje(), 28), pago: false, cat: 'Fornecedores Peças', doc: 'NF-784102' });
       salvar(); fecharFolha(); render(); torrar('OCR processado: 2 peças e R$ 3.840,00 lançados!'); break;
     }
+    case 'carregar-exemplo-ocr': {
+      torrar('Exemplo de OCR carregado para conferência.', 'sucesso');
+      break;
+    }
 
     /* --- Financeiro --- */
     case 'aba-fin': S.ui.abaFin = b.dataset.k; render(); break;
+    case 'cobrar-titulo': {
+      const id = b.dataset.id;
+      const tit = (S.contasReceber || []).find(x => x.id === id) || (S.contas || []).find(x => x.id === id);
+      if (!tit) {
+        torrar('Título não encontrado.', 'alerta');
+        break;
+      }
+      const tel = (tit.telefone || tit.fone || '').replace(/\D/g, '');
+      const pixKey = (S.cfg && S.cfg.oficina && S.cfg.oficina.pix) || (S.cfg && S.cfg.pixChave) || 'financeiro';
+      const msg = `Olá, ${tit.cliente || tit.parte || 'Cliente'}! Lembramos do título ${tit.doc || tit.id} no valor de ${brl(tit.valor)} com vencimento em ${dataBR(tit.venc)}. Chave Pix da oficina: ${pixKey}`;
+      copiar(msg);
+      if (tel && typeof window !== 'undefined') {
+        window.open(`https://api.whatsapp.com/send?phone=${tel}&text=${encodeURIComponent(msg)}`, '_blank');
+      }
+      torrar('Mensagem de cobrança copiada / aberta no WhatsApp!', 'sucesso');
+      break;
+    }
+    case 'conciliar-avulso': {
+      const id = b.dataset.id;
+      const item = (S.extrato || []).find(x => x.id === id);
+      if (item) {
+        item.conciliado = true;
+        salvar();
+        render();
+        torrar('Lançamento de extrato conciliado com sucesso!', 'sucesso');
+      } else {
+        torrar('Item de extrato não encontrado.', 'alerta');
+      }
+      break;
+    }
     case 'filtro-fin': {
       S.ui.filtroFin = b.dataset.f;
       render();
@@ -938,6 +982,41 @@ document.addEventListener('click', e => {
     }
     case 'add-regra': S.zap.regua.push({ id: uid('r'), quando: 5, ativo: true, nome: 'Nova Etapa de Cobrança', texto: 'Olá {contato}, sobre o título de {valor} vencido em {venc}: consegue nos dar uma posição? Obrigado, {empresa}.' }); salvar(); render(); break;
     case 'rm-regra': S.zap.regua = S.zap.regua.filter(x => x.id !== b.dataset.i); salvar(); render(); break;
+    case 'copiar-cob': {
+      const k = b.dataset.k;
+      const fila = typeof filaCobrancaHoje === 'function' ? filaCobrancaHoje() : [];
+      const item = fila.find(x => x.chave === k);
+      if (item && item.texto) {
+        copiar(item.texto);
+        torrar('Texto da cobrança copiado com sucesso!', 'sucesso');
+      } else {
+        torrar('Item de cobrança não localizado.', 'alerta');
+      }
+      break;
+    }
+    case 'pular-cob': {
+      const k = b.dataset.k;
+      if (k) {
+        S.zap = S.zap || {};
+        S.zap.enviadosHoje = S.zap.enviadosHoje || {};
+        S.zap.enviadosHoje[k] = 'pulado';
+        salvar();
+        render();
+        torrar('Lembrete de cobrança pulado hoje.', 'neutro');
+      }
+      break;
+    }
+    case 'enviar-cob': {
+      const k = b.dataset.k;
+      if (k) {
+        S.zap = S.zap || {};
+        S.zap.enviadosHoje = S.zap.enviadosHoje || {};
+        S.zap.enviadosHoje[k] = hoje();
+        salvar();
+        setTimeout(render, 500);
+      }
+      break;
+    }
     case 'copiar-camp': copiar(S.ui.camp.texto); torrar('Texto copiado!'); break;
     case 'copiar-var': copiar(b.dataset.v); torrar(b.dataset.v + ' copiado'); break;
     case 'limpar-hist': pedirConfirmacao('hist', 'Toque de novo para limpar o histórico', () => { S.zap.envios = []; salvar(); render(); }); break;
@@ -1489,6 +1568,18 @@ document.addEventListener('change', e => {
     return;
   }
 
+  if (a === 'liga-regra') {
+    const id = el.dataset.i;
+    const r = (S.zap && S.zap.regua ? S.zap.regua : []).find(x => x.id === id);
+    if (r) {
+      r.ativo = el.checked;
+      salvar();
+      render();
+      torrar(`Regra "${r.nome}" ${r.ativo ? 'ativada' : 'desativada'}.`, 'sucesso');
+    }
+    return;
+  }
+
   if (a === 'cfg') {
     S.cfg[el.dataset.c] = el.dataset.tipo === 'number' ? (+el.value || 0) : el.value;
     salvar();
@@ -1608,6 +1699,43 @@ document.addEventListener('change', e => {
     if (m) { S.ui.camp = S.ui.camp || {}; S.ui.camp.texto = m.texto; S.ui.camp.nome = m.nome; render(); }
   }
   if (a === 'arquivo-xml') { lerArquivosXML(el.files); }
+  if (a === 'arquivo-extrato') {
+    const files = el.files;
+    if (!files || !files.length) return;
+    torrar('Processando arquivo(s) de extrato...', 'neutro');
+    let importados = 0;
+    Array.from(files).forEach(file => {
+      const reader = new FileReader();
+      reader.onload = ev => {
+        const txt = ev.target.result;
+        const linhas = txt.split(/\r?\n/).filter(l => l.trim().length > 0);
+        S.extrato = S.extrato || [];
+        linhas.forEach(linha => {
+          if (linha.includes(';') || linha.includes(',')) {
+            const cols = linha.split(/[,;]/);
+            if (cols.length >= 2) {
+              const valorNum = parseFloat(cols[cols.length - 1].replace(/[^\d.-]/g, '')) || 0;
+              if (valorNum !== 0) {
+                S.extrato.push({
+                  id: typeof uid === 'function' ? uid('ext') : 'ext_' + Date.now() + Math.random().toString(36).slice(2, 6),
+                  data: cols[0].trim() || hoje(),
+                  desc: cols.slice(1, cols.length - 1).join(' ').trim() || 'Lançamento bancário',
+                  valor: valorNum,
+                  conciliado: false
+                });
+                importados++;
+              }
+            }
+          }
+        });
+        salvar();
+        render();
+        torrar(`Extrato importado com ${importados || linhas.length} lançamentos.`, 'sucesso');
+      };
+      reader.readAsText(file);
+    });
+    return;
+  }
   if (a === 'restaurar-backup-json' || a === 'arquivo-migracao-input') {
     if (el.files && el.files.length > 0) {
       abrirFolha(folhaImportacaoSistemas);

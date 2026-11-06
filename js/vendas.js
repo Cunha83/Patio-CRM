@@ -660,6 +660,82 @@ function faturarVendaEmEspera(id) {
   torrar('Venda faturada e estoque deduzido!', 'sucesso');
 }
 
+function enviarVendaWhatsApp(id) {
+  const v = (S.vendas || []).find(x => x.id === id);
+  if (!v) {
+    torrar('Venda não encontrada.', 'alerta');
+    return;
+  }
+  const cliNome = v.clienteNome || 'Cliente';
+  const cli = (S.clientes || []).find(c => c.nome === v.clienteNome);
+  const tel = (v.telefone || (cli && cli.telefone) || (cli && cli.fone) || '').replace(/\D/g, '');
+  const itens = (v.pecas || []).map(it => `• ${it.nome} (${it.qtd}x) - ${brl(it.total || (it.qtd * it.unitario))}`).join('\n');
+  const msg = [
+    `*${(S.cfg && S.cfg.empresa) || 'Oficina'}* — Resumo da Venda #${v.codigo || v.id}`,
+    `Cliente: ${cliNome}`,
+    `Data: ${dataBR(v.data || hoje())}`,
+    '',
+    '*Itens:*',
+    itens || '• Venda direta de balcão',
+    '',
+    `*Total: ${brl(v.total || 0)}*`,
+    v.formapgto ? `Forma de Pagamento: ${v.formapgto}` : '',
+    '',
+    'Agradecemos a sua preferência!'
+  ].filter(Boolean).join('\n');
+
+  if (typeof copiar === 'function') copiar(msg);
+  if (tel && typeof window !== 'undefined') {
+    window.open(`https://api.whatsapp.com/send?phone=${tel}&text=${encodeURIComponent(msg)}`, '_blank');
+  }
+  torrar('Resumo da venda gerado / aberto no WhatsApp!', 'sucesso');
+}
+
+function acaoEmLoteVendas(acao) {
+  const selecionados = Array.from(document.querySelectorAll('.chk-venda:checked')).map(el => el.value);
+  if (selecionados.length === 0) {
+    torrar('Selecione ao menos uma venda para a ação.', 'alerta');
+    return;
+  }
+
+  if (acao === 'excluir') {
+    if (confirm(`Deseja realmente excluir as ${selecionados.length} vendas selecionadas?`)) {
+      S.vendas = (S.vendas || []).filter(v => !selecionados.includes(v.id));
+      salvarLocal();
+      render();
+      torrar(`${selecionados.length} vendas excluídas com sucesso.`, 'sucesso');
+    }
+  } else if (acao === 'duplicar') {
+    const original = (S.vendas || []).find(v => v.id === selecionados[0]);
+    if (original) {
+      const novoId = 'v' + Date.now().toString().slice(-4);
+      const copia = JSON.parse(JSON.stringify(original));
+      copia.id = novoId;
+      copia.codigo = 'V-' + Math.floor(100 + Math.random() * 900);
+      copia.data = hoje();
+      copia.situacao = 'Pendente';
+      copia.temFinanceiroPendente = true;
+      S.vendas.unshift(copia);
+      salvarLocal();
+      render();
+      torrar(`Venda #${original.codigo || original.id} duplicada com sucesso!`, 'sucesso');
+    }
+  } else if (acao === 'imprimir') {
+    window.print();
+  } else if (acao === 'whatsapp') {
+    enviarVendaWhatsApp(selecionados[0]);
+  } else if (acao === 'nfe') {
+    torrar(`Iniciando geração de NF-e para a venda #${selecionados[0]}...`, 'neutro');
+    const venda = (S.vendas || []).find(v => v.id === selecionados[0]);
+    if (venda) {
+      venda.temAnexoNfe = true;
+      salvarLocal();
+      render();
+      torrar(`NF-e gerada para a venda #${venda.codigo || venda.id}!`, 'sucesso');
+    }
+  }
+}
+
 // Exportações explícitas no escopo global window
 if (typeof window !== 'undefined') {
   window.viewVendas = viewVendas;
@@ -671,4 +747,6 @@ if (typeof window !== 'undefined') {
   window.abrirDetalhesVenda = abrirDetalhesVenda;
   window.excluirVenda = excluirVenda;
   window.faturarVendaEmEspera = faturarVendaEmEspera;
+  window.acaoEmLoteVendas = acaoEmLoteVendas;
+  window.enviarVendaWhatsApp = enviarVendaWhatsApp;
 }

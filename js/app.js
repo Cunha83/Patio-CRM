@@ -693,6 +693,14 @@ function fecharFolha() {
   folhaAtual = null;
 }
 
+function abrirModalGenerico(html) {
+  abrirFolha(typeof html === 'function' ? html : () => html);
+}
+
+function fecharModalGenerico() {
+  fecharFolha();
+}
+
 /* =====================================================================
    INICIALIZAÇÃO DO SISTEMA (BOOT)
 ===================================================================== */
@@ -846,4 +854,10 @@ if (typeof window !== 'undefined') {
   window.abrirFolha = abrirFolha;
   window.renderFolha = renderFolha;
   window.fecharFolha = fecharFolha;
+  window.abrirModalGenerico = abrirModalGenerico;
+  window.fecharModalGenerico = fecharModalGenerico;
+}
+if (typeof globalThis !== 'undefined') {
+  globalThis.abrirModalGenerico = abrirModalGenerico;
+  globalThis.fecharModalGenerico = fecharModalGenerico;
 }

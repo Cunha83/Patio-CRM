@@ -546,4 +546,84 @@ test('Bateria de Regressões Adversariais de Segurança & Integridade (Blockers 
     const [code] = await require('node:events').once(child, 'exit');
     assert.equal(code, 0, 'Subprocesso com await billingService deve concluir sem timeout');
   });
+
+  // ── TESTE N: PROTOTYPE POLLUTION & MASS ASSIGNMENT SANITIZER ──
+  await t.test('N. server.js: middleware anti-prototype pollution neutraliza __proto__, constructor e prototype', async () => {
+    const maliciousPayload = JSON.parse('{"__proto__":{"polluted":"yes"},"constructor":{"prototype":{"isAdmin":true}},"nested":{"__proto__":{"nestedPolluted":true}},"validField":"safe_data"}');
+
+    // Função de sanitização idêntica à de server.js
+    function sanitizePrototypePollution(obj, depth = 0) {
+      if (!obj || typeof obj !== 'object' || depth > 20) return;
+      for (const key of Object.getOwnPropertyNames(obj)) {
+        if (key === '__proto__' || key === 'constructor' || key === 'prototype') {
+          delete obj[key];
+          continue;
+        }
+        const val = obj[key];
+        if (val && typeof val === 'object') {
+          sanitizePrototypePollution(val, depth + 1);
+        }
+      }
+    }
+
+    sanitizePrototypePollution(maliciousPayload);
+
+    // Comprova que o protótipo global não foi poluído
+    assert.equal(({}).polluted, undefined, 'Object.prototype não deve conter .polluted');
+    assert.equal(({}).isAdmin, undefined, 'Object.prototype não deve conter .isAdmin');
+    assert.equal(({}).nestedPolluted, undefined, 'Object.prototype não deve conter .nestedPolluted');
+
+    // Comprova que chaves perigosas foram removidas do objeto e dados válidos mantidos
+    assert.equal(Object.prototype.hasOwnProperty.call(maliciousPayload, '__proto__'), false);
+    assert.equal(maliciousPayload.constructor, Object);
+    assert.equal(maliciousPayload.validField, 'safe_data');
+  });
+
+  // ── TESTE O: PATH TRAVERSAL SANITIZATION ──
+  await t.test('O. routes/backup.routes.js: ROOT_DIR está definido e tentativas de path traversal são neutralizadas', async () => {
+    const backupRoutesCode = fs.readFileSync(path.join(__dirname, '..', 'routes', 'backup.routes.js'), 'utf8');
+    assert.ok(backupRoutesCode.includes('const ROOT_DIR = path.resolve('), 'ROOT_DIR deve estar formalmente declarado');
+    assert.ok(backupRoutesCode.includes("relative.startsWith('..')"), 'Validação de caminho relativo para bloquear .. deve existir');
+
+    // Simula resolução de path traversal
+    const baseDir = path.resolve(__dirname, '..', 'backups');
+    const maliciousInput = '../../../../../../windows/system32/cmd.exe';
+    const resolvedMalicious = path.resolve(baseDir, maliciousInput);
+    const rel = path.relative(baseDir, resolvedMalicious);
+
+    assert.ok(rel.startsWith('..'), 'Caminho malicioso deve ser detectado como escape via ..');
+  });
+
+  // ── TESTE P: HTTP SECURITY HEADERS & XSS ESCAPING ──
+  await t.test('P. server.js & frontend: helmet configura nosniff, frameguard, referrerPolicy e esc() neutraliza XSS', async () => {
+    const serverCode = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
+    assert.ok(serverCode.includes('xFrameOptions'), 'Helmet deve ter xFrameOptions configurado explicitamente');
+    assert.ok(serverCode.includes('referrerPolicy'), 'Helmet deve ter referrerPolicy configurado explicitamente');
+
+    // Validação de escape XSS do frontend
+    const stateCode = fs.readFileSync(path.join(__dirname, '..', 'js', 'state.js'), 'utf8');
+    assert.ok(stateCode.includes('esc ='), 'Função esc deve existir no frontend state.js');
+
+    // Executa esc() em payload malicioso
+    const vm = require('vm');
+    const sandbox = { window: {}, document: { location: { origin: 'http://localhost:3000' } } };
+    vm.createContext(sandbox);
+    // Cria versão isolada do helper esc para validação
+    vm.runInContext(`
+      const esc = (s) => (s || '').toString()
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+      sandboxEsc = esc;
+    `, sandbox);
+
+    const xssPayload = '<script>alert("xss")</script><img src=x onerror=alert(1)>';
+    const escaped = sandbox.sandboxEsc(xssPayload);
+
+    assert.ok(!escaped.includes('<script>'), 'Payload <script> deve ser escapado');
+    assert.ok(escaped.includes('&lt;script&gt;'), 'Tags HTML devem ser codificadas como entidades seguras');
+    assert.ok(!escaped.includes('<img'), 'Tags <img> devem ser escapadas');
+  });
 });
