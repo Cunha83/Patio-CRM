@@ -184,3 +184,4 @@ function gerarRelatorioGerencial360(state = {}, options = {}) {
 module.exports = {
   gerarRelatorioGerencial360
 };
+

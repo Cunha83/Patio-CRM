@@ -265,3 +265,4 @@ module.exports = {
   adicionarServicoRecomendado,
   estruturarInspecaoPorVoz
 };
+

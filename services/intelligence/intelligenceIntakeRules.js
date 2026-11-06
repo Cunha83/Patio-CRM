@@ -140,3 +140,4 @@ function detectarRegrasIntakeEOrcamentos({
 module.exports = {
   detectarRegrasIntakeEOrcamentos
 };
+

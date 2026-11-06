@@ -172,3 +172,4 @@ function calcularTributosItemMercadoria(item, emitenteConfig = {}, options = {})
 module.exports = {
   calcularTributosItemMercadoria
 };
+

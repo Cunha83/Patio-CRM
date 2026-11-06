@@ -264,3 +264,4 @@ class AsaasProviderAdapter extends PaymentProviderAdapter {
 module.exports = {
   AsaasProviderAdapter
 };
+

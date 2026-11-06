@@ -258,3 +258,4 @@ module.exports = {
   obterResumoRentabilidade,
   obterRentabilidadeServicos
 };
+

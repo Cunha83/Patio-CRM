@@ -132,3 +132,4 @@ const DOMINIOS_TRIAGEM = {
 module.exports = {
   DOMINIOS_TRIAGEM
 };
+

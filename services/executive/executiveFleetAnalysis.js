@@ -175,3 +175,4 @@ function analisarRetencaoECobranca(state = {}, options = {}) {
 module.exports = {
   analisarRetencaoECobranca
 };
+

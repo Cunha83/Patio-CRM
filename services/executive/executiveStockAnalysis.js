@@ -222,3 +222,4 @@ function analisarComprasEEstoque(state = {}, options = {}) {
 module.exports = {
   analisarComprasEEstoque
 };
+

@@ -253,3 +253,4 @@ class SandboxProviderAdapter extends PaymentProviderAdapter {
 module.exports = {
   SandboxProviderAdapter
 };
+

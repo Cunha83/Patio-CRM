@@ -67,3 +67,4 @@ function anonimizarDadosCliente({ tenantId, state, customerId, motivo = 'solicit
 module.exports = {
   anonimizarDadosCliente
 };
+

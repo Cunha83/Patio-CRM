@@ -198,3 +198,4 @@ function detectarRegrasMargemECRM({
 module.exports = {
   detectarRegrasMargemECRM
 };
+

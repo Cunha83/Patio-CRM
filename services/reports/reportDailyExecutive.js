@@ -328,3 +328,4 @@ module.exports = {
   enviarRelatorioAdministradores,
   notificarEventoCaixaWhatsApp
 };
+

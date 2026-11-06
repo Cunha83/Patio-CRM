@@ -243,3 +243,4 @@ function detectarRegrasVeiculosEPatio({
 module.exports = {
   detectarRegrasVeiculosEPatio
 };
+

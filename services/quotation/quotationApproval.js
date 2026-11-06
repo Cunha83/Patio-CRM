@@ -342,3 +342,4 @@ module.exports = {
   consultarPorToken,
   processarAprovacaoCliente
 };
+

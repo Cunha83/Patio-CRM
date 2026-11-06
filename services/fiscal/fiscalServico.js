@@ -63,3 +63,4 @@ function calcularTributosItemServico(item, emitenteConfig = {}, options = {}) {
 module.exports = {
   calcularTributosItemServico
 };
+

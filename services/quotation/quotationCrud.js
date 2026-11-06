@@ -331,3 +331,4 @@ module.exports = {
   criarNovaVersao,
   criarAdicionalEscopo
 };
+

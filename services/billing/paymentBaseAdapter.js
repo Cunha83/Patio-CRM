@@ -50,3 +50,4 @@ class PaymentProviderAdapter {
 module.exports = {
   PaymentProviderAdapter
 };
+

@@ -188,3 +188,4 @@ function analisarProdutividadeEquipe(state = {}, options = {}) {
 module.exports = {
   analisarProdutividadeEquipe
 };
+
