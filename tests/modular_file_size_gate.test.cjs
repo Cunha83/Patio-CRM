@@ -244,5 +244,70 @@ test('Quality Gate de Tamanho Modular de Arquivo (Teto <= 350 Linhas)', async (t
       );
     }
   });
+
+  await t.test('11. Rotas do Backend (routes/*.js - 100% <= 350 linhas)', () => {
+    const routeFiles = getFilesRecursively(path.join(rootDir, 'routes'), '.js');
+    assert.ok(routeFiles.length >= 25, 'Deve conter as rotas modulares da API');
+    for (const file of routeFiles) {
+      const rel = path.relative(rootDir, file);
+      const lines = countLines(file);
+      assert.ok(
+        lines <= MAX_LINES,
+        `Rota ${rel} tem ${lines} linhas, excedendo o teto de ${MAX_LINES}`
+      );
+    }
+  });
+
+  await t.test('12. Bibliotecas e Repositórios Backend (lib/**/*.js - 100% <= 350 linhas)', () => {
+    const libFiles = getFilesRecursively(path.join(rootDir, 'lib'), '.js');
+    assert.ok(libFiles.length >= 20, 'Deve conter as bibliotecas modulares do backend');
+    for (const file of libFiles) {
+      const rel = path.relative(rootDir, file);
+      const lines = countLines(file);
+      assert.ok(
+        lines <= MAX_LINES,
+        `Biblioteca ${rel} tem ${lines} linhas, excedendo o teto de ${MAX_LINES}`
+      );
+    }
+  });
+
+  await t.test('13. Serviços de Negócio Backend (services/**/*.js - 100% <= 350 linhas)', () => {
+    const servicesFiles = getFilesRecursively(path.join(rootDir, 'services'), '.js');
+    assert.ok(servicesFiles.length >= 50, 'Deve conter os serviços modulares do backend');
+    for (const file of servicesFiles) {
+      const rel = path.relative(rootDir, file);
+      const lines = countLines(file);
+      assert.ok(
+        lines <= MAX_LINES,
+        `Serviço ${rel} tem ${lines} linhas, excedendo o teto de ${MAX_LINES}`
+      );
+    }
+  });
+
+  await t.test('14. Varredura Universal de Produção (0 arquivos > 350 linhas em js/, css/, lib/, routes/, services/)', () => {
+    const targetDirs = ['js', 'css', 'lib', 'routes', 'services'];
+    const violacoes = [];
+
+    for (const d of targetDirs) {
+      const fullDir = path.join(rootDir, d);
+      if (!fs.existsSync(fullDir)) continue;
+      const allFiles = [
+        ...getFilesRecursively(fullDir, '.js'),
+        ...getFilesRecursively(fullDir, '.css')
+      ];
+      for (const file of allFiles) {
+        const lines = countLines(file);
+        if (lines > MAX_LINES) {
+          violacoes.push({ file: path.relative(rootDir, file), lines });
+        }
+      }
+    }
+
+    assert.equal(
+      violacoes.length,
+      0,
+      `Existem ${violacoes.length} arquivos violando o teto de ${MAX_LINES} linhas: ${JSON.stringify(violacoes, null, 2)}`
+    );
+  });
 });
 

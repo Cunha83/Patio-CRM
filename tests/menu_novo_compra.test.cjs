@@ -73,8 +73,11 @@ test('Menu Rápido + Novo - Opção Nova Compra e Fluxo de Entrada', (t) => {
   const files = [
     'js/icons.js',
     'js/state.js',
+    'js/modules/navigation_actions.js',
     'js/modules/navigation.js',
     'js/financeiro.js',
+    'js/modules/compras_xml_import.js',
+    'js/modules/compras_nova_modal.js',
     'js/compras.js'
   ];
 

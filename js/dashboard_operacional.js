@@ -1,93 +1,50 @@
 /* =====================================================================
    PÁTIO CRM — DASHBOARD OPERACIONAL EM TEMPO REAL
    Visão Executiva, Chão de Oficina, Gargalos, Entregas & Alertas P1-P4
+   Coordenador Modular (< 350 linhas)
    ===================================================================== */
 
 (function () {
   'use strict';
 
-  // Estado interno do módulo
   let _painel = null;
   let _carregando = false;
   let _erro = null;
   let _ultimoSucesso = null;
   let _timerPolling = null;
   let _abortController = null;
-  let _graficos = {};
   let _filtroEstagio = 'todos';
   let _filtroPrioridade = 'todas';
   let _buscaTexto = '';
 
-  // Resolução de helpers e formatadores extraídos para dashboard_metrics.js
-  const formatarTempoOp = (typeof window !== 'undefined' && window.formatarTempoOp) || function (minutos) {
-    if (minutos === null || minutos === undefined || isNaN(minutos)) return 'Sem dados suficientes';
-    if (minutos >= 60) {
-      const h = Math.floor(minutos / 60);
-      const m = Math.round(minutos % 60);
-      return m > 0 ? `${h}h ${m}m` : `${h}h`;
-    }
-    return `${Math.round(minutos)} min`;
-  };
-
-  const formatarPercentualOp = (typeof window !== 'undefined' && window.formatarPercentualOp) || function (val) {
-    if (val === null || val === undefined || isNaN(val)) return 'Sem dados suficientes';
-    return `${Math.round(val)}%`;
-  };
-
-  const formatarHoraSimples = (typeof window !== 'undefined' && window.formatarHoraSimples) || function (dataOuIso) {
-    if (!dataOuIso) return '--:--';
-    try {
-      const d = new Date(dataOuIso);
-      return isNaN(d.getTime()) ? '--:--' : d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-    } catch (e) {
-      return '--:--';
-    }
-  };
-
-  const destruirGraficos = (typeof window !== 'undefined' && window.destruirGraficosOperacionais) || function () {};
-
-
-  // Requisição assíncrona ao servidor
   async function carregarPainelOperacional({ silencioso = false } = {}) {
-    if (_carregando) return;
-    _carregando = true;
-
-    if (!silencioso && !_painel) {
+    if (!silencioso) {
+      _carregando = true;
+      _erro = null;
       renderDashboardOperacionalSeAtivo();
     }
-
     if (_abortController) {
-      try { _abortController.abort(); } catch (e) {}
+      try { _abortController.abort(); } catch (_) {}
     }
     _abortController = new AbortController();
-
     try {
-      const url = '/api/operacao/painel';
-      const res = await fetch(url, {
+      const res = await fetch('/api/operacao/painel', {
         signal: _abortController.signal,
-        headers: {
-          'Accept': 'application/json',
-          'X-Requested-With': 'XMLHttpRequest'
-        }
+        headers: { 'Accept': 'application/json' }
       });
-
-      if (!res.ok) {
-        throw new Error(`Servidor respondeu com status ${res.status}`);
-      }
-
-      const json = await res.json();
-      if (json && json.painel) {
-        _painel = json.painel;
-        if (typeof window !== 'undefined') {
-          window._painelOperacional = _painel;
-        }
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      if (data && data.ok) {
+        _painel = data;
         _ultimoSucesso = new Date();
         _erro = null;
+        if (typeof window !== 'undefined') window._painel = _painel;
       }
     } catch (err) {
-      if (err.name === 'AbortError') return;
-      console.warn('[DashboardOp] Falha ao sincronizar painel operacional:', err.message);
-      _erro = err.message || 'Falha de conexão com o servidor';
+      if (err.name !== 'AbortError') {
+        console.warn('[DashboardOp] Erro ao carregar painel:', err);
+        _erro = err.message || 'Falha na conexão com o servidor';
+      }
     } finally {
       _carregando = false;
       renderDashboardOperacionalSeAtivo();
@@ -96,660 +53,140 @@
   }
 
   function agendarProximoPolling() {
-    if (_timerPolling) clearTimeout(_timerPolling);
-    if (typeof S !== 'undefined' && S.ui && S.ui.view === 'operacao' && document.visibilityState !== 'hidden') {
+    clearTimeout(_timerPolling);
+    const viewAtiva = (typeof S !== 'undefined' && S?.ui?.view) || '';
+    if (viewAtiva === 'dashboard_operacional' || viewAtiva === 'dashboard') {
       _timerPolling = setTimeout(() => {
         carregarPainelOperacional({ silencioso: true });
-      }, 20000); // 20 segundos
+      }, 15000);
     }
   }
 
   function renderDashboardOperacionalSeAtivo() {
-    if (typeof S !== 'undefined' && S.ui && S.ui.view === 'operacao') {
-      const mainEl = document.querySelector('main.wrap');
-      if (mainEl) {
-        mainEl.innerHTML = viewDashboardOperacional();
-        setTimeout(() => {
-          const initCharts = (typeof window !== 'undefined' && window.inicializarGraficosOperacionais) || inicializarGraficosOperacionais;
-          if (typeof initCharts === 'function') initCharts(_painel);
-        }, 80);
+    const viewAtiva = (typeof S !== 'undefined' && S?.ui?.view) || '';
+    if (viewAtiva === 'dashboard_operacional') {
+      const container = document.getElementById('view-conteudo');
+      if (container) {
+        container.innerHTML = viewDashboardOperacional();
+        if (typeof inicializarGraficosOperacionais === 'function') {
+          inicializarGraficosOperacionais(_painel);
+        } else if (window.inicializarGraficosOperacionais) {
+          window.inicializarGraficosOperacionais(_painel);
+        }
       }
     }
   }
 
-
-  // Ação de Reconhecer Alerta (Ciente)
   async function reconhecerAlerta(alertaId) {
     if (!alertaId) return;
     try {
-      if (typeof torrar === 'function') torrar('Registrando ciência...');
       const res = await fetch(`/api/operacao/alertas/${encodeURIComponent(alertaId)}/reconhecer`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ motivo: 'Reconhecido no Dashboard Operacional' })
+        headers: { 'Content-Type': 'application/json' }
       });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        if (typeof torrar === 'function') torrar('Alerta reconhecido com sucesso!');
-        // Atualiza localmente o alerta para status 'reconhecido'
+      if (res.ok) {
         if (_painel && Array.isArray(_painel.alertas)) {
-          const al = _painel.alertas.find(a => a.id === alertaId);
-          if (al) al.status = 'reconhecido';
+          _painel.alertas = _painel.alertas.filter(a => a.id !== alertaId);
         }
         renderDashboardOperacionalSeAtivo();
-      } else {
-        alert(data.error || 'Não foi possível reconhecer o alerta.');
+        if (typeof torrar === 'function') torrar('Alerta reconhecido com sucesso.', 'sucesso');
       }
-    } catch (err) {
-      alert('Erro ao comunicar com o servidor: ' + err.message);
+    } catch (e) {
+      console.warn('[DashboardOp] Falha ao reconhecer alerta:', e);
     }
   }
 
-  // Toggle Modo Painel / TV
-  function toggleModoTV() {
-    const ativado = document.body.classList.toggle('modo-painel-tv');
-    try {
-      localStorage.setItem('patio_modo_tv', ativado ? '1' : '0');
-    } catch (e) {}
-    if (typeof torrar === 'function') {
-      torrar(ativado ? 'Modo TV ativado (Pressione Esc para sair)' : 'Modo TV desativado');
-    }
-    renderDashboardOperacionalSeAtivo();
-  }
-
-  // Listener para tecla Esc sair do modo TV
-  window.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && document.body.classList.contains('modo-painel-tv')) {
-      toggleModoTV();
-    }
-  });
-
-  // Listener para pausar e retomar polling ao mudar aba
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible' && typeof S !== 'undefined' && S.ui && S.ui.view === 'operacao') {
-      carregarPainelOperacional({ silencioso: true });
-    }
-  });
-
-  // Inicialização de Gráficos e Detalhes Operacionais (delegados a dashboard_metrics.js)
-  function inicializarGraficosOperacionais(painelParam) {
-    if (typeof window !== 'undefined' && typeof window.inicializarGraficosOperacionais === 'function') {
-      window.inicializarGraficosOperacionais(painelParam || _painel);
-    }
-  }
-
-  function folhaDetalheOperacional(item) {
-    if (typeof window !== 'undefined' && typeof window.folhaDetalheOperacional === 'function') {
-      return window.folhaDetalheOperacional(item);
-    }
-    return '';
-  }
-
-
-  // RENDERIZAÇÃO DA VIEW PRINCIPAL
   function viewDashboardOperacional() {
-    // Se ainda não carregou dados, dispara o fetch e exibe esqueleto
-    if (!_painel && !_erro) {
-      setTimeout(() => carregarPainelOperacional(), 10);
-      return `
-      <div class="dashboard-op-carregando" style="text-align:center;padding:60px 20px">
-        <div class="spinner" style="margin:0 auto 16px"></div>
-        <h3 style="font-size:18px;color:var(--aco-700)">Sincronizando Operação do Pátio...</h3>
-        <p class="mini" style="color:var(--aco-400)">Consultando boxes, tempos de permanência e alertas em tempo real.</p>
-      </div>`;
+    if (_carregando && !_painel) {
+      return `<div class="carregando" style="padding:40px;text-align:center"><div class="spinner"></div><div style="margin-top:12px;color:var(--aco-500)">Carregando Visão Executiva e Chão de Oficina em tempo real...</div></div>`;
+    }
+    if (_erro && !_painel) {
+      return `<div class="card card-p" style="margin:20px 0;border-left:4px solid var(--tijolo)"><div style="font-weight:700;color:var(--tijolo);margin-bottom:6px">Não foi possível carregar o Dashboard Operacional</div><div style="font-size:13px;color:var(--aco-600)">${_erro}</div><button class="btn btn-secundario btn-pequeno" data-act="refresh-op" style="margin-top:12px">Tentar Novamente</button></div>`;
     }
 
-    const resumo = (_painel && _painel.resumo) || {};
-    const boxes = (_painel && _painel.boxes) || [];
-    const estagios = (_painel && _painel.estagios) || {};
-    const entregas = (_painel && _painel.entregas) || [];
-    const alertas = (_painel && _painel.alertas) || [];
-    const gargalos = (_painel && _painel.gargalos) || {};
-    const metricas = (_painel && _painel.metricas) || {};
-    const veiculos = (_painel && _painel.veiculos) || [];
+    const p = _painel || {};
+    const resumo = p.resumo || {};
+    const estagios = p.estagios || {};
+    const boxes = p.boxes || [];
+    const entregas = p.entregas || {};
+    const alertas = p.alertas || [];
+    const metricas = p.metricas || {};
+    const rentabilidade = p.rentabilidade || {};
+    const veiculos = p.veiculos || [];
 
-    const horaSinc = _ultimoSucesso ? _ultimoSucesso.toLocaleTimeString('pt-BR') : '--:--:--';
-    const modoTVAtivo = document.body.classList.contains('modo-painel-tv');
-
-    // Filtragem de Alertas
-    let alertasFiltrados = [...alertas];
-    if (_filtroPrioridade !== 'todas') {
-      alertasFiltrados = alertasFiltrados.filter(a => a.prioridade === _filtroPrioridade);
-    }
-
-    // Filtragem de Veículos na Busca
-    let veiculosFiltrados = [...veiculos];
-    if (_filtroEstagio !== 'todos') {
-      veiculosFiltrados = veiculosFiltrados.filter(v => v.st === _filtroEstagio);
+    let veiculosFiltrados = veiculos;
+    if (_filtroEstagio && _filtroEstagio !== 'todos') {
+      veiculosFiltrados = veiculosFiltrados.filter(v => (v.estagioId || v.st || '').toLowerCase() === _filtroEstagio.toLowerCase());
     }
     if (_buscaTexto) {
       const b = _buscaTexto.toLowerCase();
       veiculosFiltrados = veiculosFiltrados.filter(v =>
-        (v.placa && v.placa.toLowerCase().includes(b)) ||
-        (v.modelo && v.modelo.toLowerCase().includes(b)) ||
-        (v.cliente && v.cliente.toLowerCase().includes(b)) ||
-        (v.mec && v.mec.toLowerCase().includes(b)) ||
-        (String(v.num).includes(b))
+        (v.placa || '').toLowerCase().includes(b) ||
+        (v.modelo || '').toLowerCase().includes(b) ||
+        (v.cliente || '').toLowerCase().includes(b) ||
+        String(v.num || '').includes(b)
       );
     }
 
     return `
-    <div class="dashboard-op ${modoTVAtivo ? 'modo-tv' : ''}">
-      <!-- Banner de Falha de Conexão com Fallback Resiliente -->
-      ${_erro ? `
-      <div class="alerta-banner-op" style="background:#fef2f2;border:1px solid #fee2e2;color:#991b1b;padding:10px 16px;border-radius:10px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between">
-        <div style="display:flex;align-items:center;gap:8px">
-          <span>⚠️</span>
-          <span><b>Não foi possível atualizar agora.</b> Exibindo últimos dados registrados às ${esc(horaSinc)}.</span>
+    <div class="dashboard-operacional-wrap" style="padding-bottom:40px">
+      <div class="entre" style="margin-bottom:16px;flex-wrap:wrap;gap:12px">
+        <div>
+          <h2 style="font-size:20px;font-weight:800;letter-spacing:-0.02em;margin:0">Dashboard Operacional & Boxes de Oficina</h2>
+          <div class="mini" style="color:var(--aco-500);margin-top:2px">Visão Executiva, Chão de Oficina, Gargalos e Alertas em Tempo Real</div>
         </div>
-        <button class="btn btn-pequeno btn-secundario" data-act="refresh-op" style="font-size:11px;background:#fff">Tentar Novamente</button>
-      </div>
-      ` : ''}
-
-      <!-- Barra de Ações do Topo Operacional -->
-      <div class="topo-operacao-bar" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
-        <div style="display:flex;align-items:center;gap:12px">
-          <div class="live-indicator" style="display:flex;align-items:center;gap:6px;background:rgba(16,185,129,0.1);padding:4px 10px;border-radius:20px;border:1px solid rgba(16,185,129,0.25)">
-            <span class="pulsing-dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--verde)"></span>
-            <span style="font-weight:700;font-size:11px;color:var(--verde);letter-spacing:0.04em">AO VIVO</span>
-          </div>
-          <span style="font-size:12.5px;color:var(--aco-500)">
-            Atualizado às <b>${esc(horaSinc)}</b> (Intervalo: 20s)
-          </span>
-        </div>
-
         <div style="display:flex;align-items:center;gap:8px">
-          <button class="btn btn-secundario btn-op-refresh" data-act="refresh-op" title="Atualizar agora" style="display:flex;align-items:center;gap:6px">
-            <span class="ico-spin ${_carregando ? 'girando' : ''}">${ico('relogio', 14)}</span>
-            <span>Atualizar</span>
-          </button>
-          <button class="btn ${modoTVAtivo ? 'btn-primario' : 'btn-secundario'}" data-act="toggle-modo-tv" title="Alternar Modo Monitor / TV de Oficina">
-            📺 ${modoTVAtivo ? 'Sair do Modo TV' : 'Modo Painel / TV'}
-          </button>
+          <button class="btn btn-secundario" data-act="toggle-modo-tv" title="Alternar Modo TV Fullscreen">📺 Modo TV</button>
+          <button class="btn btn-primario" data-act="refresh-op" title="Atualizar agora">🔄 Atualizar</button>
         </div>
       </div>
 
-      <!-- 1. CARDS EXECUTIVOS PRINCIPAIS (6 KPIs) -->
+      <!-- 1. CARDS EXECUTIVOS PRINCIPAIS -->
       ${typeof renderCardsExecutivosOp === 'function' ? renderCardsExecutivosOp(resumo, boxes, entregas) : (window.DashboardMetrics && window.DashboardMetrics.renderCardsExecutivosOp ? window.DashboardMetrics.renderCardsExecutivosOp(resumo, boxes, entregas) : '')}
 
       <!-- 2. PIPELINE DE ESTÁGIOS DA OFICINA -->
       ${typeof renderPipelineEstagiosOp === 'function' ? renderPipelineEstagiosOp(estagios, veiculos, _filtroEstagio) : (window.DashboardMetrics && window.DashboardMetrics.renderPipelineEstagiosOp ? window.DashboardMetrics.renderPipelineEstagiosOp(estagios, veiculos, _filtroEstagio) : '')}
 
-
       <!-- 3. BOXES DO PÁTIO EM TEMPO REAL (CHÃO DE OFICINA) -->
-      <div class="card card-p" style="margin-bottom:20px">
-        <div class="entre" style="margin-bottom:14px">
-          <div>
-            <h3 style="font-size:15px;font-weight:700">Boxes de Manutenção (${boxes.filter(b => b.status !== 'livre').length} Ocupados / ${boxes.filter(b => b.status === 'livre').length} Livres)</h3>
-            <div class="mini" style="color:var(--aco-500)">Status físico das baias, mecânicos alocados e tempo de ocupação</div>
-          </div>
-        </div>
+      ${typeof renderBoxesOp === 'function' ? renderBoxesOp(boxes) : (window.renderBoxesOp ? window.renderBoxesOp(boxes) : '')}
 
-        <div class="grid-boxes-op" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));gap:12px">
-          ${boxes.map(b => {
-            const isLivre = b.status === 'livre';
-            const isBloq = b.status === 'bloqueado_peca';
-            const isAtencao = b.status === 'atencao';
-            const tagClass = isLivre ? 'box-livre' : isBloq ? 'box-bloqueado' : isAtencao ? 'box-atencao' : 'box-ocupado';
-            const tagCor = isLivre ? 'var(--verde)' : isBloq ? 'var(--tijolo)' : isAtencao ? 'var(--sinal)' : 'var(--petroleo)';
-            const tagLabel = isLivre ? 'LIVRE' : isBloq ? 'AGUARDANDO PEÇA' : isAtencao ? 'TEMPO ELEVADO' : 'OCUPADO';
+      <!-- 4. ALERTAS OPERACIONAIS PRIORIZADOS & ENTREGAS DO DIA -->
+      ${typeof renderAlertasEntregasOp === 'function' ? renderAlertasEntregasOp(alertas, entregas, _filtroPrioridade) : (window.renderAlertasEntregasOp ? window.renderAlertasEntregasOp(alertas, entregas, _filtroPrioridade) : '')}
 
-            return `
-            <div class="card card-box-op ${tagClass}" style="border:1px solid var(--aco-200);border-radius:10px;padding:12px;background:var(--branco);position:relative;border-top:4px solid ${tagCor}">
-              <div class="entre" style="margin-bottom:8px">
-                <div style="font-weight:700;font-size:14px">${esc(b.nome || b.id)}</div>
-                <span class="selo" style="font-size:10px;font-weight:700;color:${tagCor};background:rgba(0,0,0,0.03);border:1px solid ${tagCor}">${tagLabel}</span>
-              </div>
-
-              ${isLivre ? `
-                <div style="padding:16px 0;text-align:center;color:var(--aco-400)">
-                  <div style="font-size:22px;margin-bottom:4px">🟢</div>
-                  <div style="font-size:12px;font-weight:600">Disponível para entrada</div>
-                </div>
-              ` : `
-                <div class="box-ocupado-conteudo">
-                  <div style="display:flex;align-items:center;justify-content:space-between">
-                    <span class="placa" style="font-size:13px;color:#000000;font-weight:bold">${esc(b.placa || 'SEM-PLACA')}</span>
-                    <button class="btn-link-os" data-act="abrir-os-op" data-os="${esc(b.osId)}" style="font-size:12px;font-weight:700;color:var(--petroleo)">
-                      OS #${esc(b.osNum || '')}
-                    </button>
-                  </div>
-                  <div class="mini" style="margin-top:4px;color:var(--aco-700);font-weight:600">
-                    ${esc(b.modelo || 'Caminhão')} • ${esc(b.cliente || 'Cliente')}
-                  </div>
-                  <div class="mini" style="color:var(--aco-500);margin-top:2px">
-                    Mecânico: <b>${esc(b.mecanico || 'Não atribuído')}</b>
-                  </div>
-                  <div class="entre" style="margin-top:10px;border-top:1px dashed var(--aco-200);padding-top:8px">
-                    <span class="mini" style="color:var(--aco-500)">Permanência:</span>
-                    <span class="num" style="font-weight:700;font-size:12.5px;color:${b.tempoNoBoxHoras >= 4 ? 'var(--tijolo)' : 'var(--aco-800)'}">
-                      ${b.tempoNoBoxHoras ? `${b.tempoNoBoxHoras}h no box` : 'Recente'}
-                    </span>
-                  </div>
-                  <div style="margin-top:8px">
-                    <button class="btn btn-secundario btn-pequeno w-100" data-act="detalhe-item-op" data-os="${esc(b.osId)}" style="font-size:11px;padding:4px">
-                      Ver Ficha Rápida
-                    </button>
-                  </div>
-                </div>
-              `}
-            </div>`;
-          }).join('')}
-        </div>
-      </div>
-
-      <!-- 3.1 EQUIPE AGORA (CHÃO DE OFICINA & APONTAMENTOS EM TEMPO REAL) -->
-      <div class="card card-p" style="margin-bottom:20px">
-        <div class="entre" style="margin-bottom:14px">
-          <div>
-            <h3 style="font-size:15px;font-weight:700">Equipe Agora (${(resumo.equipe && resumo.equipe.totalMecanicos) || 0} Colaboradores Ativos)</h3>
-            <div class="mini" style="color:var(--aco-500)">Alocação em tempo real: em serviço, em espera ou livres no pátio</div>
-          </div>
-          <div style="display:flex;gap:8px">
-            <span class="selo" style="background:#ecfdf5;color:#065f46"><b>${(resumo.equipe && resumo.equipe.emServico) || 0}</b> Em Serviço</span>
-            <span class="selo" style="background:#fffbeb;color:#92400e"><b>${(resumo.equipe && resumo.equipe.emEspera) || 0}</b> Em Espera</span>
-            <span class="selo" style="background:#f1f5f9;color:#334155"><b>${(resumo.equipe && resumo.equipe.livres) || 0}</b> Livres</span>
-          </div>
-        </div>
-
-        <div class="grid-equipe-agora" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));gap:12px">
-          ${((resumo.equipe && resumo.equipe.detalhes && resumo.equipe.detalhes.emServico) || []).map(m => `
-            <div class="card-equipe-item" style="border-left:4px solid var(--verde);background:var(--aco-050);padding:10px 14px;border-radius:8px">
-              <div class="entre">
-                <b>${esc(m.nome)}</b>
-                <span class="selo" style="background:#d1fae5;color:#065f46;font-size:11px">EM SERVIÇO</span>
-              </div>
-              <div class="mini" style="margin-top:4px;color:var(--aco-700)">
-                OS #${esc(m.osNum || m.osId)} • ${esc(m.serviceNome || 'Serviço')}
-              </div>
-              <div class="mini" style="margin-top:2px;color:var(--aco-500)">
-                Box: <b>${esc(m.boxId || '—')}</b> • Decorrido: <b>${esc(m.tempoDecorridoFormatado)}</b>
-              </div>
-            </div>
-          `).join('')}
-
-          ${((resumo.equipe && resumo.equipe.detalhes && resumo.equipe.detalhes.emEspera) || []).map(m => `
-            <div class="card-equipe-item" style="border-left:4px solid var(--sinal);background:var(--aco-050);padding:10px 14px;border-radius:8px">
-              <div class="entre">
-                <b>${esc(m.nome)}</b>
-                <span class="selo" style="background:#fef3c7;color:#92400e;font-size:11px">EM ESPERA</span>
-              </div>
-              <div class="mini" style="margin-top:4px;color:var(--aco-700)">
-                OS #${esc(m.osNum || m.osId)} • Motivo: <b>${esc(m.motivoPausa || 'Pausa')}</b>
-              </div>
-              <div class="mini" style="margin-top:2px;color:var(--aco-500)">
-                Box: <b>${esc(m.boxId || '—')}</b> • Pausado há: <b>${esc(m.tempoDecorridoFormatado)}</b>
-              </div>
-            </div>
-          `).join('')}
-
-          ${((resumo.equipe && resumo.equipe.detalhes && resumo.equipe.detalhes.livres) || []).map(m => `
-            <div class="card-equipe-item" style="border-left:4px solid var(--aco-400);background:var(--aco-050);padding:10px 14px;border-radius:8px">
-              <div class="entre">
-                <b>${esc(m.nome)}</b>
-                <span class="selo" style="background:#e2e8f0;color:#334155;font-size:11px">LIVRE</span>
-              </div>
-              <div class="mini" style="margin-top:4px;color:var(--aco-500)">
-                Função: ${esc(m.funcao || 'Mecânico')} • Disponível no pátio
-              </div>
-            </div>
-          `).join('')}
-
-          ${(!resumo.equipe || resumo.equipe.totalMecanicos === 0) ? `
-            <div class="mini" style="color:var(--aco-400);padding:10px">Nenhum colaborador registrado na equipe.</div>
-          ` : ''}
-        </div>
-      </div>
-
-      <!-- 4. ALERTAS OPERACIONAIS PRIORIZADOS & ENTREGAS DO DIA (GRID 2 COLUNAS) -->
-      <div class="grid-2" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(320px, 1fr));gap:16px;margin-bottom:20px">
-        <!-- COLUNA ESQUERDA: ALERTAS PRIORIZADOS (O QUE PRECISA DE ATENÇÃO) -->
-        <div class="card card-p">
-          <div class="entre" style="margin-bottom:12px">
-            <div>
-              <h3 style="font-size:15px;font-weight:700">O que Precisa de Atenção Agora</h3>
-              <div class="mini" style="color:var(--aco-500)">Alertas ordenados por severidade (P1 a P4)</div>
-            </div>
-            <div class="filtro-prioridades-pills" style="display:flex;gap:4px">
-              ${['todas', 'P1', 'P2', 'P3'].map(p => `
-                <button class="btn-pilula-op ${_filtroPrioridade === p ? 'ativo' : ''}" data-act="filtro-pri-op" data-p="${p}" style="font-size:10.5px;padding:2px 6px;border-radius:12px;border:1px solid var(--aco-200);background:${_filtroPrioridade === p ? 'var(--aco-800)' : 'transparent'};color:${_filtroPrioridade === p ? '#fff' : 'var(--aco-600)'}">
-                  ${p.toUpperCase()}
-                </button>
-              `).join('')}
-            </div>
-          </div>
-
-          <div class="lista-alertas-op" style="display:flex;flex-direction:column;gap:10px;max-height:420px;overflow-y:auto;padding-right:4px">
-            ${alertasFiltrados.length === 0 ? `
-              <div style="text-align:center;padding:30px 10px;color:var(--aco-400)">
-                <div style="font-size:24px;margin-bottom:6px">✅</div>
-                <div style="font-weight:600;font-size:13px">Nenhum alerta pendente</div>
-                <div class="mini">Tudo operando dentro dos limiares normais.</div>
-              </div>
-            ` : alertasFiltrados.map(a => {
-              const corBadge = a.prioridade === 'P1' ? 'var(--tijolo)' : a.prioridade === 'P2' ? '#f97316' : a.prioridade === 'P3' ? '#eab308' : '#3b82f6';
-              const bgBadge = a.prioridade === 'P1' ? '#fef2f2' : a.prioridade === 'P2' ? '#fff7ed' : a.prioridade === 'P3' ? '#fefce8' : '#eff6ff';
-              const jaReconhecido = a.status === 'reconhecido';
-
-              return `
-              <div class="alerta-card-op" style="border:1px solid var(--aco-200);border-left:4px solid ${corBadge};border-radius:8px;padding:10px 12px;background:var(--branco)">
-                <div class="entre" style="margin-bottom:4px">
-                  <span class="badge-prioridade-op" style="font-size:10px;font-weight:800;color:${corBadge};background:${bgBadge};padding:2px 6px;border-radius:4px">
-                    ${esc(a.prioridade)} • ${esc(a.severidade ? a.severidade.toUpperCase() : 'ALERTA')}
-                  </span>
-                  <span class="mini" style="color:var(--aco-400)">
-                    ${a.geradoEm ? formatarHoraSimples(a.geradoEm) : '--:--'}
-                  </span>
-                </div>
-                <div style="font-size:13px;font-weight:600;color:var(--aco-900);line-height:1.3;margin-bottom:4px">
-                  ${esc(a.mensagem)}
-                </div>
-                <div class="mini" style="color:var(--aco-600);margin-bottom:8px">
-                  ${a.recurso && a.recurso.tipo ? `Alvo: <b>${esc(a.recurso.tipo)} ${esc(a.recurso.id || '')}</b>` : ''}
-                  ${jaReconhecido ? ' • <span style="color:var(--verde);font-weight:600">✓ Reconhecido</span>' : ''}
-                </div>
-                <div class="acoes-alerta-op" style="display:flex;gap:6px;justify-content:flex-end">
-                  ${!jaReconhecido ? `
-                    <button class="btn btn-secundario btn-pequeno" data-act="reconhecer-alerta" data-id="${esc(a.id)}" style="font-size:11px;padding:3px 8px">
-                      ✓ Ciente
-                    </button>
-                  ` : ''}
-                  ${a.recurso && a.recurso.id ? `
-                    <button class="btn btn-primario btn-pequeno" data-act="abrir-os-op" data-os="${esc(a.recurso.id)}" style="font-size:11px;padding:3px 8px">
-                      Abrir OS
-                    </button>
-                  ` : ''}
-                </div>
-              </div>`;
-            }).join('')}
-          </div>
-        </div>
-
-        <!-- COLUNA DIREITA: ENTREGAS PROGRAMADAS PARA HOJE -->
-        <div class="card card-p">
-          <div class="entre" style="margin-bottom:12px">
-            <div>
-              <h3 style="font-size:15px;font-weight:700">Entregas do Dia (${entregas.length})</h3>
-              <div class="mini" style="color:var(--aco-500)">Compromissos de entrega previstos para a jornada de hoje</div>
-            </div>
-          </div>
-
-          <div class="lista-entregas-op" style="display:flex;flex-direction:column;gap:10px;max-height:420px;overflow-y:auto;padding-right:4px">
-            ${entregas.length === 0 ? `
-              <div style="text-align:center;padding:30px 10px;color:var(--aco-400)">
-                <div style="font-size:24px;margin-bottom:6px">📅</div>
-                <div style="font-weight:600;font-size:13px">Nenhuma entrega prometida para hoje</div>
-                <div class="mini">As OSs em andamento têm prazos futuros ou não possuem data definida.</div>
-              </div>
-            ` : entregas.map(e => {
-              const isAtrasada = e.statusEntrega === 'atrasada';
-              const isRisco = e.statusEntrega === 'em_risco';
-              const isConcluida = e.statusEntrega === 'concluida';
-              const badgeCor = isAtrasada ? 'var(--tijolo)' : isRisco ? 'var(--sinal)' : isConcluida ? 'var(--aco-500)' : 'var(--verde)';
-              const badgeBg = isAtrasada ? '#fef2f2' : isRisco ? '#fffbeb' : isConcluida ? 'var(--aco-150)' : '#ecfdf5';
-              const badgeTexto = isAtrasada ? 'ATRASADA' : isRisco ? 'EM RISCO (< 60m)' : isConcluida ? 'CONCLUÍDA' : 'NO PRAZO';
-
-              return `
-              <div class="entrega-card-op" style="border:1px solid var(--aco-200);border-radius:8px;padding:10px 12px;background:var(--branco)">
-                <div class="entre" style="margin-bottom:4px">
-                  <div style="display:flex;align-items:center;gap:6px">
-                    <span class="placa" style="font-size:12px;color:#000000;font-weight:bold">${esc(e.placa)}</span>
-                    <button class="btn-link-os" data-act="abrir-os-op" data-os="${esc(e.osId)}" style="font-size:12px;font-weight:700;color:var(--petroleo)">
-                      OS #${esc(e.num)}
-                    </button>
-                  </div>
-                  <span class="selo" style="font-size:10px;font-weight:800;color:${badgeCor};background:${badgeBg};border:1px solid ${badgeCor}">
-                    ${badgeTexto}
-                  </span>
-                </div>
-                <div class="mini" style="color:var(--aco-800);font-weight:600">
-                  ${esc(e.modelo)} • ${esc(e.cliente)}
-                </div>
-                <div class="entre" style="margin-top:6px;font-size:12px;color:var(--aco-600)">
-                  <span>Prometido para: <b>${esc(e.horaPrometida || '18:00')}</b></span>
-                  <span>Estágio: <b>${esc(e.st ? e.st.toUpperCase() : 'ANDAMENTO')}</b></span>
-                </div>
-              </div>`;
-            }).join('')}
-          </div>
-        </div>
-      </div>
-
-      <!-- 5. DIAGNÓSTICO DE GARGALOS & MÉTRICAS DE FLUXO (SEM MÉTRICAS INVENTADAS) -->
+      <!-- 5. DIAGNÓSTICO DE GARGALOS & MÉTRICAS DE FLUXO -->
       ${typeof renderMetricasFluxoOp === 'function' ? renderMetricasFluxoOp(resumo, metricas) : (window.DashboardMetrics && window.DashboardMetrics.renderMetricasFluxoOp ? window.DashboardMetrics.renderMetricasFluxoOp(resumo, metricas) : '')}
 
       <!-- 6. GRÁFICOS VISUAIS CHART.JS (4 QUADRANTES) -->
       ${typeof renderGridGraficosOp === 'function' ? renderGridGraficosOp() : (window.DashboardMetrics && window.DashboardMetrics.renderGridGraficosOp ? window.DashboardMetrics.renderGridGraficosOp() : '')}
 
+      <!-- 7. RENTABILIDADE & PRECIFICAÇÃO ASSISTIDA -->
+      ${typeof renderRentabilidadeAssistidaOp === 'function' ? renderRentabilidadeAssistidaOp(rentabilidade) : (window.renderRentabilidadeAssistidaOp ? window.renderRentabilidadeAssistidaOp(rentabilidade) : '')}
 
-      <!-- 7. PROMPTS RÁPIDOS PARA ASSISTENTE VIRTUAL / VOZ IA -->
-      <div class="card card-p" style="margin-bottom:20px;background:linear-gradient(135deg, #1e293b 0%, #0f172a 100%);color:#fff">
-        <div class="entre" style="margin-bottom:10px">
-          <div style="display:flex;align-items:center;gap:8px">
-            <span style="font-size:20px">🎙️</span>
-            <div>
-              <h4 style="color:#fff;font-size:14px">Pergunte à ${esc(S?.cfg?.assistente?.displayName || S?.cfg?.assistant?.displayName || 'Verônica')} sobre a Operação</h4>
-              <div class="mini" style="color:var(--aco-400)">Consultas por voz ou texto com resposta em segundos</div>
-            </div>
-          </div>
-          <button type="button" class="btn btn-pequeno btn-neutro" style="background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.25);cursor:pointer;display:flex;align-items:center;gap:6px" onclick="if(typeof PatioVoz !== 'undefined' && PatioVoz.abrirConfiguracao){ PatioVoz.abrirConfiguracao(); } else if(typeof abrirConfiguracoesAgente === 'function'){ abrirConfiguracoesAgente(); }">
-            ⚙️ Configurar Agente
-          </button>
-        </div>
-        <div class="pills-veronica-op" style="display:flex;gap:8px;flex-wrap:wrap">
-          <button class="btn-prompt-op" data-act="prompt-veronica" data-texto="Quais entregas estão em risco hoje?" style="background:rgba(255,255,255,0.1);color:#fff;border:1px solid rgba(255,255,255,0.15);padding:6px 12px;border-radius:16px;font-size:12px">
-            "Quais entregas estão em risco hoje?"
-          </button>
-          <button class="btn-prompt-op" data-act="prompt-veronica" data-texto="Qual é o maior gargalo operacional agora?" style="background:rgba(255,255,255,0.1);color:#fff;border:1px solid rgba(255,255,255,0.15);padding:6px 12px;border-radius:16px;font-size:12px">
-            "Qual é o maior gargalo operacional agora?"
-          </button>
-          <button class="btn-prompt-op" data-act="prompt-veronica" data-texto="Tem algum veículo com manutenção vencida?" style="background:rgba(255,255,255,0.1);color:#fff;border:1px solid rgba(255,255,255,0.15);padding:6px 12px;border-radius:16px;font-size:12px">
-            "Manutenções vencidas na frota?"
-          </button>
-          <button class="btn-prompt-op" data-act="prompt-veronica" data-texto="Tem pós-venda pendente hoje?" style="background:rgba(255,255,255,0.1);color:#fff;border:1px solid rgba(255,255,255,0.15);padding:6px 12px;border-radius:16px;font-size:12px">
-            "Pós-venda pendente hoje?"
-          </button>
-          ${!isPerfilMecanico() ? `
-          <button class="btn-prompt-op" data-act="prompt-veronica" data-texto="Quanto posso dar de desconto sem furar a margem?" style="background:rgba(255,255,255,0.1);color:#fff;border:1px solid rgba(255,255,255,0.15);padding:6px 12px;border-radius:16px;font-size:12px">
-            "Desconto seguro sem furar a margem?"
-          </button>
-          ` : ''}
-        </div>
-      </div>
-
-      <!-- 7.2 CARD COMPACTO: CRM, AGENDAMENTOS E MANUTENÇÃO PREVENTIVA -->
-      <div class="card card-p" style="margin-bottom:20px;border-left:4px solid #3b82f6">
-        <div class="entre" style="margin-bottom:12px">
-          <div>
-            <h4 style="margin:0;font-size:14px;color:var(--aco-900);font-weight:700">Relacionamento, Frotas & Agendamentos</h4>
-            <div class="mini" style="color:var(--aco-500)">Visão proativa de preventivas e pós-venda</div>
-          </div>
-          <span class="selo selo-azul">CRM Ativo</span>
-        </div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));gap:12px">
-          <div style="background:#f8fafc;padding:10px;border-radius:6px;border:1px solid var(--aco-200)">
-            <div class="mini" style="color:var(--aco-500);font-weight:700">AGENDADOS HOJE</div>
-            <div style="font-size:20px;font-weight:800;color:var(--aco-900)">
-              ${(S.appointments || []).filter(a => a.scheduledDate === new Date().toISOString().slice(0, 10)).length}
-            </div>
-            <div class="mini" style="color:var(--aco-400)">Previsão de chegada</div>
-          </div>
-          <div style="background:#f8fafc;padding:10px;border-radius:6px;border:1px solid var(--aco-200)">
-            <div class="mini" style="color:#dc2626;font-weight:700">MANUTENÇÕES VENCIDAS</div>
-            <div style="font-size:20px;font-weight:800;color:#dc2626">
-              ${(S.maintenancePlans || []).reduce((acc, p) => acc + (p.items || []).filter(i => i.status === 'vencido').length, 0)}
-            </div>
-            <div class="mini" style="color:var(--aco-400)">Exigem contato proativo</div>
-          </div>
-          <div style="background:#f8fafc;padding:10px;border-radius:6px;border:1px solid var(--aco-200)">
-            <div class="mini" style="color:#d97706;font-weight:700">MANUTENÇÕES PRÓXIMAS</div>
-            <div style="font-size:20px;font-weight:800;color:#d97706">
-              ${(S.maintenancePlans || []).reduce((acc, p) => acc + (p.items || []).filter(i => i.status === 'proximo').length, 0)}
-            </div>
-            <div class="mini" style="color:var(--aco-400)">Próximos 15 dias / 10% km</div>
-          </div>
-          <div style="background:#f8fafc;padding:10px;border-radius:6px;border:1px solid var(--aco-200)">
-            <div class="mini" style="color:#2563eb;font-weight:700">PÓS-VENDA PENDENTE</div>
-            <div style="font-size:20px;font-weight:800;color:#2563eb">
-              ${(S.afterSales || []).filter(a => a.status === 'pendente').length}
-            </div>
-            <div class="mini" style="color:var(--aco-400)">Follow-up pós-entrega</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- 7.5 PAINEL DE RENTABILIDADE & PRECIFICAÇÃO ASSISTIDA (Oculto para perfil mecânico) -->
-      ${!isPerfilMecanico() ? `
-      <div class="card card-p" style="margin-bottom:20px;border-left:4px solid #10b981">
-        <div class="entre" style="margin-bottom:12px;flex-wrap:wrap;gap:10px">
-          <div>
-            <div style="display:flex;align-items:center;gap:8px">
-              <span style="font-size:18px">💰</span>
-              <h3 style="font-size:15px;font-weight:700">Rentabilidade & Proteção de Margem</h3>
-            </div>
-            <div class="mini" style="color:var(--aco-500);margin-top:2px">Precificação assistida e proteção determinística contra vendas abaixo do custo</div>
-          </div>
-          <div style="display:flex;gap:8px">
-            <button class="btn btn-pequeno btn-neutro" data-act="ver-rentabilidade-detalhes" style="font-size:12px">
-              📊 Relatório de Rentabilidade
-            </button>
-          </div>
-        </div>
-
-        <div class="grid-4" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:12px;margin-bottom:12px">
-          <div style="background:var(--aco-050);padding:12px;border-radius:8px;border:1px solid var(--aco-200)">
-            <div class="mini" style="color:var(--aco-500)">Meta de Margem Padrão</div>
-            <div style="font-size:18px;font-weight:700;color:#10b981;margin-top:4px">
-              ${(window.S?.cfg?.precificacao?.margemAlvoPadrao || 35)}%
-            </div>
-            <div class="mini" style="color:var(--aco-400);margin-top:2px">Piso de segurança: ${(window.S?.cfg?.precificacao?.margemMinimaPadrao || 20)}%</div>
-          </div>
-
-          <div style="background:var(--aco-050);padding:12px;border-radius:8px;border:1px solid var(--aco-200)">
-            <div class="mini" style="color:var(--aco-500)">Política de Margem</div>
-            <div style="font-size:16px;font-weight:700;color:var(--aco-800);margin-top:4px;text-transform:uppercase">
-              ${esc(window.S?.cfg?.precificacao?.modo || 'alertar')}
-            </div>
-            <div class="mini" style="color:var(--aco-400);margin-top:2px">Requer override para venda abaixo</div>
-          </div>
-
-          <div style="background:var(--aco-050);padding:12px;border-radius:8px;border:1px solid var(--aco-200)">
-            <div class="mini" style="color:var(--aco-500)">Amostra Mínima Histórica</div>
-            <div style="font-size:18px;font-weight:700;color:var(--aco-800);margin-top:4px">
-              ${(window.S?.cfg?.precificacao?.amostraMinimaHistorico || 5)} OS
-            </div>
-            <div class="mini" style="color:var(--aco-400);margin-top:2px">Mediana real para corte de outliers</div>
-          </div>
-
-          <div style="background:var(--aco-050);padding:12px;border-radius:8px;border:1px solid var(--aco-200)">
-            <div class="mini" style="color:var(--aco-500)">Simulador de Desconto</div>
-            <div style="margin-top:6px">
-              <span class="badge" style="background:#ecfdf5;color:#059669;font-weight:600;padding:4px 8px;border-radius:4px">
-                Ativo & Protegido
-              </span>
-            </div>
-            <div class="mini" style="color:var(--aco-400);margin-top:4px">Bloqueio automático de prejuízo</div>
-          </div>
-        </div>
-      </div>
-      ` : ''}
-
-      <!-- 8. LISTA RÁPIDA DE VEÍCULOS NO PÁTIO (BUSCA E FILTRO) -->
-      <div class="card card-p">
-        <div class="entre" style="margin-bottom:14px;flex-wrap:wrap;gap:10px">
-          <div>
-            <h3 style="font-size:15px;font-weight:700">Veículos no Pátio (${veiculosFiltrados.length})</h3>
-            <div class="mini" style="color:var(--aco-500)">Acesso rápido a todos os veículos com ordens de serviço ativas</div>
-          </div>
-          <div style="display:flex;align-items:center;gap:8px">
-            <input type="text" class="campo-busca-op" placeholder="Buscar placa, modelo, cliente..." value="${esc(_buscaTexto)}" data-act="busca-op" style="padding:6px 12px;border-radius:6px;border:1px solid var(--aco-300);font-size:12.5px;width:240px">
-          </div>
-        </div>
-
-        <div class="tabela-responsiva">
-          <table class="tabela" style="width:100%">
-            <thead>
-              <tr>
-                <th>Placa / OS</th>
-                <th>Veículo & Cliente</th>
-                <th>Box / Mecânico</th>
-                <th>Estágio</th>
-                <th>Previsão</th>
-                <th>Avisos</th>
-                <th>Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${veiculosFiltrados.length === 0 ? `
-                <tr>
-                  <td colspan="7" style="text-align:center;padding:24px;color:var(--aco-400)">
-                    Nenhum veículo encontrado para os filtros selecionados.
-                  </td>
-                </tr>
-              ` : veiculosFiltrados.map(v => `
-                <tr>
-                  <td>
-                    <span class="placa" style="color:#000000;font-weight:bold">${esc(v.placa)}</span>
-                    <div class="mini" style="color:var(--aco-500);margin-top:2px">OS #${esc(v.num)}</div>
-                  </td>
-                  <td>
-                    <div style="font-weight:600">${esc(v.modelo)}</div>
-                    <div class="mini" style="color:var(--aco-600)">${esc(v.cliente)}</div>
-                  </td>
-                  <td>
-                    <div style="font-weight:600">${esc(v.box)}</div>
-                    <div class="mini" style="color:var(--aco-500)">${esc(v.mec)}</div>
-                  </td>
-                  <td>
-                    <span class="selo selo-op-st" data-st="${esc(v.st)}">${esc(String(v.st || '').toUpperCase())}</span>
-                  </td>
-                  <td>
-                    <div class="mini"><b>${esc(v.prev || '--')}</b> ${esc(v.horaPrev || '')}</div>
-                  </td>
-                  <td>
-                    ${v.possivelGarantia ? '<span class="selo" style="background:#fef3c7;color:#b45309;font-size:10px">🛡️ Garantia</span> ' : ''}
-                    ${v.alertasQtd > 0 ? `<span class="selo" style="background:#fee2e2;color:#b91c1c;font-size:10px">${v.alertasQtd} alerta(s)</span>` : ''}
-                  </td>
-                  <td>
-                    <div style="display:flex;gap:4px">
-                      <button class="btn btn-secundario btn-pequeno" data-act="detalhe-item-op" data-os="${esc(v.osId)}" style="font-size:11px;padding:3px 6px">
-                        Detalhes
-                      </button>
-                      <button class="btn btn-primario btn-pequeno" data-act="abrir-os-op" data-os="${esc(v.osId)}" style="font-size:11px;padding:3px 6px">
-                        Abrir OS
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <!-- 8. LISTA RÁPIDA DE VEÍCULOS NO PÁTIO -->
+      ${typeof renderTabelaVeiculosPatioOp === 'function' ? renderTabelaVeiculosPatioOp(veiculosFiltrados, _buscaTexto) : (window.renderTabelaVeiculosPatioOp ? window.renderTabelaVeiculosPatioOp(veiculosFiltrados, _buscaTexto) : '')}
     </div>`;
   }
 
-  // Delegação de Eventos Específicos do Dashboard Operacional
+  // Delegação de Eventos
   document.addEventListener('click', (e) => {
     const btn = e.target.closest('[data-act]');
     if (!btn) return;
     const act = btn.dataset.act;
-
     if (act === 'refresh-op') {
       carregarPainelOperacional({ silencioso: false });
     } else if (act === 'toggle-modo-tv') {
-      toggleModoTV();
-    } else if (act === 'filtro-estagio-op') {
+      if (typeof toggleModoTV === 'function') toggleModoTV();
+      else if (window.toggleModoTV) window.toggleModoTV();
+    } else if (act === 'filtro-estagio-op' || act === 'filtro-estagio') {
       _filtroEstagio = btn.dataset.estagio || 'todos';
       renderDashboardOperacionalSeAtivo();
     } else if (act === 'filtro-pri-op') {
-      _filtroPrioridade = btn.dataset.p || 'todas';
+      _filtroPrioridade = btn.dataset.pri || 'todas';
       renderDashboardOperacionalSeAtivo();
-    } else if (act === 'reconhecer-alerta') {
-      const id = btn.dataset.id;
-      reconhecerAlerta(id);
-    } else if (act === 'abrir-os-op') {
-      const osId = btn.dataset.os;
+    } else if (act === 'reconhecer-alerta-op') {
+      reconhecerAlerta(btn.dataset.id);
+    } else if (act === 'abrir-os-op' || act === 'abrir-os-completa') {
+      const osId = btn.dataset.os || btn.dataset.id;
       if (typeof S !== 'undefined' && S.ui) {
         S.ui.osAberta = osId;
         S.ui.abaOS = 'servicos';
@@ -762,30 +199,13 @@
       if (_painel && Array.isArray(_painel.veiculos)) {
         const item = _painel.veiculos.find(v => v.osId === osId);
         if (item && typeof abrirFolha === 'function') {
-          abrirFolha(() => folhaDetalheOperacional(item));
+          const fn = window.folhaDetalheOperacional || function() { return ''; };
+          abrirFolha(() => fn(item));
         }
-      }
-    } else if (act === 'ir-para-os') {
-      const osId = btn.dataset.id;
-      if (typeof S !== 'undefined' && S.ui) {
-        S.ui.osAberta = osId;
-        S.ui.abaOS = 'servicos';
-        if (typeof abrirFolha === 'function' && typeof folhaOS === 'function') {
-          abrirFolha(folhaOS);
-        }
-      }
-    } else if (act === 'prompt-veronica') {
-      const texto = btn.dataset.texto;
-      if (typeof PatioVoz !== 'undefined' && typeof PatioVoz.abrirDrawer === 'function' && typeof PatioVoz.enviarComandoTexto === 'function') {
-        PatioVoz.abrirDrawer();
-        PatioVoz.enviarComandoTexto(texto);
-      } else {
-        alert('Comando: "' + texto + '". Por favor, abra o assistente de voz.');
       }
     }
   });
 
-  // Busca debounced
   let _timerBuscaOp = null;
   document.addEventListener('input', (e) => {
     if (e.target && e.target.dataset && e.target.dataset.act === 'busca-op') {
@@ -797,14 +217,14 @@
     }
   });
 
-  // Expõe no escopo global para integração com js/app.js
-  window.viewDashboardOperacional = viewDashboardOperacional;
-  window.carregarPainelOperacional = carregarPainelOperacional;
-  window.inicializarGraficosOperacionais = inicializarGraficosOperacionais;
-  window.destruirGraficosOperacionais = destruirGraficos;
-  window.reconhecerAlertaOperacional = reconhecerAlerta;
-  window.toggleModoTV = toggleModoTV;
-  window.folhaDetalheOperacional = folhaDetalheOperacional;
-  window.formatarTempoOp = formatarTempoOp;
+  if (typeof window !== 'undefined') {
+    window.viewDashboardOperacional = viewDashboardOperacional;
+    window.carregarPainelOperacional = carregarPainelOperacional;
+    window.reconhecerAlertaOperacional = reconhecerAlerta;
+    window.renderDashboardOperacionalSeAtivo = renderDashboardOperacionalSeAtivo;
+  }
+  if (typeof globalThis !== 'undefined') {
+    globalThis.viewDashboardOperacional = viewDashboardOperacional;
+    globalThis.carregarPainelOperacional = carregarPainelOperacional;
+  }
 })();
-

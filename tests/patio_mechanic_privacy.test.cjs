@@ -11,6 +11,10 @@ function loadPatioSandbox(perfilAtivo = 'mecanico') {
   const iconsCode = fs.readFileSync(path.resolve(__dirname, '../js/icons.js'), 'utf8');
   const patioRenderPath = path.resolve(__dirname, '../js/modules/patio_render.js');
   const patioRenderCode = fs.existsSync(patioRenderPath) ? fs.readFileSync(patioRenderPath, 'utf8') : '';
+  const patioSheetPath = path.resolve(__dirname, '../js/modules/patio_os_sheet.js');
+  const patioSheetCode = fs.existsSync(patioSheetPath) ? fs.readFileSync(patioSheetPath, 'utf8') : '';
+  const patioActionsPath = path.resolve(__dirname, '../js/modules/patio_actions_workflow.js');
+  const patioActionsCode = fs.existsSync(patioActionsPath) ? fs.readFileSync(patioActionsPath, 'utf8') : '';
   const patioCode = fs.readFileSync(path.resolve(__dirname, '../js/patio.js'), 'utf8');
 
   let windowPrintCalled = false;
@@ -47,9 +51,15 @@ function loadPatioSandbox(perfilAtivo = 'mecanico') {
   };
 
   vm.createContext(sandbox);
+  const seedCadPath = path.resolve(__dirname, '../js/modules/state_seed_cadastros.js');
+  if (fs.existsSync(seedCadPath)) vm.runInContext(fs.readFileSync(seedCadPath, 'utf8'), sandbox);
+  const seedDataPath = path.resolve(__dirname, '../js/modules/state_seed_data.js');
+  if (fs.existsSync(seedDataPath)) vm.runInContext(fs.readFileSync(seedDataPath, 'utf8'), sandbox);
   vm.runInContext(stateCode, sandbox);
   vm.runInContext(iconsCode, sandbox);
   if (patioRenderCode) vm.runInContext(patioRenderCode, sandbox);
+  if (patioSheetCode) vm.runInContext(patioSheetCode, sandbox);
+  if (patioActionsCode) vm.runInContext(patioActionsCode, sandbox);
   vm.runInContext(patioCode, sandbox);
 
 

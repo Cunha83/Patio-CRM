@@ -213,6 +213,7 @@ test('Validação Completa: Upload Logo/Institucional, Novos Módulos Compras e 
     const context = {
       window: {},
       document: {
+        documentElement: { style: { setProperty() {}, getPropertyValue() { return ''; } } },
         createElement: mockEl,
         getElementById: (id) => mockEl(),
         querySelector: () => mockEl(),
@@ -249,34 +250,15 @@ test('Validação Completa: Upload Logo/Institucional, Novos Módulos Compras e 
     vm.createContext(context);
 
     // Carrega scripts na ordem do index.html
-    const scriptFiles = [
-      'js/icons.js',
-      'js/sync.js',
-      'js/state.js',
-      'js/modules/navigation.js',
-      'js/modules/integrations.js',
-      'js/modules/consulta_cliente.js',
-      'js/modules/patio_render.js',
-      'js/patio.js',
-      'js/estoque.js',
-      'js/compras.js',
-      'js/vendas.js',
-      'js/financeiro.js',
-      'js/modules/financeiro_analista.js',
-      'js/whatsapp.js',
-      'js/modules/cadastros_fiscal.js',
-      'js/cadastros.js',
-      'js/modules/cadastros_forms.js',
-      'js/relatorios.js',
-      'js/modules/dashboard_metrics.js',
-      'js/dashboard_operacional.js',
-      'js/modules/agent_config.js',
-      'js/app.js',
-      'js/modules/events.js',
-      'js/voz.js',
-      'js/support-widget.js',
-      'js/fiscal.js'
-    ];
+    const indexHtml = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+    const scriptRegex = /<script src="([^"]+)"><\/script>/g;
+    const scriptFiles = [];
+    let match;
+    while ((match = scriptRegex.exec(indexHtml)) !== null) {
+      if (fs.existsSync(path.join(root, match[1]))) {
+        scriptFiles.push(match[1]);
+      }
+    }
 
     try {
     for (const rel of scriptFiles) {

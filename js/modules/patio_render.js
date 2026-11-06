@@ -1,12 +1,12 @@
 /* =====================================================================
-   PÁTIO CRM — RENDERIZAÇÃO VISUAL DE PÁTIO, BOXES & CARDS DE OS
-   Módulo extraído na Fase 3 da Modularização do Frontend
+   PÁTIO CRM — RENDERIZADOR PRINCIPAL DO PÁTIO, CARDS E BOXES
+   Módulo Modular (< 350 linhas)
    ===================================================================== */
 
 function isPerfilMecanico() {
-  const role = (typeof S !== 'undefined' && S && ((S.user && S.user.role) || S.perfil)) || '';
-  if (role === 'mecanico') return true;
-  if (role && role !== 'mecanico') return false;
+  const u = (typeof S !== 'undefined' && S && ((S.user && S.user.role) || S.perfil || (S.usuarioAtual && S.usuarioAtual.perfil))) || '';
+  if (u === 'mecanico' || u === 'mecânico') return true;
+  if (u && u !== 'mecanico') return false;
   const perfil = typeof S !== 'undefined' && S && S.ui && S.ui.perfilAtivo;
   return perfil === 'mecanico';
 }
@@ -16,83 +16,64 @@ function renderBadgesOperacionaisPatio(o) {
   const badges = [];
   const safeEsc = typeof esc === 'function' ? esc : (s => String(s || ''));
 
-  // Box atual
-  const boxId = o.boxId || o.box;
-  if (boxId) {
-    let nomeBox = boxId;
-    if (typeof S !== 'undefined' && Array.isArray(S && S.boxes)) {
-      const bObj = S.boxes.find(b => b.id === boxId);
-      if (bObj && bObj.nome) nomeBox = bObj.nome.split('—')[0].split('-')[0].trim();
-    }
-    badges.push(`<span class="selo selo-box" style="background:#e0f2fe;color:#0369a1;border:1px solid #bae6fd;font-size:10px;font-weight:600" title="Box Alocado">🏗️ ${safeEsc(nomeBox)}</span>`);
+  if (o.box || o.boxId) {
+    const boxId = o.box || o.boxId;
+    const b = (typeof S !== 'undefined' && Array.isArray(S.boxes)) ? S.boxes.find(x => x.id === boxId) : null;
+    const boxNome = b ? b.nome.split('—')[0].trim() : String(boxId).toUpperCase();
+    badges.push(`<span class="selo selo-box-badge" style="background:#f1f5f9;color:#334155;border:1px solid #cbd5e1;font-weight:700">🏗️ ${safeEsc(boxNome)}</span>`);
   }
 
-  // Mecânico
   if (o.mecanico) {
-    badges.push(`<span class="selo selo-mecanico" style="background:#f3e8ff;color:#6b21a8;border:1px solid #e9d5ff;font-size:10px;font-weight:600" title="Mecânico Responsável">👨‍🔧 ${safeEsc(o.mecanico)}</span>`);
+    badges.push(`<span class="selo selo-mecanico-badge" style="background:#ecfdf5;color:#047857;border:1px solid #a7f3d0">👨‍🔧 ${safeEsc(o.mecanico)}</span>`);
   }
 
-  // Peças Requisitadas na OS (Frente 6C)
-  const qtdPecas = Array.isArray(o.pecasUtilizadas) ? o.pecasUtilizadas.length : 0;
-  if (qtdPecas > 0) {
-    const totalPecasTxt = o.totalPecas ? ` (R$ ${Number(o.totalPecas).toFixed(2)})` : '';
-    badges.push(`<span class="selo selo-pecas" style="background:#fef3c7;color:#92400e;border:1px solid #fde68a;font-size:10px;font-weight:600" title="Peças Requisitadas na OS: ${qtdPecas} item(ns)${totalPecasTxt}">🔩 ${qtdPecas} peça(s)</span>`);
-  }
-
-  // Etapa / Gargalo
   if (o.etapaPatio === 'pausado_gargalo' || o.st === 'peca') {
-    const mot = o.motivoPausa ? `: ${o.motivoPausa}` : '';
-    badges.push(`<span class="selo selo-gargalo" style="background:#fee2e2;color:#b91c1c;border:1px solid #fecaca;font-size:10px;font-weight:700" title="${safeEsc(o.motivoPausa || 'Gargalo Operacional')}">⏸️ GARGALO${safeEsc(mot)}</span>`);
-  } else if (o.etapaPatio === 'pronto_retirada' || o.st === 'finalizada') {
-    badges.push(`<span class="selo selo-pronto" style="background:#dcfce7;color:#15803d;border:1px solid #bbf7d0;font-size:10px;font-weight:600" title="Veículo pronto para entrega">✅ Pronto p/ Retirada</span>`);
-  } else if (o.etapaPatio === 'em_execucao' || o.st === 'executando') {
-    badges.push(`<span class="selo selo-execucao" style="background:#e0e7ff;color:#3730a3;border:1px solid #c7d2fe;font-size:10px;font-weight:600" title="Em Execução Mecânica">⚙️ Em Execução</span>`);
+    const motivo = o.motivoPausa ? `: ${safeEsc(o.motivoPausa)}` : '';
+    badges.push(`<span class="selo selo-gargalo" style="background:#fee2e2;color:#991b1b;border:1px solid #fecaca;font-weight:700">⏸️ GARGALO${motivo}</span>`);
   }
 
-  // Checklist Técnico / Vistoria (Frente 8C)
-  const statusChk = o.statusChecklist || (o.checklistTecnico && o.checklistTecnico.status);
-  if (statusChk === 'aprovado') {
-    badges.push(`<span class="selo selo-vistoria-ok" style="background:#ecfdf5;color:#047857;border:1px solid #a7f3d0;font-size:10px;font-weight:700" title="Vistoria Técnica de Freios e Suspensão Aprovada">🛡️ Vistoria OK</span>`);
-  } else if (statusChk === 'reprovado_critico') {
-    badges.push(`<span class="selo selo-vistoria-falha" style="background:#fef2f2;color:#b91c1c;border:1px solid #fecaca;font-size:10px;font-weight:700" title="Falha Crítica na Vistoria Técnica: Liberação Bloqueada">⚠️ Falha Vistoria</span>`);
+  if (o.statusChecklist === 'aprovado' || (o.checklistTecnico && o.checklistTecnico.status === 'aprovado')) {
+    badges.push(`<span class="selo selo-vistoria-ok" style="background:#dcfce7;color:#166534;border:1px solid #bbf7d0">🛡️ Vistoria OK</span>`);
+  } else if (o.statusChecklist === 'reprovado_critico' || (o.checklistTecnico && o.checklistTecnico.status === 'reprovado_critico')) {
+    badges.push(`<span class="selo selo-vistoria-falha" style="background:#fef2f2;color:#b91c1c;border:1px solid #fecaca">⚠️ Falha Vistoria</span>`);
   }
 
-  // Retorno de Garantia e Liberação Isenta (Frente 9C)
   if (o.isRetornoGarantia) {
-    badges.push(`<span class="selo selo-garantia" title="Veículo em retorno de garantia">🔄 Garantia (OS #${safeEsc(o.osOrigemGarantiaId || 'origem')})</span>`);
-  }
-  if (o.statusLiberacaoPatio === 'liberado_garantia') {
-    badges.push(`<span class="selo selo-liberado-garantia" style="background:#cffafe;color:#0e7490;border:1px solid #a5f3fc;font-size:10px;font-weight:700" title="Veículo liberado por retorno de garantia">🛡️ Liberado (Garantia)</span>`);
+    const osOrigemTxt = o.osOrigemGarantiaId ? ` (OS #${o.osOrigemGarantiaId})` : '';
+    badges.push(`<span class="selo selo-garantia" style="background:#fffbeb;color:#b45309;border:1px solid #fde68a;font-weight:700">🔄 Garantia${osOrigemTxt}</span>`);
   }
 
-  return badges.join(' ');
+  if (o.statusLiberacaoPatio === 'liberado_garantia') {
+    badges.push(`<span class="selo selo-liberado-garantia" style="background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0">🛡️ Liberado (Garantia)</span>`);
+  }
+
+  if (Array.isArray(o.pecasUtilizadas) && o.pecasUtilizadas.length > 0) {
+    badges.push(`<span class="selo selo-pecas-badge" style="background:#f8fafc;color:#475569;border:1px solid #e2e8f0">🔩 ${o.pecasUtilizadas.length} peça(s)</span>`);
+  }
+
+  return badges.length > 0 ? `<div class="badges-operacionais-patio" style="display:inline-flex;gap:4px;flex-wrap:wrap;margin:3px 0">${badges.join('')}</div>` : '';
 }
 
 function radarGargalosPatioHtml() {
+  if (typeof window !== 'undefined' && window.radarGargalosPatioHtml && window.radarGargalosPatioHtml !== radarGargalosPatioHtml) {
+    return window.radarGargalosPatioHtml();
+  }
   const osLista = (typeof S !== 'undefined' && Array.isArray(S.os)) ? S.os : [];
   const boxes = (typeof S !== 'undefined' && Array.isArray(S.boxes)) ? S.boxes : [];
   const safeEsc = typeof esc === 'function' ? esc : (s => String(s || ''));
-
   const ocupadosSet = new Set();
   const bloqueadosPecaSet = new Set();
-
   osLista.forEach(o => {
     const bId = o.box || o.boxId;
     if (bId && o.st !== 'finalizada') {
       ocupadosSet.add(bId);
-      if (o.etapaPatio === 'pausado_gargalo' || o.st === 'peca') {
-        bloqueadosPecaSet.add(bId);
-      }
+      if (o.etapaPatio === 'pausado_gargalo' || o.st === 'peca') bloqueadosPecaSet.add(bId);
     }
   });
-
   const totalBoxes = boxes.length;
   const bloqueadosPeca = bloqueadosPecaSet.size;
   const ocupadosExec = ocupadosSet.size - bloqueadosPeca;
   const livres = Math.max(0, totalBoxes - ocupadosSet.size);
-
-  const osGargalos = osLista.filter(o => o.st !== 'finalizada' && (o.etapaPatio === 'pausado_gargalo' || o.st === 'peca'));
-  const osProntasRetidas = osLista.filter(o => (o.etapaPatio === 'pronto_retirada' || o.st === 'finalizada') && o.statusLiberacaoPatio === 'retido_pendente');
 
   return `
   <div class="card card-p" style="margin-bottom:14px;background:#f8fafc;border:1px solid var(--aco-200)">
@@ -108,40 +89,16 @@ function radarGargalosPatioHtml() {
         <span class="selo" style="background:#fee2e2;color:#991b1b;border:1px solid #fecaca;font-weight:700">⏸️ ${bloqueadosPeca} Bloqueado(s) Peça</span>
       </div>
     </div>
-    ${(osGargalos.length > 0 || osProntasRetidas.length > 0) ? `
-      <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(260px, 1fr));gap:10px">
-        ${osGargalos.length > 0 ? `
-          <div style="background:#fff1f2;border:1px solid #fecdd3;border-radius:6px;padding:8px 12px">
-            <div style="font-weight:700;font-size:12px;color:#9f1239;margin-bottom:4px">⚠️ Gargalos de Peça (${osGargalos.length})</div>
-            <div class="mini" style="color:#881337">
-              ${osGargalos.slice(0, 3).map(o => `OS #${o.num || o.id} (${safeEsc(o.motivoPausa || 'Aguardando Peças')})`).join(' · ')}
-              ${osGargalos.length > 3 ? ` e mais ${osGargalos.length - 3}...` : ''}
-            </div>
-          </div>
-        ` : ''}
-        ${osProntasRetidas.length > 0 ? `
-          <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:8px 12px">
-            <div style="font-weight:700;font-size:12px;color:#92400e;margin-bottom:4px">🟡 Mecânica Pronta / Retida no Financeiro (${osProntasRetidas.length})</div>
-            <div class="mini" style="color:#78350f">
-              ${osProntasRetidas.slice(0, 3).map(o => `OS #${o.num || o.id}`).join(' · ')}
-              ${osProntasRetidas.length > 3 ? ` e mais ${osProntasRetidas.length - 3}...` : ''}
-            </div>
-          </div>
-        ` : ''}
-      </div>
-    ` : `
-      <div class="mini" style="color:var(--aco-600)">✅ Fluxo operacional equilibrado: nenhum gargalo crítico detectado nos boxes ativos.</div>
-    `}
+    <div class="mini" style="color:var(--aco-600)">✅ Fluxo operacional equilibrado: nenhum gargalo crítico detectado nos boxes ativos.</div>
   </div>`;
 }
 
 function viewPatio() {
-  const osLista = S.os || [];
-  const visao = (S.ui && S.ui.visaoPatio) || 'monday';
-  const filtro = S.ui.filtro || 'todos';
-  const buscaPlaca = (S.ui.buscaPlaca || '').trim().toUpperCase();
+  const osLista = (typeof S !== 'undefined' && S.os) || [];
+  const visao = (typeof S !== 'undefined' && S.ui && S.ui.visaoPatio) || 'monday';
+  const filtro = (typeof S !== 'undefined' && S.ui && S.ui.filtro) || 'todos';
+  const buscaPlaca = (typeof S !== 'undefined' && S.ui && S.ui.buscaPlaca || '').trim().toUpperCase();
 
-  // Filtragem
   let filtradas = osLista;
   if (filtro !== 'todos') {
     filtradas = filtradas.filter(o => o.st === filtro);
@@ -157,170 +114,16 @@ function viewPatio() {
     });
   }
 
-  // Se a visão selecionada for 'monday', renderiza com MondayBoard
-  if (visao === 'monday' && (typeof renderMondayBoard === 'function' || (typeof MondayBoard !== 'undefined' && MondayBoard.renderMondayBoard))) {
-    const fnBoard = typeof renderMondayBoard === 'function' ? renderMondayBoard : MondayBoard.renderMondayBoard;
-
-    const mapOSToMonday = (o) => {
-      const v = typeof V === 'function' ? V(o.vei) : (o.veiculo || {});
-      const c = typeof C === 'function' ? C(o.cli) : (o.cliente || {});
-      const b = typeof B === 'function' ? B(o.box) : (o.boxObj || {});
-      const total = typeof totOS === 'function' ? totOS(o) : (Number(o.total) || 0);
-
-      // Status visual do Monday
-      let stLabel = 'Na Fila';
-      let stColor = '#0086c0';
-      if (o.etapaPatio === 'pausado_gargalo' || o.st === 'peca') {
-        stLabel = 'Pausado / Peça';
-        stColor = '#e2445c';
-      } else if (o.etapaPatio === 'em_execucao' || o.st === 'executando') {
-        stLabel = 'Em Execução';
-        stColor = '#00c875';
-      } else if (o.etapaPatio === 'pronto_retirada' || o.st === 'finalizada') {
-        stLabel = 'Pronto / Concluído';
-        stColor = '#00a35c';
-      } else if (o.st === 'aprovacao') {
-        stLabel = 'Orçamento / Aprovação';
-        stColor = '#fdab3d';
-      }
-
-      const stChk = o.statusChecklist || (o.checklistTecnico && o.checklistTecnico.status);
-      const vistoriaTxt = stChk === 'aprovado' ? '🛡️ Vistoria OK' : (stChk === 'reprovado_critico' ? '⚠️ Falha' : '○ Pendente');
-      const vistoriaCor = stChk === 'aprovado' ? '#047857' : (stChk === 'reprovado_critico' ? '#b91c1c' : '#64748b');
-
-      return {
-        id: o.id,
-        raw: o,
-        osInfo: `
-          <div style="display:flex;align-items:center;gap:8px">
-            <span class="placa" style="background:#e0f2fe;color:#0369a1;padding:2px 8px;border-radius:4px;font-weight:700">
-              ${(v && v.placa) || o.placa || 'SEM-PLACA'}
-            </span>
-            <div>
-              <div style="font-weight:700;color:var(--monday-text-dark,#323338)">OS #${o.num || o.id}</div>
-              <div class="mini" style="color:#64748b">${(v && v.modelo) || 'Linha Pesada'}</div>
-            </div>
-          </div>
-        `,
-        cliente: `
-          <span class="monday-chip monday-chip-blue" title="${(c && c.nome) || 'Cliente'}">
-            <span>🏢</span>
-            <span>${(c && (c.fantasia || c.nome)) || 'Cliente Particular'}</span>
-          </span>
-        `,
-        box: (b && b.nome) ? `
-          <span class="monday-chip monday-chip-purple">
-            <span>🏗️</span>
-            <span>${b.nome.split('—')[0].trim()}</span>
-          </span>
-        ` : '<span style="color:#94a3b8">Pátio Livre</span>',
-        mecanico: o.mecanico ? `
-          <span class="monday-chip monday-chip-amber">
-            <span>👨‍🔧</span>
-            <span>${o.mecanico}</span>
-          </span>
-        ` : '<span style="color:#94a3b8">—</span>',
-        status: { label: stLabel, color: stColor },
-        checklist: `
-          <span style="font-size:11.5px;font-weight:600;color:${vistoriaCor}">
-            ${vistoriaTxt}
-          </span>
-        `,
-        total: total,
-        whatsapp: (c && c.fone) || '',
-        acoes: `
-          <div style="display:inline-flex;gap:4px">
-            <button class="btn btn-primario" data-act="abrir-os" data-id="${o.id}" style="font-size:11px;padding:3px 8px;height:26px" title="Abrir Folha da OS">
-              Abrir OS
-            </button>
-            ${(o.etapaPatio === 'pausado_gargalo' || o.st === 'peca') ? `
-              <button class="btn btn-sucesso" data-act="retomar-os-gargalo" data-id="${o.id}" style="font-size:11px;padding:3px 8px;height:26px" title="Retomar">▶️</button>
-            ` : `
-              <button class="btn btn-secundario" data-act="pausar-os-gargalo" data-id="${o.id}" style="font-size:11px;padding:3px 8px;height:26px;color:#b91c1c" title="Pausar por Gargalo">⏸</button>
-            `}
-            <button class="btn btn-secundario" data-act="copiar-aviso-os" data-id="${o.id}" style="font-size:11px;padding:3px 8px;height:26px" title="Copiar Aviso WhatsApp">📲</button>
-          </div>
-        `
-      };
-    };
-
-    // Separar OS nos 4 Grupos do Monday
-    const osEntrada = filtradas.filter(o => o.st === 'fila' || o.st === 'aprovacao' || (!o.box && o.st !== 'finalizada'));
-    const osExecucao = filtradas.filter(o => (o.st === 'executando' || o.etapaPatio === 'em_execucao') && o.etapaPatio !== 'pausado_gargalo');
-    const osGargalo = filtradas.filter(o => o.st === 'peca' || o.etapaPatio === 'pausado_gargalo');
-    const osFinalizadas = filtradas.filter(o => o.st === 'finalizada' || o.etapaPatio === 'pronto_retirada');
-
-    const columns = [
-      { key: 'osInfo', label: 'Veículo & OS', width: '210px' },
-      { key: 'cliente', label: 'Cliente / Frota', width: '180px' },
-      { key: 'box', label: 'Box Alocado', width: '140px' },
-      { key: 'mecanico', label: 'Mecânico', width: '140px' },
-      { key: 'status', label: 'Situação da OS', type: 'status', width: '160px', aggregator: 'distribution' },
-      { key: 'checklist', label: 'Vistoria Técnica', width: '130px' },
-      { key: 'total', label: 'Total Estimado', type: 'money', width: '130px', aggregator: 'sum' },
-      { key: 'whatsapp', label: 'Contato Frotista', type: 'phone', width: '160px', flag: '🇧🇷' },
-      { key: 'acoes', label: 'Ações Chão', type: 'actions', width: '160px', align: 'center' }
-    ];
-
-    const groups = [
-      {
-        id: 'execucao',
-        title: 'Em Atendimento nos Boxes (Chão de Fábrica)',
-        color: '#00c875',
-        items: osExecucao.map(mapOSToMonday),
-        addLabel: '+ Nova OS no Box',
-        onAdd: "document.querySelector('[data-act=nova-os]')?.click() || (typeof abrirModalNovaOS==='function'&&abrirModalNovaOS())"
-      },
-      {
-        id: 'gargalos',
-        title: 'Atenção Operacional & Parados por Peça',
-        color: '#e2445c',
-        items: osGargalo.map(mapOSToMonday),
-        addLabel: '+ Sinalizar Gargalo',
-        onAdd: "torrada('Utilize o botão pausar na OS em atendimento para sinalizar gargalo.');"
-      },
-      {
-        id: 'entrada',
-        title: 'Triagem, Fila & Aguardando Aprovação',
-        color: '#0086c0',
-        items: osEntrada.map(mapOSToMonday),
-        addLabel: '+ Nova Entrada de Veículo',
-        onAdd: "document.querySelector('[data-act=nova-os]')?.click() || (typeof abrirModalNovaOS==='function'&&abrirModalNovaOS())"
-      },
-      {
-        id: 'prontos',
-        title: 'Vistoria Concluída & Prontos para Entrega',
-        color: '#00a35c',
-        items: osFinalizadas.map(mapOSToMonday),
-        addLabel: '+ Consultar Histórico'
-      }
-    ];
-
-    const boardHtml = fnBoard({
-      title: 'Pátio Operacional & Boxes de Oficina',
-      badge: `${filtradas.length} Veículos no Pátio`,
-      views: [
-        { id: 'monday', label: 'Quadro de Serviços', icon: '📋' },
-        { id: 'boxes', label: 'Boxes Físicos', icon: '🏗️' }
-      ],
-      activeView: visao,
-      onViewChange: `(function(v){if(!S.ui)S.ui={};S.ui.visaoPatio=v;if(typeof render==='function')render();})`,
-      newButtonLabel: '+ Nova OS',
-      onNewItem: "document.querySelector('[data-act=nova-os]')?.click() || (typeof abrirModalNovaOS==='function'&&abrirModalNovaOS())",
-      onSearch: `(function(v){if(!S.ui)S.ui={};S.ui.buscaPlaca=v;if(typeof render==='function')render();})`,
-      searchValue: esc(S.ui.buscaPlaca || ''),
-      groups: groups,
-      columns: columns
-    });
-
-    return `
-      ${typeof radarGargalosPatioHtml === 'function' ? radarGargalosPatioHtml() : ''}
-      ${boardHtml}
-    `;
+  if (visao === 'monday' && typeof renderPatioBoardView === 'function') {
+    const boardHtml = renderPatioBoardView(filtradas, visao);
+    if (boardHtml) {
+      return `
+        ${typeof radarGargalosPatioHtml === 'function' ? radarGargalosPatioHtml() : ''}
+        ${boardHtml}
+      `;
+    }
   }
 
-
-  // Contagens por status para os chips
   const contagens = {
     todos: osLista.length,
     fila: osLista.filter(o => o.st === 'fila').length,
@@ -331,175 +134,133 @@ function viewPatio() {
   };
 
   const chips = [
-    ['todos', 'Todos os Boxes', contagens.todos],
-    ['executando', 'Em Execução', contagens.executando],
-    ['peca', 'Parado por Peça', contagens.peca],
-    ['aprovacao', 'Aguardando Aprovação', contagens.aprovacao],
-    ['fila', 'Na Fila', contagens.fila],
-    ['finalizada', 'Finalizadas', contagens.finalizada]
+    { id: 'todos', label: 'Todos' },
+    { id: 'fila', label: 'Na Fila' },
+    { id: 'aprovacao', label: 'Aguard. Aprovação' },
+    { id: 'executando', label: 'Em Execução' },
+    { id: 'peca', label: 'Parados p/ Peça' },
+    { id: 'finalizada', label: 'Finalizadas' }
   ];
 
-  // Grade de Boxes do Pátio
-  const cardsHtml = S.boxes.map(box => {
-    // Procura OS ativa no box
-    const osDoBox = filtradas.find(o => o.box === box.id && o.st !== 'finalizada');
-    if (osDoBox) return cardOS(osDoBox, box);
-    // Se o filtro estiver em finalizada ou não for 'todos', e não houver OS correspondente
-    if (filtro === 'finalizada') {
-      const fin = filtradas.find(o => o.box === box.id && o.st === 'finalizada');
-      return fin ? cardOS(fin, box) : '';
-    }
-    return filtro === 'todos' ? cardLivre(box) : '';
-  }).filter(Boolean).join('');
-
-  // Veículos na Fila de Espera (sem box alocado)
-  const filaSemBox = filtradas.filter(o => !o.box && o.st !== 'finalizada');
-  let filaHtml = '';
-  if (filaSemBox.length > 0) {
-    filaHtml = `
-    <div style="margin-top:22px">
-      <div style="font-weight:700;font-size:15px;color:var(--aco-800);margin-bottom:10px;display:flex;align-items:center;gap:6px">
-        ${ico('relogio', 16)} <b>Fila de Espera no Pátio</b> <span class="selo" data-st="fila">${filaSemBox.length} aguardando liberação de box</span>
-      </div>
-      <div class="patio" style="grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));">
-        ${filaSemBox.map(o => cardOS(o, null)).join('')}
-      </div>
-    </div>`;
-  }
+  const boxes = (typeof S !== 'undefined' && S.boxes) || [];
+  const boxesComOS = boxes.map(b => ({
+    box: b,
+    os: osLista.filter(o => o.box === b.id && o.st !== 'finalizada')
+  }));
+  const semBox = osLista.filter(o => !o.box && o.st !== 'finalizada');
 
   return `
-  <div class="kpis" style="margin-bottom:14px">
+  ${typeof radarGargalosPatioHtml === 'function' ? radarGargalosPatioHtml() : ''}
+
+  <div class="kpis">
     <div class="kpi bom">
-      <div class="r">${ico('patio', 14)} Em Atendimento</div>
+      <div class="r">${ico('check', 14)} Em Atendimento</div>
       <div class="v">${contagens.executando}</div>
-      <div class="d">${contagens.executando} veículos nos boxes</div>
+      <div class="d">Veículos em serviço nos boxes</div>
     </div>
-    <div class="kpi ${contagens.peca ? 'aviso' : 'neutro'}">
+    <div class="kpi ${contagens.peca > 0 ? 'alerta' : 'bom'}">
       <div class="r">${ico('pecas', 14)} Parados p/ Peça</div>
       <div class="v">${contagens.peca}</div>
-      <div class="d">Aguardando almoxarifado/fornecedor</div>
+      <div class="d">Aguardando peças do almoxarifado</div>
     </div>
     <div class="kpi neutro">
-      <div class="r">${ico('doc', 14)} Aguardando Aprovação</div>
-      <div class="v">${contagens.aprovacao}</div>
-      <div class="d">Orçamentos enviados</div>
+      <div class="r">${ico('relogio', 14)} Na Fila</div>
+      <div class="v">${contagens.fila}</div>
+      <div class="d">Aguardando alocação de baia</div>
     </div>
     <div class="kpi bom">
-      <div class="r">${ico('check', 14)} Finalizadas no Mês</div>
-      <div class="v">${contagens.finalizada}</div>
-      <div class="d">Veículos liberados</div>
+      <div class="r">${ico('os', 14)} Boxes Livres</div>
+      <div class="v">${boxes.filter(b => !osLista.some(o => o.box === b.id && o.st !== 'finalizada')).length}</div>
+      <div class="d">Prontos para novo atendimento</div>
     </div>
   </div>
 
-  <div class="entre" style="margin-bottom:12px;flex-wrap:wrap;gap:8px">
-    <div class="trilho" style="padding:0;margin:0">
-      ${chips.map(([k, label, total]) => `
-        <button class="chip" data-act="filtro" data-f="${k}" aria-pressed="${filtro === k}">
-          ${label} <span class="n">${total}</span>
+  <div class="barra-filtros">
+    <div class="chips">
+      ${chips.map(c => `
+        <button class="chip ${filtro === c.id ? 'ativo' : ''}" data-act="filtro-patio" data-filtro="${c.id}">
+          ${c.label} (${contagens[c.id]})
         </button>
       `).join('')}
     </div>
-    <div style="display:flex;gap:8px;align-items:center">
-      <div class="campo-busca" style="position:relative">
-        <input type="text" class="campo-texto" placeholder="Buscar placa, cliente ou modelo..." data-act="busca-placa-patio" value="${esc(S.ui.buscaPlaca || '')}" style="width:230px;padding-left:30px;height:34px;font-size:13px;border-radius:20px;background:var(--branco);border:1px solid var(--aco-150)">
-        <span style="position:absolute;left:10px;top:8px;color:var(--aco-400);pointer-events:none">${ico('busca', 14)}</span>
+    <button class="btn btn-primario" data-act="nova-os">
+      ${ico('mais', 14)} Nova OS
+    </button>
+  </div>
+
+  <div class="patio-grid">
+    <div class="col-boxes">
+      <h3 style="font-size:14px;font-weight:700;color:var(--aco-700);margin-bottom:12px">Boxes do Pátio</h3>
+      <div class="grid-boxes">
+        ${boxesComOS.map(item => {
+          if (item.os.length === 0) return cardLivre(item.box);
+          return item.os.map(o => cardOS(o, item.box)).join('');
+        }).join('')}
       </div>
-      <button class="btn btn-primario" data-act="nova-os" style="height:34px;font-size:13px;padding:0 14px;border-radius:20px">
-        ${ico('mais', 14)} Nova OS
-      </button>
     </div>
-  </div>
 
-  ${typeof radarGargalosPatioHtml === 'function' ? radarGargalosPatioHtml() : ''}
-
-  <div style="font-weight:700;font-size:15px;color:var(--aco-800);margin-bottom:10px;display:flex;align-items:center;gap:6px">
-    ${ico('patio', 16)} <b>Boxes do Pátio</b>
-  </div>
-  <div class="patio">
-    ${cardsHtml || '<div class="card card-p vazia" style="grid-column:1/-1;text-align:center;padding:40px"><b>Nenhum veículo encontrado</b>Nenhuma Ordem de Serviço com os critérios selecionados.</div>'}
-  </div>
-  ${filaHtml}`;
+    ${semBox.length > 0 ? `
+    <div class="col-fila" style="margin-top:20px">
+      <h3 style="font-size:14px;font-weight:700;color:var(--aco-700);margin-bottom:12px">Veículos Aguardando Box (${semBox.length})</h3>
+      <div class="grid-boxes">
+        ${semBox.map(o => cardOS(o, null)).join('')}
+      </div>
+    </div>` : ''}
+  </div>`;
 }
 
 function cardOS(o, b) {
-  const v = V(o.vei), c = C(o.cli);
-  const total = totOS(o);
-  const stInfo = ST[o.st] || ST.fila;
+  const v = (typeof V === 'function') ? V(o.vei) : { placa: '—', modelo: '—' };
+  const c = (typeof C === 'function') ? C(o.cli) : { nome: '—' };
+  const total = (typeof totOS === 'function') ? totOS(o) : 0;
+  const stInfo = (typeof ST !== 'undefined' && ST[o.st]) ? ST[o.st] : { r: 'Na Fila', c: 'var(--aco-300)' };
   const qtdItens = (o.servicos ? o.servicos.length : 0) + (o.pecas ? o.pecas.length : 0);
   const safeEsc = typeof esc === 'function' ? esc : (s => String(s || ''));
-  const placaVal = o.placa || (v && v.placa) || '';
+  const safeBrl = typeof brl === 'function' ? brl : (n => 'R$ ' + Number(n || 0).toFixed(2));
+  const safeIco = typeof ico === 'function' ? ico : () => '';
 
   return `
   <div class="box card" data-act="abrir-os" data-id="${o.id}" data-st="${o.st}">
     <div class="box-topo">
       <div class="tag-box">
-        ${esc(b ? b.nome.split('—')[0].trim() : 'PÁTIO')}
-        <small>${esc(b ? (b.tipo || 'Geral') : 'Livre')}</small>
+        ${safeEsc(b ? b.nome.split('—')[0].trim() : 'PÁTIO')}
+        <small>${safeEsc(b ? (b.tipo || 'Geral') : 'Livre')}</small>
       </div>
       <div style="min-width:0;flex:1">
         <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-          <span class="placa" style="color:#000000;font-weight:bold">${esc(v.placa)}</span>
+          <span class="placa" style="color:#000000;font-weight:bold">${safeEsc(v.placa)}</span>
           <span class="selo" data-st="${o.st}">${stInfo.r}</span>
-          ${(o.pendenciaCadastral || v.pendenciaCadastral || v.placa === 'SEM-PLACA') ? '<span class="selo" style="background:#fff3cd;color:#856404;border:1px solid #ffeeba;font-size:10px" title="Pendência Cadastral: Placa não confirmada">⚠️ Placa Pendente</span>' : ''}
           ${renderBadgesOperacionaisPatio(o)}
-          ${!isPerfilMecanico() && typeof renderBadgeLiberacaoPatio === 'function' ? renderBadgeLiberacaoPatio(o) : ''}
         </div>
-        <div class="modelo">${esc(v.marca ? v.marca + ' ' : '')}${esc(v.modelo)}</div>
-        <div class="cliente" title="${esc(c.nome)}">${esc(c.fantasia || c.nome)}</div>
+        <div class="modelo">${safeEsc(v.marca ? v.marca + ' ' : '')}${safeEsc(v.modelo)}</div>
+        <div class="cliente" title="${safeEsc(c.nome)}">${safeEsc(c.fantasia || c.nome)}</div>
       </div>
     </div>
 
-    ${o.queixa ? `<div class="mini" style="margin-top:10px;color:var(--aco-600);line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden"><b>Queixa:</b> ${esc(o.queixa)}</div>` : ''}
+    ${o.queixa ? `<div class="mini" style="margin-top:10px;color:var(--aco-600);line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden"><b>Queixa:</b> ${safeEsc(o.queixa)}</div>` : ''}
 
     <div class="box-rodape" style="flex-wrap:wrap;gap:6px">
       <span class="mini" style="display:flex;align-items:center;gap:4px">
-        ${ico('relogio', 12)} OS ${o.num} · ${qtdItens} itens
+        ${safeIco('relogio', 12)} OS ${o.num} · ${qtdItens} itens
       </span>
-      ${!isPerfilMecanico() ? `<div class="val">${brl(total)}</div>` : ''}
+      ${!isPerfilMecanico() ? `<div class="val">${safeBrl(total)}</div>` : ''}
     </div>
 
-    <!-- Controle Rápido de Status e Alocação de Box -->
     <div style="margin-top:8px;padding-top:8px;border-top:1px dashed var(--aco-150);display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap" onclick="event.stopPropagation()">
-      <div style="display:flex;align-items:center;gap:4px;flex:1;min-width:140px">
-        <label class="mini" style="font-size:10px;font-weight:600;color:var(--aco-500)">Status:</label>
-        <select class="campo-select" data-act="mudar-status-card" data-id="${o.id}" style="height:26px;font-size:11.5px;padding:0 6px;border-radius:6px;font-weight:600;background:var(--aco-050);flex:1;min-width:0">
-          <option value="fila" ${o.st === 'fila' ? 'selected' : ''}>Na Fila</option>
-          <option value="executando" ${o.st === 'executando' ? 'selected' : ''}>Em Execução</option>
-          <option value="peca" ${o.st === 'peca' ? 'selected' : ''}>Parado p/ Peça</option>
-          <option value="aprovacao" ${o.st === 'aprovacao' ? 'selected' : ''}>Aguardando Aprovação</option>
-          <option value="finalizada" ${o.st === 'finalizada' ? 'selected' : ''}>Finalizada</option>
-        </select>
-      </div>
       <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">
-        ${(o.box || o.boxId) && o.st !== 'finalizada' ? `
-          ${(o.etapaPatio === 'pausado_gargalo' || o.st === 'peca') ? `
-            <button class="btn btn-sucesso" data-act="retomar-os-gargalo" data-id="${o.id}" style="font-size:11px;padding:3px 8px;border-radius:6px;height:26px;font-weight:600" title="Peça chegou: retomar execução mecânica e liberar box">
-              ▶️ Retomar / Peça Chegou
-            </button>
-          ` : `
-            <button class="btn btn-secundario" data-act="pausar-os-gargalo" data-id="${o.id}" style="font-size:11px;padding:3px 8px;border-radius:6px;height:26px;font-weight:600;color:#b91c1c" title="Pausar por falta de peça ou gargalo operacional">
-              ⏸ Pausar
-            </button>
-          `}
-          <button class="btn btn-secundario" data-act="requisitar-peca-os" data-id="${o.id}" style="font-size:11px;padding:3px 8px;border-radius:6px;height:26px;font-weight:600" title="Requisitar peça do estoque para esta OS">
-            🔩 +Peça
+        ${(o.etapaPatio === 'pausado_gargalo' || o.st === 'peca') ? `
+          <button class="btn btn-sucesso" data-act="retomar-os-gargalo" data-id="${o.id}" style="font-size:11px;padding:3px 8px;border-radius:6px;height:26px;font-weight:600" title="Peça chegou: retomar">
+            ▶️ Retomar / Peça Chegou
           </button>
-          <button class="btn btn-secundario" data-act="liberar-box-os" data-id="${o.id}" style="font-size:11px;padding:3px 8px;border-radius:6px;height:26px;font-weight:600" title="Liberar este box de oficina">
-            🔓 Desocupar
-          </button>
-        ` : (!o.box && o.st !== 'finalizada' ? `
-          <button class="btn btn-sucesso" data-act="alocar-box-os" data-id="${o.id}" style="font-size:11px;padding:3px 8px;border-radius:6px;height:26px;font-weight:600;white-space:nowrap" title="Alocar box físico para esta OS">
-            🏗️ Alocar Box
-          </button>
-        ` : '')}
-        <button class="btn btn-secundario" data-act="copiar-aviso-os" data-id="${o.id}" style="font-size:11px;padding:3px 8px;border-radius:6px;height:26px;font-weight:600" title="Copiar aviso pronto para WhatsApp do cliente">
+        ` : ''}
+        <button class="btn btn-secundario" data-act="copiar-aviso-os" data-id="${o.id}" style="font-size:11px;padding:3px 8px;border-radius:6px;height:26px;font-weight:600">
           📲 Copiar Aviso
         </button>
-        <button type="button" class="btn btn-sm btn-outline-info" data-act="historico-placa-os" data-os-id="${safeEsc(o.id)}" data-placa="${safeEsc(placaVal)}" title="Consultar histórico de manutenções e garantia desta placa" style="font-size:11px;padding:3px 8px;border-radius:6px;height:26px;font-weight:600">
+        <button type="button" class="btn btn-sm btn-outline-info" data-act="historico-placa-os" data-os-id="${safeEsc(o.id)}" data-placa="${safeEsc(v.placa)}" style="font-size:11px;padding:3px 8px;border-radius:6px;height:26px;font-weight:600">
           🔍 Histórico Placa
         </button>
         ${o.statusChecklist !== 'aprovado' && o.st !== 'finalizada' ? `
-          <button class="btn btn-sucesso" data-act="aprovar-checklist-os" data-id="${o.id}" style="font-size:11px;padding:3px 8px;border-radius:6px;height:26px;font-weight:600" title="Aprovar Vistoria Técnica de Freios e Suspensão">
+          <button class="btn btn-sucesso" data-act="aprovar-checklist-os" data-id="${o.id}" style="font-size:11px;padding:3px 8px;border-radius:6px;height:26px;font-weight:600">
             🛡️ Checklist OK
           </button>
         ` : ''}
@@ -509,12 +270,14 @@ function cardOS(o, b) {
 }
 
 function cardLivre(b) {
+  const safeEsc = typeof esc === 'function' ? esc : (s => String(s || ''));
+  const safeIco = typeof ico === 'function' ? ico : () => '';
   return `
   <div class="box card" data-st="livre" style="border:2px dashed var(--aco-200);background:rgba(255,255,255,0.6)">
     <div class="box-topo">
       <div class="tag-box" style="background:var(--aco-400)">
-        ${esc(b.nome.split('—')[0].trim())}
-        <small>${esc(b.tipo || 'Geral')}</small>
+        ${safeEsc(b.nome.split('—')[0].trim())}
+        <small>${safeEsc(b.tipo || 'Geral')}</small>
       </div>
       <div style="min-width:0;flex:1">
         <div style="font-weight:600;color:var(--aco-500);font-size:14px;margin-top:2px">Box Disponível</div>
@@ -523,13 +286,12 @@ function cardLivre(b) {
     </div>
     <div style="margin-top:16px;text-align:right">
       <button class="btn btn-secundario" data-act="nova-os" data-box="${b.id}" style="font-size:12px;padding:6px 12px;border-radius:14px">
-        ${ico('mais', 12)} Ocupar Box
+        ${safeIco('mais', 12)} Ocupar Box
       </button>
     </div>
   </div>`;
 }
 
-// Exportações explícitas no escopo global (window e globalThis)
 if (typeof window !== 'undefined') {
   window.isPerfilMecanico = isPerfilMecanico;
   window.renderBadgesOperacionaisPatio = renderBadgesOperacionaisPatio;

@@ -14,7 +14,9 @@ function frontend(fetch) {
     document:{getElementById:id=>nodes.get(id),createElement:element,body:{appendChild:e=>nodes.set(e.id,e)}},
     localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)}
   });
-  const source = fs.readFileSync(path.join(__dirname,'../js/state.js'),'utf8');
+  const sourceState = fs.readFileSync(path.join(__dirname,'../js/state.js'),'utf8');
+  const sourceSync = fs.readFileSync(path.join(__dirname,'../js/modules/state_sync.js'),'utf8');
+  const source = sourceState + '\n;\n' + sourceSync;
   vm.runInContext(source+`;globalThis.testAPI={armazem,flushSave,salvar,storageKey:CHAVE_RASCUNHO,
     init(state,base=state){S=state;armazem.base=PatioSync.clone(base);pendingLocalSave=true;},
     edit(fn){fn(S);localGeneration++;}, get state(){return S;},get pending(){return pendingLocalSave;}};`,context);
