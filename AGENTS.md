@@ -40,21 +40,50 @@ Nenhum módulo individual do sistema deve ultrapassar o limite de **350 linhas**
   - `voicePricingActions.js`, `voiceProfitabilityActions.js`: Precificação, margem e rentabilidade.
   - `voiceFinancialActions.js`, `voiceCRMActions.js`, `voiceExecutiveActions.js`: Caixa, clientes e briefing.
 
-### D. Frontend Financeiro (`js/modules/`)
+### D. Frontend Financeiro & Analista Verônica (`js/modules/`)
 - **Orquestrador Central:** `js/financeiro.js` (< 200 linhas) — mantém `viewFinanceiro()`, delegações e binds em `window`/`globalThis`.
-- **Submódulos:** `js/modules/`
+- **Fachada Analista Verônica:** `js/modules/financeiro_analista.js` (< 70 linhas) — orquestrador de IA financeira.
+- **Submódulos Financeiros:** `js/modules/`
   - `financeiro_dashboard.js` & `financeiro_dashboard_calc.js`: KPIs e métricas.
   - `financeiro_graficos.js`: Renderização de séries e gráficos SVG/Canvas.
   - `financeiro_titulos.js`: Contas a pagar e receber, baixa e recibos.
   - `financeiro_caixa.js` & `financeiro_estorno.js`: Fluxo de caixa e estornos compensatórios.
   - `financeiro_dre.js`: DRE gerencial e fechamento.
   - `financeiro_pix_hub.js`: Hub Pix, QR Codes e régua de cobrança.
+  - `analista_calc.js`: Projeções de caixa, DRE e reconciliação.
+  - `analista_kpi_cards.js` & `analista_controles.js`: Cards de KPI e controles internos.
+  - `analista_chat_ui.js`: Chat interativo da analista Verônica.
+  - `analista_caixa_modal.js`: Abertura, fechamento e lançamentos de caixa.
+  - `analista_radar_oficina.js`: Radar de liberação e parecer financeiro de OS.
+  - `analista_actions.js`: Faturamento a prazo, liquidação e régua de cobrança.
+  - `analista_bi_produtividade.js`: BI e produtividade de mecânicos.
+  - `analista_checkout_pix.js`: Modal de checkout Pix em tempo real.
 
-### E. Frontend Monday Work OS (`js/modules/`)
-- `js/modules/monday_board.js`: Board moderno de pátio com grupos expansíveis, toolbar e status em pílulas.
+### E. Cadastros, Central Fiscal e Plano de Contas (`js/modules/`)
+- **Fachada Central:** `js/modules/cadastros_fiscal.js` (< 60 linhas) — preserva todos os binds fiscais e tributários.
+- **Submódulos:** `js/modules/`
+  - `cadastros_fiscal_regras.js`: Parametrização tributária, matriz de regras e simulador IVA Dual (EC 132/2023).
+  - `cadastros_fiscal_nfe.js`: Central fiscal (NF-e mod 55, NFC-e mod 65, NFS-e, MDF-e), emissão e SEFAZ.
+  - `cadastros_config_integracoes.js`: Boletos, régua de cobrança, contas caixa, usuários e APIs externas.
+  - `cadastros_plano_contas.js`: Estrutura contábil da oficina e visualização em árvore.
+  - `cadastros_plano_contas_actions.js`: CRUD, validações contábeis e restauração de padrões.
+
+### F. Roteamento Centralizado de Eventos DOM (`js/modules/`)
+- **Roteador Principal:** `js/modules/events.js` (< 100 linhas) — listeners globais de `click`, `change`, `input` e `keydown`.
+- **Submódulos por Domínio:** `js/modules/`
+  - `events_patio_os.js`: Ordens de serviço, itens, faturamento, veículos e fotos.
+  - `events_patio_boxes.js`: Boxes físicos, alocação, gargalos, apontamento e checklist.
+  - `events_estoque_compras.js`: Peças, compras, importação XML e OCR.
+  - `events_financeiro_caixa.js`: Títulos, liquidação, conciliação e extrato bancário.
+  - `events_whatsapp_voz.js`: Réguas WhatsApp, relatórios executivos e comandos de voz.
+  - `events_cadastros.js`: Cadastros de clientes, fornecedores, mecânicos e serviços.
+  - `events_sistema_config.js`: Onboarding, logos, backup, importação de sistemas e dados demo.
+
+### G. Frontend Quadro de Serviços & Central de Automações (`js/modules/`)
+- `js/modules/monday_board.js`: Quadro moderno de serviços com grupos expansíveis, toolbar e status em pílulas.
 - `js/modules/automations_modal.js`: Central de automações em linguagem natural (IF/THEN).
 
-### F. Folhas de Estilo Modulares (`css/`)
+### H. Folhas de Estilo Modulares (`css/`)
 - **Agregador Mestre:** `style.css` (< 30 linhas via `@import`).
 - **Folhas Temáticas:** `css/variables.css`, `css/base-layout.css`, `css/components.css`, `css/voice-drawer.css`, `css/voice-modal.css`, `css/financeiro.css`, `css/dashboard-operacional.css`, `css/patio-monday.css`, `css/patio-monday-cells.css`, `css/enterprise-nav.css`, `css/automations-modal.css`, `css/responsive.css`.
 
@@ -68,24 +97,36 @@ Qualquer alteração neste repositório DEVE ser validada pelos Quality Gates au
    ```bash
    node --test tests/modular_file_size_gate.test.cjs
    ```
-   Valida que todas as fachadas e submódulos em `services/whatsapp/`, `services/financial/`, `services/voice/`, `js/modules/financeiro_*.js` e `css/*.css` possuem estritamente $\le 350$ linhas.
+   Valida 8 categorias arquiteturais: fachadas e submódulos em `services/whatsapp/`, `services/financial/`, `services/voice/`, `js/modules/financeiro_*.js` (+ `analista_*.js`), `css/*.css`, `js/modules/cadastros_fiscal*.js` (+ `plano_contas*.js`) e `js/modules/events*.js` — todos estritamente $\le 350$ linhas.
 
-2. **Gate de Instalação Limpa e Integridade Criptográfica (SHA-256):**
+2. **Gate de Auditoria de Ações e Zero Cliques Mortos:**
+   ```bash
+   node --require ./scripts/test-preload.cjs --test tests/ui_actions_and_bindings_audit.test.cjs
+   ```
+   Valida que 100% dos botões, abas, links e handlers inline referenciam funções existentes no `window` e que todas as ações essenciais possuem listeners implementados.
+
+3. **Gate de Fumaça E2E do Servidor:**
+   ```bash
+   node --require ./scripts/test-preload.cjs --test tests/server_smoke_e2e.test.cjs
+   ```
+   Valida inicialização a frio, login, cadastro, rotas críticas de API e saúde do backend em porta randômica isolada.
+
+4. **Gate de Instalação Limpa e Integridade Criptográfica (SHA-256):**
    ```bash
    node scripts/gerar_manifesto_release.cjs
    node --require ./scripts/test-preload.cjs --test tests/clean_install_manifest.test.cjs
    ```
    Valida que o manifesto de release (`docs/operacao/manifesto_release.json`) contém os hashes exatos de todos os arquivos de código e que uma instalação a frio inicializa perfeitamente com rotas `/health` e `/ready` operacionais.
 
-3. **Blindagem e Isolamento de Estado durante Testes:**
+5. **Blindagem e Isolamento de Estado durante Testes:**
    - Configurado em `scripts/test-preload.cjs`: redireciona automaticamente `DB_PATH` e `DATA_FILE` para diretório temporário isolado (`os.tmpdir()`) quando nenhum caminho explícito for fornecido.
    - O arquivo `data/database.json` NUNCA deve sofrer mutação durante a execução de testes (`git status --porcelain data/database.json` deve retornar vazio).
 
-4. **Suíte Completa de Testes:**
+6. **Suíte Completa de Testes:**
    ```bash
    npm test
    ```
-   Deve executar com **0 falhas** (esperado: $\ge 730$ testes passando).
+   Deve executar com **0 falhas** (esperado: $\ge 746$ testes passando).
 
 ---
 

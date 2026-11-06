@@ -127,6 +127,7 @@ test('js/modules/patio_render.js: sintaxe e exportações das funções de rende
 
 test('js/modules/financeiro_analista.js: Dashboard BI & Produtividade no frontend (Frente 10C)', () => {
   const finAnalistaPath = path.resolve(__dirname, '..', 'js', 'modules', 'financeiro_analista.js');
+  const analistaBiPath = path.resolve(__dirname, '..', 'js', 'modules', 'analista_bi_produtividade.js');
   assert.ok(fs.existsSync(finAnalistaPath), 'Arquivo financeiro_analista.js deve existir');
   const code = fs.readFileSync(finAnalistaPath, 'utf8');
 
@@ -157,6 +158,10 @@ test('js/modules/financeiro_analista.js: Dashboard BI & Produtividade no fronten
   };
 
   const context = vm.createContext(mockGlobal);
+  if (fs.existsSync(analistaBiPath)) {
+    const biCode = fs.readFileSync(analistaBiPath, 'utf8');
+    vm.runInContext(biCode, context);
+  }
   vm.runInContext(code, context);
 
   assert.strictEqual(typeof mockGlobal.dashboardBiProdutividadeHtml, 'function');

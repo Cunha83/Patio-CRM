@@ -239,7 +239,11 @@ test('P0: Auditoria Completa de Botões, Abas, Links e Ações de UI (Zero Cliqu
   });
 
   await t.test('4. Todos os botões com data-act essenciais devem possuir handlers implementados', () => {
-    const eventsCode = fs.readFileSync(path.join(rootDir, 'js', 'modules', 'events.js'), 'utf8');
+    const modulesDir = path.join(rootDir, 'js', 'modules');
+    const eventsCode = fs.readdirSync(modulesDir)
+      .filter(f => f === 'events.js' || (f.startsWith('events_') && f.endsWith('.js')))
+      .map(f => fs.readFileSync(path.join(modulesDir, f), 'utf8'))
+      .join('\n');
     const essentialActs = [
       'copiar-orc',
       'cobrar-titulo',
@@ -253,7 +257,7 @@ test('P0: Auditoria Completa de Botões, Abas, Links e Ações de UI (Zero Cliqu
 
     for (const act of essentialActs) {
       const isHandled = eventsCode.includes(`'${act}'`) || eventsCode.includes(`"${act}"`);
-      assert.ok(isHandled, `data-act="${act}" deve possuir branch ou listener em events.js`);
+      assert.ok(isHandled, `data-act="${act}" deve possuir branch ou listener em events.js ou submódulos events_*.js`);
     }
   });
 });

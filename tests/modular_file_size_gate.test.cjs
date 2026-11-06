@@ -99,7 +99,7 @@ test('Quality Gate de Tamanho Modular de Arquivo (Teto <= 350 Linhas)', async (t
     }
   });
 
-  await t.test('4. Módulos e fachada do Financeiro Frontend (js/financeiro.js e js/modules/financeiro_*.js)', () => {
+  await t.test('4. Módulos e fachada do Financeiro Frontend (js/financeiro.js, js/modules/financeiro_*.js e analista_*.js)', () => {
     const facadePath = path.join(rootDir, 'js', 'financeiro.js');
     assert.ok(fs.existsSync(facadePath), 'Fachada js/financeiro.js deve existir');
     const facadeLines = countLines(facadePath);
@@ -110,10 +110,10 @@ test('Quality Gate de Tamanho Modular de Arquivo (Teto <= 350 Linhas)', async (t
 
     const modulesDir = path.join(rootDir, 'js', 'modules');
     const finModuleFiles = fs.readdirSync(modulesDir)
-      .filter(f => f.startsWith('financeiro_') && f.endsWith('.js') && f !== 'financeiro_analista.js')
+      .filter(f => (f.startsWith('financeiro_') || f.startsWith('analista_')) && f.endsWith('.js'))
       .map(f => path.join(modulesDir, f));
 
-    assert.ok(finModuleFiles.length >= 7, 'Deve conter ao menos 7 submódulos frontend do financeiro');
+    assert.ok(finModuleFiles.length >= 15, 'Deve conter ao menos 15 submódulos frontend do financeiro e analista');
 
     for (const file of finModuleFiles) {
       const rel = path.relative(rootDir, file);
@@ -144,6 +144,50 @@ test('Quality Gate de Tamanho Modular de Arquivo (Teto <= 350 Linhas)', async (t
       assert.ok(
         lines <= MAX_LINES,
         `Folha de estilo ${rel} tem ${lines} linhas, excedendo o teto de ${MAX_LINES}`
+      );
+    }
+  });
+
+  await t.test('6. Módulos e fachada de Cadastros e Central Fiscal (cadastros_fiscal*.js, plano_contas*.js)', () => {
+    const modulesDir = path.join(rootDir, 'js', 'modules');
+    const fiscalFiles = [
+      'cadastros_fiscal.js',
+      'cadastros_fiscal_regras.js',
+      'cadastros_fiscal_nfe.js',
+      'cadastros_config_integracoes.js',
+      'cadastros_plano_contas.js',
+      'cadastros_plano_contas_actions.js'
+    ].map(f => path.join(modulesDir, f));
+
+    for (const file of fiscalFiles) {
+      assert.ok(fs.existsSync(file), `Módulo fiscal ${path.basename(file)} deve existir`);
+      const lines = countLines(file);
+      assert.ok(
+        lines <= MAX_LINES,
+        `Módulo fiscal ${path.basename(file)} tem ${lines} linhas, excedendo o teto de ${MAX_LINES}`
+      );
+    }
+  });
+
+  await t.test('7. Roteador DOM de eventos e submódulos de domínio (events.js e events_*.js)', () => {
+    const modulesDir = path.join(rootDir, 'js', 'modules');
+    const eventFiles = [
+      'events.js',
+      'events_patio_os.js',
+      'events_patio_boxes.js',
+      'events_estoque_compras.js',
+      'events_financeiro_caixa.js',
+      'events_whatsapp_voz.js',
+      'events_cadastros.js',
+      'events_sistema_config.js'
+    ].map(f => path.join(modulesDir, f));
+
+    for (const file of eventFiles) {
+      assert.ok(fs.existsSync(file), `Módulo de evento ${path.basename(file)} deve existir`);
+      const lines = countLines(file);
+      assert.ok(
+        lines <= MAX_LINES,
+        `Módulo de evento ${path.basename(file)} tem ${lines} linhas, excedendo o teto de ${MAX_LINES}`
       );
     }
   });
