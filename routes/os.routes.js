@@ -14,6 +14,7 @@ const vehicleReconciliation = require('../services/vehicleReconciliation');
 const costingService = require('../services/costingService');
 const inventoryService = require('../services/inventoryService');
 const { processarEntradaVeiculo } = require('../services/vehicleEntryService');
+const partialApprovalService = require('../services/quotation/partialApprovalService');
 
 router.post('/api/os/:id/anexar-foto', async (req, res) => {
   try {
@@ -245,5 +246,41 @@ router.delete('/api/os/:id', requirePermission('os:delete'), async (req, res, ne
 });
 
 /* ── Precificação Assistida e Análise de Rentabilidade ──────── */
+
+router.post('/api/os/:id/aprovacao-parcial', requirePermission('os:manage', 'commercial:manage', 'quotation:write'), async (req, res) => {
+  try {
+    const osId = req.params.id;
+    const { itens, observacoes, prazoFollowUpDias } = req.body || {};
+    const tenantId = extractTenantId(req);
+    const actorId = req.securityContext?.actorId || 'operador';
+
+    let resultado = null;
+    const saveRes = await mutateTenantState(req, (draft) => {
+      resultado = partialApprovalService.processarAprovacaoParcial({
+        tenantId,
+        state: draft,
+        osId,
+        itens,
+        actorId,
+        observacoes,
+        prazoFollowUpDias
+      });
+    });
+
+    if (!saveRes || !saveRes.ok) {
+      return res.status(saveRes?.status || 500).json({
+        success: false,
+        error: saveRes?.error || 'Falha ao processar aprovação parcial.'
+      });
+    }
+
+    res.json({
+      success: true,
+      ...resultado
+    });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
 
 module.exports = router;

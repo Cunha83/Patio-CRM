@@ -45,6 +45,7 @@ function extrairTotaisOS(os) {
     placa: os.veiculo?.placa || os.placa || 'SEM_PLACA',
     modelo: os.veiculo?.modelo || os.modelo || '',
     fechamento: os.fechamento || os.data || '',
+    centroCustoId: os.centroCustoId || os.veiculo?.centroCustoId || null,
     totalMaoDeObra: Math.round(totalMaoDeObra * 100) / 100,
     totalPecas: Math.round(totalPecas * 100) / 100,
     totalOS,

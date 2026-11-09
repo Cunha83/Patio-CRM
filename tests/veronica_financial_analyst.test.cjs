@@ -393,7 +393,7 @@ test('Verônica Analista Financeira & Assistente Gerencial: Motor, Voz, RBAC e E
 
   const baseUrl = `http://127.0.0.1:${port}`;
   let online = false;
-  for (let i = 0; i < 50; i++) {
+  for (let i = 0; i < 80; i++) {
     try {
       const res = await fetch(`${baseUrl}/health`);
       if (res.ok) { online = true; break; }

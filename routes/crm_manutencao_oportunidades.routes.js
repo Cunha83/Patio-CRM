@@ -17,6 +17,7 @@ const relationshipService = require('../services/relationshipService');
 const appointmentService = require('../services/appointmentService');
 const afterSalesService = require('../services/afterSalesService');
 const consultaClienteService = require('../services/consultaClienteService');
+const partialApprovalService = require('../services/quotation/partialApprovalService');
 
 router.get('/api/manutencao/planos', requirePermission('maintenance:read'), async (req, res) => {
   try {
@@ -112,6 +113,24 @@ router.post('/api/manutencao/atualizar-km', requirePermission('maintenance:write
 });
 
 // ── 4. CRM & OPORTUNIDADES ──────────────────────────────────────
+router.get('/api/crm/oportunidades-adiadas', requirePermission('crm:read'), async (req, res) => {
+  try {
+    const state = await getOrLoadState(req);
+    const tenantId = extractTenantId(req);
+    const { clienteId, placa, criticidade } = req.query || {};
+    const oportunidades = partialApprovalService.listarOportunidadesAdiadas({
+      tenantId,
+      state,
+      clienteId,
+      placa,
+      criticidade
+    });
+    res.json({ success: true, total: oportunidades.length, oportunidades });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 router.get('/api/crm/oportunidades', requirePermission('crm:read'), async (req, res) => {
   try {
     const state = await getOrLoadState(req);

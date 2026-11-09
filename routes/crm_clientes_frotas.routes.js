@@ -17,6 +17,7 @@ const relationshipService = require('../services/relationshipService');
 const appointmentService = require('../services/appointmentService');
 const afterSalesService = require('../services/afterSalesService');
 const consultaClienteService = require('../services/consultaClienteService');
+const fleetCostCenterService = require('../services/crm/fleetCostCenterService');
 
 router.get('/api/clientes', requirePermission('crm:read', 'os:read'), async (req, res) => {
   try {
@@ -185,5 +186,50 @@ router.get('/api/frotas/:id/veiculos', requirePermission('crm:read'), async (req
 });
 
 // ── 3. PLANOS DE MANUTENÇÃO PREVENTIVA ──────────────────────────
+
+router.get('/api/clientes/:id/centros-custo', requirePermission('crm:read'), async (req, res) => {
+  try {
+    const state = await getOrLoadState(req);
+    const tenantId = extractTenantId(req);
+    const centrosCusto = fleetCostCenterService.listarCentrosCustoPorCliente({
+      tenantId,
+      state,
+      clienteId: req.params.id
+    });
+    res.json({ success: true, total: centrosCusto.length, centrosCusto });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.post('/api/clientes/:id/centros-custo', requirePermission('crm:manage', 'crm:write'), async (req, res) => {
+  try {
+    const tenantId = extractTenantId(req);
+    const clienteId = req.params.id;
+    const actorId = req.securityContext?.actorId || 'operador';
+
+    let resultado = null;
+    const saveRes = await mutateTenantState(req, (draft) => {
+      resultado = fleetCostCenterService.cadastrarCentroCusto({
+        tenantId,
+        state: draft,
+        clienteId,
+        ...req.body,
+        actorId
+      });
+    });
+
+    if (!saveRes || !saveRes.ok) {
+      return res.status(saveRes?.status || 500).json({
+        success: false,
+        error: saveRes?.error || 'Falha ao cadastrar Centro de Custo.'
+      });
+    }
+
+    res.json({ success: true, ...resultado });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
 
 module.exports = router;

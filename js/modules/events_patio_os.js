@@ -56,6 +56,16 @@ function tratarEventosPatioOS(a, b, e, o) {
       if (typeof abrirModalCheckoutPix === 'function') abrirModalCheckoutPix(osId, vlr, cli);
       return true;
     }
+    case 'abrir-aprovacao-parcial': {
+      const osId = b.dataset.osId || (o && o.id);
+      if (typeof abrirModalAprovacaoParcial === 'function') abrirModalAprovacaoParcial(osId);
+      return true;
+    }
+    case 'confirmar-aprovacao-parcial': {
+      const osId = b.dataset.osId || (o && o.id);
+      if (typeof confirmarAprovacaoParcial === 'function') confirmarAprovacaoParcial(osId);
+      return true;
+    }
     case 'simular-webhook-pix': {
       const txid = b.dataset.txid;
       const osId = b.dataset.osId;

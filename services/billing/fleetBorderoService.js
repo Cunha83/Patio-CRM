@@ -8,9 +8,10 @@
 const crypto = require('crypto');
 const boletoEngine = require('./boletoEngine');
 const calc = require('./fleetBorderoCalc');
+const fleetCostCenterService = require('../crm/fleetCostCenterService');
 
 // Lista ordens de serviço finalizadas e entregues aptas a faturamento
-function listarOSFaturaveisPorCliente({ state, tenantId, clienteId, dataInicio, dataFim }) {
+function listarOSFaturaveisPorCliente({ state, tenantId, clienteId, dataInicio, dataFim, centroCustoId }) {
   if (!state || !Array.isArray(state.os)) return [];
 
   return state.os.filter(os => {
@@ -24,6 +25,12 @@ function listarOSFaturaveisPorCliente({ state, tenantId, clienteId, dataInicio, 
 
     // Bloqueio anti-duplicidade: não pode estar em borderô ativo
     if (os.borderoId || os.statusBordero === 'faturado') return false;
+
+    // Filtro por Centro de Custo
+    if (centroCustoId) {
+      const ccId = os.centroCustoId || (state.veiculos || []).find(v => v.id === os.vei || v.placa === os.placa)?.centroCustoId;
+      if (ccId !== centroCustoId) return false;
+    }
 
     // Filtro por janela de período
     const dataOS = String(os.fechamento || os.data || os.dataEntrada || '').split('T')[0];
@@ -80,6 +87,11 @@ function simularPreviaBordero({
     dataBase
   });
 
+  const agrupamentoCentrosCusto = fleetCostCenterService.agruparBorderoPorCentroCusto({
+    itensOS,
+    centrosCusto: Array.isArray(cliente.centrosCusto) ? cliente.centrosCusto : []
+  });
+
   return {
     ok: true,
     cliente: {
@@ -91,7 +103,8 @@ function simularPreviaBordero({
     },
     resumoTotais,
     parcelas,
-    espelhoAnalitico: itensOS
+    espelhoAnalitico: itensOS,
+    agrupamentoCentrosCusto
   };
 }
 
