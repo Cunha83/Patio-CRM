@@ -1,12 +1,12 @@
 # Manifesto Oficial de Release do Piloto Controlado
 
 **Projeto:** Pátio CRM  
-**Versão:** `1.1.2`  
+**Versão:** `1.2.0`  
 **Fase:** Piloto Controlado em Ambiente Operacional (1 Oficina)  
-**Data de Congelamento:** 2026-11-09T17:30:08.224Z  
-**Commit Git:** `4dead23a9d26df48c5ff190cd286161e69a04342` (`branch: main`)  
+**Data de Congelamento:** 2026-11-09T18:55:18.677Z  
+**Commit Git:** `a010be6963d312e30cfd9194bf7e2fd1eead3a4d` (`branch: main`)  
 **Ambiente:** Node.js `v24.19.0` em `win32-x64`  
-**Total de Arquivos Auditados:** 452  
+**Total de Arquivos Auditados:** 457  
 
 ---
 
@@ -33,12 +33,12 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 | `lib/repository/stateRepository.js` | `5b83e968c3b1167c4ab35c6295f52e4a1c5ffda362e29111b42bb6021db4b703` |
 | `services/voiceActionEngine.js` | `217cb71d7042987afaf13d87eca5c4f110f14b8396fafcf038fc7ec01ec7f80f` |
 | `services/backupService.js` | `0304ba6847cfb9dd2b59837bcaed5ac780ec36fe663393253c7b276ae0362498` |
-| `package.json` | `e08dfe8daf55925800ad24bba00a7d97990f4c420897f630aed774e4ffed15e4` |
-| `package-lock.json` | `fa4b1edb8b284b14f3c06df74ba24349d655f41721510f495e8b53758beb0707` |
+| `package.json` | `0679ce1874cff0dd9f523896ff27abd8e9492ad7444f462327b9dbe03aff5363` |
+| `package-lock.json` | `5bf2076f042734650824cc4d478e47178fdac79b801ffd1664869025ed437933` |
 
 ---
 
-## 3. Inventário Completo de Arquivos da Release (452 Arquivos)
+## 3. Inventário Completo de Arquivos da Release (457 Arquivos)
 
 | Caminho Relativo | Checksum SHA-256 |
 |---|---|
@@ -55,7 +55,7 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 | `css/voice-drawer.css` | `e23f1da831b5bb4e30d1f4c2ba888387b7dfe1bb15712b94d779835ff0c889bd` |
 | `css/voice-modal.css` | `8d39b98ce292b541cbe89e5662e9c30f4513789e3ba75d7a354f681bac5f3b96` |
 | `db.js` | `c7dcf6aea0e5d593a3c74e70eaa88ff896b8c6b48fbdb08ceb7276360e889178` |
-| `index.html` | `1bef66061b88a387f7a289d6bfce6a246509b0077a83b87a93b78e6d093a717e` |
+| `index.html` | `d6aa3504859d8908473ffcf97ca243e9ecbdb09bdb1ba59faaefa01e467579b0` |
 | `js/.eslintrc.json` | `836f600602e4b1e54d0800bd6f6c28e9252532c10c0893790bfa63688aa473b4` |
 | `js/app.js` | `8afa4a02e6bd5d5fe905f8612cf32b10d907d6fac318f13b0ce80436d2e0ddce` |
 | `js/cadastros.js` | `1204f0b4ebeeea7919abff5262df0d6fc549d3a6770f7683d519a3b1ce076e4b` |
@@ -108,9 +108,10 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 | `js/modules/estoque_catalogo_ui.js` | `19bd9e53b0dcfcf381ccf9dedfa8482886587d6cf20b43f46fecaceec3263d0c` |
 | `js/modules/estoque_movimentacoes.js` | `61294f26a39b08d857c66a25d927e497b49327b02a1f280cb3a415e85169efa3` |
 | `js/modules/estoque_ocr_notas.js` | `675894a790518d3d918baf6dba5501adae98c967b9d0e35de67f2c77b269e946` |
+| `js/modules/estoque_pesado_ui.js` | `8a3bcef9dd6d9dd3a1faf4d1ff04d58f44f987d59a561c416ab99b499137e4dd` |
 | `js/modules/events.js` | `295d620e772b5603d61aeca3f2da223d94d805b817f3d03c49e9dbe8f0971056` |
 | `js/modules/events_cadastros.js` | `ca3e650432c2444caeb869c7242d711c4256dbbd0338485ed8e5c45811561272` |
-| `js/modules/events_estoque_compras.js` | `77e200589397efa88bcad12b22074baa68425a7ed6442cef4c20317985439315` |
+| `js/modules/events_estoque_compras.js` | `505399394dfc3c8e432c40770deec842ae37d2694c45704c149ea0d854daee0b` |
 | `js/modules/events_financeiro_bordero.js` | `d40d6639b5fd128e79d6d8635aeac3323bf99a068054109a7dba9b82eeb179d8` |
 | `js/modules/events_financeiro_caixa.js` | `69cc726b6699b99e7302a37e6ff316aa33e1ce4b3dd8d8882f996c5e7f21bfc3` |
 | `js/modules/events_patio_boxes.js` | `275f21735e231b1ee072784a8cbbe0683e2ceed5c0c3558a6cf467db3905b710` |
@@ -190,8 +191,8 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 | `lib/serverSingletons.js` | `de0f2e92d4cfdb528ad03de0e37ccc1f9f5fa20e3fb40149a301aad398cdc72c` |
 | `lib/state-route.js` | `ff467a528c2e7b9be2070581b052a8a020dd8507c1ab5a01fa75cb47de7ced73` |
 | `lib/tokens/securityToken.js` | `cddabe884da9a5722dc92c0cf30848a37f717a3409f817055d1a9bd4515ea611` |
-| `package-lock.json` | `fa4b1edb8b284b14f3c06df74ba24349d655f41721510f495e8b53758beb0707` |
-| `package.json` | `e08dfe8daf55925800ad24bba00a7d97990f4c420897f630aed774e4ffed15e4` |
+| `package-lock.json` | `5bf2076f042734650824cc4d478e47178fdac79b801ffd1664869025ed437933` |
+| `package.json` | `0679ce1874cff0dd9f523896ff27abd8e9492ad7444f462327b9dbe03aff5363` |
 | `public/aprovacao.html` | `f56eabf088183638f59bb127b4321668b8e7831375340772b7f36b874ba32f0b` |
 | `public/assinatura.html` | `38d93460170630dfcce8273c428de7814d7a23e2a740fd9fa7786af49fc318e0` |
 | `public/cadastro.html` | `beed4c7bd3ee18bb5b6e57b5d86f89bc240dbb7a948411b2b6b86bb7a20db1d1` |
@@ -239,8 +240,9 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 | `routes/health.routes.js` | `1b7cbfcaa978b57041475ed2ebab495eac91836121301f5f931047357a042f65` |
 | `routes/index.js` | `6b581933399e1eed041e108abdda3d76f8a5aa46b6108e5c12f9293ac284b063` |
 | `routes/inspection.routes.js` | `cc3940861f6199d1c42da9deea82647e1861f5277e9cfe3d2a8f88e452ad8469` |
-| `routes/inventory.routes.js` | `ffde902d842cbfab4553f132b036a294d620aa0558b3ee2c50486482264ae3e9` |
+| `routes/inventory.routes.js` | `bf62be003a1b0d80395efc318704aaa312d6dd8eda76f5ef2f1b0502e38cbce2` |
 | `routes/inventory_catalog.routes.js` | `d61be240ac1666d2810b41895948c12b1d5016f4f533c766b867b210613e15d1` |
+| `routes/inventory_heavy.routes.js` | `efbacca91b5cd168dbf3663dd4f5e86d8f68ae57b9a641434db3f1c355d8e8db` |
 | `routes/inventory_purchases.routes.js` | `b570ed016405593d439c88b19beda3b469b2decca647f41d8af9d2cc9189c219` |
 | `routes/operation.routes.js` | `cde0ccfdeeabd279f2705c227e7e2e2eb6f4723e82e8dd06bc1f7bf2c8722da7` |
 | `routes/os.routes.js` | `355c693372a0247382a236b86ca55ab8ebf841aa1a6e0f91f259079288aa5858` |
@@ -387,10 +389,13 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 | `services/intelligence/intelligenceMarginCrmRules.js` | `81288e0346bdc4e14d79de124afc7d6532633163fe621fceecb544f0abda42e5` |
 | `services/intelligence/intelligenceStockLaborRules.js` | `0424914dce74e093cfe7f6680f6af65e463e52c0b811fcb2126e86e3b377111c` |
 | `services/intelligence/intelligenceVehicleRules.js` | `c733b55a461d2da51cc049a276ebe79add7e9add13d3e175c1187169b662a202` |
+| `services/inventory/inventoryAbcEngine.js` | `ce991ca63d33e2950e8c6d256c0311b7f305a9cd97340c8e0cf22b60633b38d5` |
+| `services/inventory/inventoryBatchService.js` | `8012ced03719e060aabd08bef26b9a740ac710be37f847a9f68e5427bc8d6566` |
 | `services/inventory/inventoryCatalog.js` | `aa7621cbab8d05c2311fb886c693e2f3c82e43ab46828653619c8cb8842f5e25` |
 | `services/inventory/inventoryLedger.js` | `faf82ebebbc7190e289aa39cfad56fe58b90938cebbbcb91cba3ed8e24cfbd35` |
+| `services/inventory/inventoryReservationService.js` | `71dd3591f6c0e591554bf4b22fdd8bb5b8e295bb861cb3ed5db2d610dc19c72c` |
 | `services/inventory/inventoryReservations.js` | `02d32d7722683b9e3a887c25e1b6cb43c65373af11a99465ac9063ec24ee17b0` |
-| `services/inventoryService.js` | `d4853904706c7446448f44af891fb88d9a986d48f8cf206e95973b942683f04d` |
+| `services/inventoryService.js` | `9dc274bfd70b97864503af75572663bf46f2f9bb24a486367e3c8b3c74d33f14` |
 | `services/labor/laborTrackingCore.js` | `2c4ecf3c00b3460b9e8fc7d4588d88add0d8551f5e0b3a21e79afc11b9449e6a` |
 | `services/labor/laborTrackingLifecycle.js` | `c8ee87f15df73e732c0f04c5a61720060fb6890dade9bc2813a153d9d3034d7b` |
 | `services/labor/laborWorkers.js` | `e800159e2117bad9ac9ca393a81dc08345edc919344a1bbd36b1b6fc42903b52` |

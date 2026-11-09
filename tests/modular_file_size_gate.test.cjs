@@ -198,7 +198,8 @@ test('Quality Gate de Tamanho Modular de Arquivo (Teto <= 350 Linhas)', async (t
       path.join(rootDir, 'js', 'estoque.js'),
       path.join(rootDir, 'js', 'modules', 'estoque_catalogo_ui.js'),
       path.join(rootDir, 'js', 'modules', 'estoque_movimentacoes.js'),
-      path.join(rootDir, 'js', 'modules', 'estoque_ocr_notas.js')
+      path.join(rootDir, 'js', 'modules', 'estoque_ocr_notas.js'),
+      path.join(rootDir, 'js', 'modules', 'estoque_pesado_ui.js')
     ];
 
     for (const file of estoqueFiles) {

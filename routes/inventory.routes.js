@@ -3,6 +3,7 @@ const router = express.Router();
 
 router.use(require('./inventory_catalog.routes'));
 router.use(require('./inventory_purchases.routes'));
+router.use(require('./inventory_heavy.routes'));
 
 
 // Suporte a inspeção direta de router.stack para suítes de testes de regressão

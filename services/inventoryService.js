@@ -3,6 +3,9 @@
 const inventoryLedger = require('./inventory/inventoryLedger');
 const inventoryCatalog = require('./inventory/inventoryCatalog');
 const inventoryReservations = require('./inventory/inventoryReservations');
+const inventoryBatchService = require('./inventory/inventoryBatchService');
+const inventoryReservationService = require('./inventory/inventoryReservationService');
+const inventoryAbcEngine = require('./inventory/inventoryAbcEngine');
 
 module.exports = {
   // Helpers & Ledger
@@ -19,7 +22,23 @@ module.exports = {
   obterPeca: inventoryCatalog.obterPeca,
   buscarPecas: inventoryCatalog.buscarPecas,
 
-  // Reservas & Consumo
+  // Lotes & Rastreabilidade de Recall
+  registrarEntradaLote: inventoryBatchService.registrarEntradaLote,
+  alocarLoteConsumo: inventoryBatchService.alocarLoteConsumo,
+  rastrearLote: inventoryBatchService.rastrearLote,
+  listarLotesPorPeca: inventoryBatchService.listarLotesPorPeca,
+
+  // Reservas Atômicas por OS & Saldos Detalhados (Físico vs. Reservado vs. Disponível)
+  obterSaldosDetalhados: inventoryReservationService.obterSaldosDetalhados,
+  reservarPecasOS: inventoryReservationService.reservarPecasOS,
+  efetivarBaixaOS: inventoryReservationService.efetivarBaixaOS,
+  liberarReservaOS: inventoryReservationService.liberarReservaOS,
+
+  // Curva ABC Dinâmica & Ponto de Pedido
+  calcularCurvaABC: inventoryAbcEngine.calcularCurvaABC,
+  obterSugestoesReposicao: inventoryAbcEngine.obterSugestoesReposicao,
+
+  // Reservas & Consumo Legados
   reservarParaOS: inventoryReservations.reservarParaOS,
   liberarReserva: inventoryReservations.liberarReserva,
   consumirPecaOS: inventoryReservations.consumirPecaOS

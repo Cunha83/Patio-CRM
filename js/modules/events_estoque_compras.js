@@ -127,6 +127,74 @@ function tratarEventosEstoqueCompras(a, b, e, o) {
       abrirFolha(folhaSimulacaoOCR);
       return true;
 
+    case 'abrir-modal-rastreio-lote': {
+      const lote = b.dataset.lote;
+      if (typeof abrirModalRastreioLote === 'function') {
+        abrirModalRastreioLote(lote);
+      }
+      return true;
+    }
+
+    case 'abrir-modal-entrada-lote': {
+      const pId = b.dataset.id || S.ui.pecaAberta;
+      const peca = typeof P === 'function' ? P(pId) : (S.pecas || []).find(x => x.id === pId);
+      if (typeof abrirModalEntradaLote === 'function') {
+        abrirModalEntradaLote(pId, peca ? peca.nome : '');
+      }
+      return true;
+    }
+
+    case 'salvar-entrada-lote': {
+      const partId = document.getElementById('lote_part_id')?.value;
+      const loteCodigo = document.getElementById('lote_codigo')?.value;
+      const fabricante = document.getElementById('lote_fabricante')?.value;
+      const fornecedorId = document.getElementById('lote_fornecedor')?.value;
+      const quantidade = parseFloat(document.getElementById('lote_qtd')?.value) || 0;
+      const custoUnitario = parseFloat(document.getElementById('lote_custo')?.value) || 0;
+      const notaFiscal = document.getElementById('lote_nf')?.value;
+
+      if (!partId || !loteCodigo || quantidade <= 0) {
+        torrar('Preencha o código do lote e uma quantidade válida.', 'alerta');
+        return true;
+      }
+
+      b.disabled = true;
+      b.textContent = 'Salvando lote...';
+
+      fetch('/api/estoque/lotes/entrada', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          partId,
+          loteCodigo,
+          fabricante,
+          fornecedorId,
+          quantidade,
+          custoUnitario,
+          notaFiscal
+        })
+      })
+        .then(r => r.json())
+        .then(d => {
+          b.disabled = false;
+          b.textContent = 'Salvar Entrada de Lote';
+          if (d.success) {
+            torrar('Lote registrado com sucesso no estoque!', 'sucesso');
+            if (typeof fecharModalGenerico === 'function') fecharModalGenerico();
+            if (typeof carregarEstado === 'function') carregarEstado().then(render);
+            else render();
+          } else {
+            torrar(d.error || 'Erro ao registrar lote.', 'alerta');
+          }
+        })
+        .catch(() => {
+          b.disabled = false;
+          b.textContent = 'Salvar Entrada de Lote';
+          torrar('Erro de rede ao salvar lote.', 'alerta');
+        });
+      return true;
+    }
+
     case 'importar-exemplo-ocr': {
       S.pecas.push(
         { id: uid('p'), cod: 'LON-HD291', nome: 'Jogo de Lonas de Freio Heavy Duty', un: 'jg', qtd: 4, min: 2, custo: 480.00, venda: 780.00, loc: 'Prat. A-04', forn: 'ZF do Brasil' },
