@@ -12,8 +12,21 @@
 const { getOrLoadState } = require('../lib/serverContext');
 const { resolverVeiculoECliente, resolverAlocacaoBox } = require('./vehicle/vehicleEntryResolver');
 const { finalizarAberturaOS } = require('./vehicle/vehicleEntryOSBuilder');
+const {
+  resolverConjuntoArticulado,
+  segregarItensPorVeiculo
+} = require('./vehicle/vehicleArticulatedResolver');
 
-async function processarEntradaVeiculo({ placa, clienteNome, clienteFone, textoOriginal, servicos = [], req = null }) {
+async function processarEntradaVeiculo({
+  placa,
+  placaCarreta = null,
+  placasImplementos = [],
+  clienteNome,
+  clienteFone,
+  textoOriginal,
+  servicos = [],
+  req = null
+}) {
   const targetState = await getOrLoadState(req);
   if (!targetState.os) targetState.os = [];
   if (!targetState.veiculos) targetState.veiculos = [];
@@ -26,6 +39,16 @@ async function processarEntradaVeiculo({ placa, clienteNome, clienteFone, textoO
     clienteFone,
     textoOriginal,
     targetState
+  });
+
+  const conjunto = resolverConjuntoArticulado({
+    placaPrincipal: placaLimpa,
+    placaCarreta,
+    placasImplementos,
+    textoOriginal,
+    targetState,
+    veiculoPrincipal: veiculo,
+    clienteAssociado
   });
 
   const { boxLivre, boxIdAlocado, statusOS, textoAlocacao } = resolverAlocacaoBox({
@@ -48,10 +71,13 @@ async function processarEntradaVeiculo({ placa, clienteNome, clienteFone, textoO
     statusOS,
     textoAlocacao,
     servicos,
-    textoOriginal
+    textoOriginal,
+    conjunto
   });
 }
 
 module.exports = {
-  processarEntradaVeiculo
+  processarEntradaVeiculo,
+  resolverConjuntoArticulado,
+  segregarItensPorVeiculo
 };

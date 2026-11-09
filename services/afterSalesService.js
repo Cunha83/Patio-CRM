@@ -5,6 +5,7 @@ const vehicleHistoryService = require('./vehicleHistoryService');
 const recurrenceDetector = require('./recurrenceDetector');
 const warrantyService = require('./warrantyService');
 const preOSEngine = require('./preOSEngine');
+const { gerarGatilhoReapertoGrampos } = require('./maintenance/springReclampTrigger');
 
 function gerarId(prefix = 'pvd') {
   return `${prefix}_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`;
@@ -64,6 +65,11 @@ function avaliarPosVenda({ tenantId, state, dataReferencia = null }) {
     if (o.st !== 'finalizada') continue;
     const dataEntrega = normalizarData(o.fechamento || o.concluidaEm || o.abertura);
     if (!dataEntrega) continue;
+
+    // Dispara gatilho de reaperto preventivo para feixe de molas/suspensão
+    try {
+      gerarGatilhoReapertoGrampos({ os: o, state, tenantId, dataReferencia });
+    } catch (_) {}
 
     let registro = state.afterSales.find(a => a.osId === o.id && a.tenantId === tenantId);
     if (!registro) {
@@ -314,5 +320,6 @@ module.exports = {
   avaliarPosVenda,
   gerarMensagemFollowUp,
   processarRespostaCliente,
-  processarRespostaPosVenda: processarRespostaCliente
+  processarRespostaPosVenda: processarRespostaCliente,
+  gerarGatilhoReapertoGrampos
 };

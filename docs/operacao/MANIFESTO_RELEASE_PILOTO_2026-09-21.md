@@ -3,10 +3,10 @@
 **Projeto:** Pátio CRM  
 **Versão:** `1.1.2`  
 **Fase:** Piloto Controlado em Ambiente Operacional (1 Oficina)  
-**Data de Congelamento:** 2026-11-06T21:29:23.624Z  
-**Commit Git:** `01f3b19f32938e7ebf29fc30e2a9ec68b23fd3a0` (`branch: main`)  
+**Data de Congelamento:** 2026-11-09T12:19:15.705Z  
+**Commit Git:** `fc8f32ac9d5f63d05270a891633b04b538882c1c` (`branch: main`)  
 **Ambiente:** Node.js `v24.19.0` em `win32-x64`  
-**Total de Arquivos Auditados:** 437  
+**Total de Arquivos Auditados:** 443  
 
 ---
 
@@ -38,7 +38,7 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 
 ---
 
-## 3. Inventário Completo de Arquivos da Release (437 Arquivos)
+## 3. Inventário Completo de Arquivos da Release (443 Arquivos)
 
 | Caminho Relativo | Checksum SHA-256 |
 |---|---|
@@ -221,9 +221,10 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 | `routes/crm_agendamentos_posvenda.routes.js` | `cafca4b97cf651c402e20f16934c19fd8f03c50acb90ca1ec1dc8ef0f97944d1` |
 | `routes/crm_clientes_frotas.routes.js` | `bedb24c5ca10d711f093c2ff579841fbde15371eb4901d5f0893d0d31c6d0e14` |
 | `routes/crm_manutencao_oportunidades.routes.js` | `3a5d3d0c4476ca1720f857572d0465a53dda107cd0724a9ceda8b73a8fe99552` |
-| `routes/financial.routes.js` | `abde941e677361621ab5b90b1a81e19b80f59eb8cd671212f30fd8fcc74c0a05` |
+| `routes/financial.routes.js` | `5a1f3b5c1516afc504a5a8eeae5a27105b0ed7f8f470ba1b7ed2495747cd8eb4` |
 | `routes/financial_cash.routes.js` | `27b444d04b3519f0fa474d9f1636c41bb20d7e86ece352cf590988eae4ece8b3` |
 | `routes/financial_checklist.routes.js` | `fe19dde0297ee99774344667e66fc32bc23b35659eecebff26a69474260d6055` |
+| `routes/financial_commission.routes.js` | `f41c4491c333d766220b8b27dce96af38cb14e03a962b8f9b315bcb3b415cdd9` |
 | `routes/financial_dre.routes.js` | `ad1ec6566357a1ebde2471e6d4457128e9207b2bb011f45b6056b5b4130154d9` |
 | `routes/financial_os.routes.js` | `1cd0f402ebfc642b74f5aef7d3faa1f47eedb1f0ee65eb67f95f067ae7cab93a` |
 | `routes/financial_parts.routes.js` | `d0a0fde00cb7385a2b8574c7f97902e7345c2c539d985fa6b6ae77a733b5980b` |
@@ -292,7 +293,7 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 | `scripts/testar_restauracao_operacional_e2e.cjs` | `90416d534881767e885859de51656f4bd3fc85455aa7a03f00e1d92d2c1c6e55` |
 | `scripts/verify_e2e_journey.js` | `589d36e6b197677eef064095a498769d311e6dc1194a0a6ef69857c291e34174` |
 | `server.js` | `0885b9f53deffc55308152cefe1caeff7848b378a744a25bcf2f308bcc4dc8dc` |
-| `services/afterSalesService.js` | `76bf2c95d6d021554364bbb9ddee47ae0987038a7d3bd6fc9346d842e486627e` |
+| `services/afterSalesService.js` | `71dbe7cfd021a8e34d32929d9c3298e53041cb7ee5047ddea93fbd5f3353b1ac` |
 | `services/alerts/proactiveDetection.js` | `b107885968bd07906de80fe12de28a3df08ec4dc4a756c44cc93acd9e6c33215` |
 | `services/alerts/proactiveDispatch.js` | `6b2f3bcb8ac0f2363948a609f2a733bac6ed1d5b2539d29fec782d8255b41669` |
 | `services/appointmentService.js` | `93a3d08f26178c6be1b69c4fc838e7e8623ccf3ab632ee207d7bda0ad8af6ba8` |
@@ -308,6 +309,9 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 | `services/billing/paymentSandboxAdapter.js` | `40f697721161048cedea0e89c74764de5734d037efdb9477976a66b6ad76fdc8` |
 | `services/billing/platformAdminService.js` | `46a15e7e77c5a24fdd0efd9ba2050578db4faeb301b33182f676f49afdb7a473` |
 | `services/billing/saasTelemetryService.js` | `a9fadbed02ceabc0f399e6a2dc2ef97eab7809b1bf00c42aebaf488d5fcad7a8` |
+| `services/commission/commissionCalc.js` | `d1d8437943aa0cfa0d8441a31af8199b448377fecca3c7e6801af85a81e55335` |
+| `services/commission/commissionReport.js` | `7fa3e57d3025ee1a546141e3075c82e86e0bdd616672cc533144b0679bd3369e` |
+| `services/commissionService.js` | `246365958f1197cd7d87655ac6d5c99794bb773594659d32fa51cc5665918407` |
 | `services/consultaClienteService.js` | `7afb4a86b287c4349dc0221d0ae17ea3f646ea1343a5719593d6ce713bb08f09` |
 | `services/costingService.js` | `667a8d331571a7dcb8888b3bb8e7bf2328bbbaf3fa89faacdf5b7aab754b0c4b` |
 | `services/customerTimelineService.js` | `bc57d2a865fc1f8310305f1558ac84ea20b2f0c155b1c6f84d151fdd16be0fe5` |
@@ -387,6 +391,7 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 | `services/lgpd/lgpdExport.js` | `bccc46e644501dc24abe80ebd5482d4b239488d09e62fe5487be7f55511767a0` |
 | `services/lgpdService.js` | `4487dee3dbbc4f15bc9932ae8cd8f486b4ba0edfea3fc096c6346e50bc19e564` |
 | `services/maintenance/maintenanceEvaluator.js` | `6c9cfb59af50814d6f7ebe208d20d2b63897f671171ce3189ef3f1ebc3ce3e32` |
+| `services/maintenance/springReclampTrigger.js` | `ae7215bf667dd4666498d1d02235bc14c9b6311185b1494aeefbc3cfd7804c26` |
 | `services/maintenanceContextService.js` | `3091e402985a42cc83f755220f03489bd289c9d418c662f41ab5ffed3ecc72ae` |
 | `services/maintenancePlanService.js` | `be505cb41066eb66ac558bb93a2e83eb9f524cc563e1bfcf56380502c138eaa2` |
 | `services/operational/summaryFormatting.js` | `9c257670cc7398a0021258f8273181090f5f4cd9130dcee952a5f12820549185` |
@@ -430,9 +435,10 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 | `services/support/repository.js` | `adda82167a477f159a8b729f2a59ab28a56f126ef0bbbdc4f8936c166d3c6020` |
 | `services/support/router.js` | `bc32b28f9d1ea8149670633913c4a202b9e181e6dc264d9556067f6462ac2ff3` |
 | `services/technicalIntakeEngine.js` | `e82670efc9c54dc61d3e58e00ba8ef16935ee581effbff446b97f53a71ce794c` |
-| `services/vehicle/vehicleEntryOSBuilder.js` | `f6bd58f9994e93cb87e3612ded58c2fdb83b20f44086693276dd6b7a6f797a89` |
+| `services/vehicle/vehicleArticulatedResolver.js` | `65fe72675d3a8930a2a04a6c48a8704a336c37d74aaf548b922e3bb88c4be18d` |
+| `services/vehicle/vehicleEntryOSBuilder.js` | `d0addcbeeb3a206bd1cc3c8519205c5d65d61ba649b5382063e0977cca7176f8` |
 | `services/vehicle/vehicleEntryResolver.js` | `9c5aa13155a527a13c5b3aa944efbccec0228a243b7a73e5229c6555bf5846a5` |
-| `services/vehicleEntryService.js` | `717ee27bde2bc019208f9ba760c8f50114e6e2bb54e2d9c7510ee9b95578d252` |
+| `services/vehicleEntryService.js` | `5a0bebdf496c35af40eae0e48364bdfd68906a40aec048224ebea6b62b16d276` |
 | `services/vehicleHistoryService.js` | `105bcbf131ad3603aabcca8dc87d024af790f68549a53bf7ace48446a9b5b533` |
 | `services/vehicleLookupService.js` | `b3ea663abb8de5c6729ca56ff2eb92cebfc5c26758d0876dd4b0baacca89dbcf` |
 | `services/vehicleReconciliation.js` | `4c9666ed2bfbbe18ced641e4d0e1874f4ff4258da403071aab4e44e7e1e2fa4b` |

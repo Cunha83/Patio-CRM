@@ -25,7 +25,9 @@ function extrairServicosIniciais(servicos, textoOriginal, placaLimpa) {
         valor: s.valor || s.preco || 0,
         preco: s.preco || s.valor || 0,
         autorizado: s.autorizado !== false,
-        status: s.status || (s.autorizado !== false ? 'aprovado' : 'pendente')
+        status: s.status || (s.autorizado !== false ? 'aprovado' : 'pendente'),
+        alvo: s.alvo || (s.placaAlvo ? (s.placaAlvo === placaLimpa ? 'cavalo' : 'carreta') : null),
+        placaAlvo: s.placaAlvo || null
       });
       totalInicial += (s.qtd || 1) * (s.valor || s.preco || 0);
     });
@@ -81,10 +83,18 @@ async function finalizarAberturaOS({
   statusOS,
   textoAlocacao,
   servicos = [],
-  textoOriginal
+  textoOriginal,
+  conjunto = null
 }) {
   const { servicosIniciais, totalInicial } = extrairServicosIniciais(servicos, textoOriginal, placaLimpa);
   const tid = extractTenantId(req);
+
+  const conjuntoFinal = conjunto || {
+    isArticulado: false,
+    tipoConjunto: 'simples',
+    cavalo: { id: veiculo ? veiculo.id : null, placa: veiculo ? veiculo.placa : placaLimpa },
+    implementos: []
+  };
 
   let triagemPreOS = null;
   try {
@@ -200,6 +210,7 @@ _Envie *Sim* para confirmar ou *Não* para cancelar._`;
     prev: new Date(Date.now() + 2 * 86400000).toISOString().split('T')[0],
     desc: 0,
     queixa: textoOriginal || (isSemPlaca ? 'Entrada sem placa identificada' : 'Check-in via WhatsApp'),
+    conjunto: conjuntoFinal,
     preOSId: triagemPreOS?.preOS?.id || null,
     historicoRelacionado: triagemPreOS?.preOS?.ocorrenciasRelacionadas || [],
     possivelGarantia: Boolean(triagemPreOS?.preOS?.possivelGarantia),
@@ -258,11 +269,15 @@ _Envie *Sim* para confirmar ou *Não* para cancelar._`;
     blocoAlertaTecnico = `\n${linhasAlerta}\n`;
   }
 
+  const linhaConjunto = conjuntoFinal.isArticulado
+    ? `\n🚛 *Conjunto Articulado:* Cavalo ${conjuntoFinal.cavalo.placa} + Carreta: ${conjuntoFinal.implementos.map(i => i.placa).join(', ')}`
+    : '';
+
   const respostaWhatsApp =
 `✅ *Ordem de Serviço #${novaOS.num} Aberta com Sucesso!*
 
 🚛 *Veículo:* ${descVeiculo}
-🏷️ *Placa:* *${veiculo.placa}* ${veiculo.ano ? `(${veiculo.ano})` : ''}
+🏷️ *Placa:* *${veiculo.placa}* ${veiculo.ano ? `(${veiculo.ano})` : ''}${linhaConjunto}
 👤 *Cliente:* ${nomeCliente}
 
 ${statusCadastro}
