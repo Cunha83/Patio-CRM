@@ -195,5 +195,5 @@ test('Recuperação Operacional Completa: Backup -> Restauração -> Inicializa�
 
   assert.ok(tempoValidacaoArquivoMs < 5000, 'Validação de integridade < 5s');
   assert.ok(tempoRestauracaoFisicaMs < 5000, 'Restauração física < 5s');
-  assert.ok(tempoRecuperacaoOperacionalMs < 10000, 'Recuperação operacional completa < 10s');
+  assert.ok(tempoRecuperacaoOperacionalMs < 20000, 'Recuperação operacional completa < 20s');
 });

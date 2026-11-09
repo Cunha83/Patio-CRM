@@ -21,6 +21,25 @@ function tratarEventosPatioOS(a, b, e, o) {
     case 'abrir-os': S.ui.osAberta = b.dataset.id; S.ui.abaOS = 'servicos'; S.ui.picker = null; S.ui.busca = ''; abrirFolha(folhaOS); return true;
     case 'aba-os': S.ui.abaOS = b.dataset.k; S.ui.picker = null; S.ui.busca = ''; renderFolha(); return true;
     case 'nova-os': S.ui.rascunho = null; abrirFolha(() => novaOSFolha(b.dataset.box)); return true;
+    case 'toggle-tipo-entrada': {
+      const tipo = b.dataset.tipo || 'simples';
+      S.ui.rascunho = S.ui.rascunho || {};
+      S.ui.rascunho.tipoEntrada = tipo;
+      renderFolha();
+      return true;
+    }
+    case 'mudar-alvo-item': {
+      if (!o) return true;
+      const tipo = b.dataset.tipo;
+      const idx = parseInt(b.dataset.idx, 10);
+      const lista = o[tipo];
+      if (Array.isArray(lista) && lista[idx]) {
+        lista[idx].alvo = lista[idx].alvo === 'carreta' ? 'cavalo' : 'carreta';
+        salvar();
+        renderFolha();
+      }
+      return true;
+    }
     case 'voltar-os': S.ui.rascVeiculo = null; abrirFolha(novaOSFolha); return true;
     case 'imprimir-os': imprimirOS(o, b.dataset.formato || 'a4'); return true;
     case 'imprimir-os-termica': imprimirOS(o, 'termica'); return true;
@@ -205,6 +224,12 @@ function tratarEventosPatioOS(a, b, e, o) {
 }
 
 function tratarChangePatioOS(a, el, e, o) {
+  if (a === 'campo-articulado') {
+    S.ui.rascunho = S.ui.rascunho || {};
+    const campo = el.dataset.campo;
+    if (campo) S.ui.rascunho[campo] = el.value;
+    return true;
+  }
   if (a === 'campo-os' && o) { renderFolha(); render(); return true; }
   if (a === 'val-item' && o) { renderFolha(); render(); return true; }
   if (a === 'upload-foto-os') {

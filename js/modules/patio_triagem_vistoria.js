@@ -210,6 +210,7 @@ function novaOSFolha(boxId) {
           <option value="novo">+ Cadastrar Novo Caminhão / Placa...</option>
         </select>
       </div>
+      ${typeof renderSeletorArticuladoHtml === 'function' ? renderSeletorArticuladoHtml(rasc) : ''}
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div>

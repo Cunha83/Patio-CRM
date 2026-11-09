@@ -3,10 +3,10 @@
 **Projeto:** Pátio CRM  
 **Versão:** `1.1.2`  
 **Fase:** Piloto Controlado em Ambiente Operacional (1 Oficina)  
-**Data de Congelamento:** 2026-11-09T13:24:49.978Z  
-**Commit Git:** `60456fdb61f70787ff0c3b1d16ef24f4ad5584e7` (`branch: main`)  
+**Data de Congelamento:** 2026-11-09T17:30:08.224Z  
+**Commit Git:** `4dead23a9d26df48c5ff190cd286161e69a04342` (`branch: main`)  
 **Ambiente:** Node.js `v24.19.0` em `win32-x64`  
-**Total de Arquivos Auditados:** 447  
+**Total de Arquivos Auditados:** 452  
 
 ---
 
@@ -38,7 +38,7 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 
 ---
 
-## 3. Inventário Completo de Arquivos da Release (447 Arquivos)
+## 3. Inventário Completo de Arquivos da Release (452 Arquivos)
 
 | Caminho Relativo | Checksum SHA-256 |
 |---|---|
@@ -55,14 +55,14 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 | `css/voice-drawer.css` | `e23f1da831b5bb4e30d1f4c2ba888387b7dfe1bb15712b94d779835ff0c889bd` |
 | `css/voice-modal.css` | `8d39b98ce292b541cbe89e5662e9c30f4513789e3ba75d7a354f681bac5f3b96` |
 | `db.js` | `c7dcf6aea0e5d593a3c74e70eaa88ff896b8c6b48fbdb08ceb7276360e889178` |
-| `index.html` | `9bb851b8d387b155aa1a475e4e4f338db458c5b876fcec977709e07c27703e8a` |
+| `index.html` | `1bef66061b88a387f7a289d6bfce6a246509b0077a83b87a93b78e6d093a717e` |
 | `js/.eslintrc.json` | `836f600602e4b1e54d0800bd6f6c28e9252532c10c0893790bfa63688aa473b4` |
 | `js/app.js` | `8afa4a02e6bd5d5fe905f8612cf32b10d907d6fac318f13b0ce80436d2e0ddce` |
 | `js/cadastros.js` | `1204f0b4ebeeea7919abff5262df0d6fc549d3a6770f7683d519a3b1ce076e4b` |
 | `js/compras.js` | `2addbe263a8e12ed0b8dbeca14002a798b40566d884ac268cf0e0d6c7d964530` |
 | `js/dashboard_operacional.js` | `1d18ca3e27c52b63c5da34d19a9529eb4c7492561d5f0b69dcd6faf551e828e4` |
 | `js/estoque.js` | `f401abfec71a58773568ef8d198f2edc2e74335f692c4e168107e391db00ee34` |
-| `js/financeiro.js` | `dce6125c8a3d2420e31694f57a9fa80f9482c7f6a36078305a8ca91e787c9e1d` |
+| `js/financeiro.js` | `3335de523eb731a50e96f750682c1a3d9fd360db200fee7d20648276ee64b68a` |
 | `js/fiscal.js` | `4d2b9f63636bc9375a1602951e643d5de648194537bb66555616e5f60971ad76` |
 | `js/icons.js` | `f07d52257d0cbeff0cdd9c0ca3a4ba7d0667e0d6d1716e1a0578073f8bf02924` |
 | `js/modules/agent_config.js` | `829efebb157751dde722b231b0af9ad91251de03cf97731e8b2688455310693a` |
@@ -72,11 +72,12 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 | `js/modules/agent_config_tabs.js` | `d655bdaed5ed99cb5a60d739193a7602d32cb24b33e1b8c3e0c11e732f0f8176` |
 | `js/modules/agent_config_voice_tts.js` | `f05834882d7fa73e50b660a0618c1dde6957e8c90c0f1e4dbc67c38daa0dbd61` |
 | `js/modules/analista_actions.js` | `710089526ac31658c5447fc281ebe5f37df2b3783e952577c4b3f28a05d24390` |
-| `js/modules/analista_bi_produtividade.js` | `71c0f3edf7ec8b12d03649e6ecfe06b2e2438cf9c6542e91fb87a888e9ac86cf` |
+| `js/modules/analista_bi_produtividade.js` | `3d3355ffe263facde1088dc1671bb7cf2dd2936eaa411f08463e9a4543dbf1db` |
 | `js/modules/analista_caixa_modal.js` | `14592b0a864c9c7c45b70d83e580c7c57eeb7ba08a5f6a943d46c501dae59fb4` |
 | `js/modules/analista_calc.js` | `93b1fdf398eb3dcf032bb3a1e36ccc77354c4dcad1a189363359124667f37627` |
 | `js/modules/analista_chat_ui.js` | `b31b903fefca18fefe68095eeb634771636cd4993b792f2e80ada2c65ebc9fac` |
 | `js/modules/analista_checkout_pix.js` | `687768b43de762ac376315054611ea729fa2f8ade24808213fd5f7234ad82bee` |
+| `js/modules/analista_comissoes_ui.js` | `17ced072803e50c0ca17366617b6de28448e4f614073ca682681dd3d189dc9d1` |
 | `js/modules/analista_controles.js` | `3e9825089d04b4d6cea05627352bdaf697960be61865d5d80fd195aaab8bbcdd` |
 | `js/modules/analista_kpi_cards.js` | `b060909446dfe7bb95c77f150f320563799933e4a73a24cc4ac23f3fa98d713f` |
 | `js/modules/analista_radar_oficina.js` | `f9f33b65f86b436dcb27878d2fd8014e320646b2c6746a52b4d406fe5c7b0fda` |
@@ -107,15 +108,18 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 | `js/modules/estoque_catalogo_ui.js` | `19bd9e53b0dcfcf381ccf9dedfa8482886587d6cf20b43f46fecaceec3263d0c` |
 | `js/modules/estoque_movimentacoes.js` | `61294f26a39b08d857c66a25d927e497b49327b02a1f280cb3a415e85169efa3` |
 | `js/modules/estoque_ocr_notas.js` | `675894a790518d3d918baf6dba5501adae98c967b9d0e35de67f2c77b269e946` |
-| `js/modules/events.js` | `0e3ca353a4676b0f0122ab82ecae7922dd47924c73ec9a6b6ae0c3ddda8c247b` |
+| `js/modules/events.js` | `295d620e772b5603d61aeca3f2da223d94d805b817f3d03c49e9dbe8f0971056` |
 | `js/modules/events_cadastros.js` | `ca3e650432c2444caeb869c7242d711c4256dbbd0338485ed8e5c45811561272` |
 | `js/modules/events_estoque_compras.js` | `77e200589397efa88bcad12b22074baa68425a7ed6442cef4c20317985439315` |
-| `js/modules/events_financeiro_caixa.js` | `db89c265b6886f559ae45781fc4af4d72917a4a5f77772fcb08be18d96400515` |
+| `js/modules/events_financeiro_bordero.js` | `d40d6639b5fd128e79d6d8635aeac3323bf99a068054109a7dba9b82eeb179d8` |
+| `js/modules/events_financeiro_caixa.js` | `69cc726b6699b99e7302a37e6ff316aa33e1ce4b3dd8d8882f996c5e7f21bfc3` |
 | `js/modules/events_patio_boxes.js` | `275f21735e231b1ee072784a8cbbe0683e2ceed5c0c3558a6cf467db3905b710` |
-| `js/modules/events_patio_os.js` | `c995fee7b79fc195034faac420bd7c44da4384ff42fa2cadcde1d175d74f12c3` |
+| `js/modules/events_patio_os.js` | `e52437feab837eea8f80735df17beab4da642392d1fe1a064fd588e30bb4ef22` |
 | `js/modules/events_sistema_config.js` | `1e69c1f868abefb8b59623f63592afa6bbb3437d14751bdf81f972bf3348836d` |
 | `js/modules/events_whatsapp_voz.js` | `1729a68f139d4702f389860f4f49ddcc906c60bfe6a9469b1b444650a43f7c28` |
 | `js/modules/financeiro_analista.js` | `5b0b5f087ebc0f9faafafbba019d97bef4a4cb9a38cd61a55c46f2f6561838c3` |
+| `js/modules/financeiro_bordero_modal.js` | `b4fd5aec157bc654c902ad69c6bfa06494c7eda314421100a4ffec5f1e1b3006` |
+| `js/modules/financeiro_bordero_ui.js` | `05ed370c95719a1cbaa7af24003c3789b0015fd4a8c94df9cefe68565c1e5c4d` |
 | `js/modules/financeiro_caixa.js` | `fcf32418e6a70737e3f48b2ea16b3e06459d0602a1f957b2ab6212353e48d512` |
 | `js/modules/financeiro_dashboard.js` | `ff50df2a921d9dbb55c279571e6181af0f54b4a576e963c4052b8a9f5af74fb0` |
 | `js/modules/financeiro_dashboard_calc.js` | `6398cf5826ac995cb5a3ec77dc184981eaae2bdf331cadb4e9b36759f083b53f` |
@@ -135,11 +139,12 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 | `js/modules/navigation_auth_ui.js` | `42c4f19f37347cc913e0894207994eb0758f6fff3cefd9c25880cda6dfa15d8e` |
 | `js/modules/navigation_busca.js` | `81ac794b01e69bc93f49da888f9fa2b242b983969a4230d3861e8e0ee4ada09e` |
 | `js/modules/patio_actions_workflow.js` | `907a57b912d1584bdb2aa9b49930647e0736c2802cca4ad812133e0379282704` |
+| `js/modules/patio_articulado_ui.js` | `7ef5c44e06301147380bceb2702b9666f78be4faea13d21e2ffddc222d98b0f2` |
 | `js/modules/patio_board_view.js` | `cab3141f8e238f762cf5f11c933d1d151cd357c79ef5b5d4d8ee8bc5ca1eabc3` |
-| `js/modules/patio_os_sheet.js` | `f84dfd7dc32fb5a502d9a5388d8a2162662500e53d76be6bb2cebbbfff7a9822` |
+| `js/modules/patio_os_sheet.js` | `0c9cce67e1d91348fc9767bee0c0dbc9e53e83ae3f84eefc2b5ee885ad17e3f9` |
 | `js/modules/patio_radar_gargalos.js` | `7faf04ec91ac6432e3e6890f9faee1809bb901ed0b2d3a04c0251f6abe285f82` |
 | `js/modules/patio_render.js` | `079c0a641a2ebc3d74db7b9271097df155addfecb77d0e7fe5eaeac1b7b94417` |
-| `js/modules/patio_triagem_vistoria.js` | `db0ea1f6d99672e3c4a5a73841976ba9657782843139efc9b88f32840bae8bba` |
+| `js/modules/patio_triagem_vistoria.js` | `1dae404954c45681b6df06f91d1bf885dcdeb0f0a9e6c882221dc524c6b3411e` |
 | `js/modules/relatorios_conteudo_views.js` | `da818e9c022c3534ce231ffc74e842c28e0486fad2f4e936339b68f899fb8257` |
 | `js/modules/state_seed_cadastros.js` | `1761d9d62e4899bad1eeef9d1204e4aad84a841488f29327d1c2d12b9d4ba662` |
 | `js/modules/state_seed_data.js` | `a4488a8634070ff69098e873c2a2d5c94380f1144fae379aec3592cbe2eb6c03` |

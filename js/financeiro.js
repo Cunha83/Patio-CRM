@@ -25,7 +25,8 @@ function viewFinanceiro() {
     ['caixa', 'Fluxo de Caixa'],
     ['dre', 'Resultado Gerencial de Caixa'],
     ['banco', 'Conciliação Bancária'],
-    ['recebimentos', 'Cobrança Pix, Boletos & Cartão 💳']
+    ['recebimentos', 'Cobrança Pix, Boletos & Cartão 💳'],
+    ['bordero', 'Faturamento de Frotas 🚛']
   ];
   const a = S.ui?.abaFin || 'dashboard';
 
@@ -37,6 +38,7 @@ function viewFinanceiro() {
   else if (a === 'caixa' && typeof blocoFluxoCaixa === 'function') corpo = blocoFluxoCaixa();
   else if (a === 'dre' && typeof blocoDRE === 'function') corpo = blocoDRE();
   else if (a === 'recebimentos' && typeof blocoHubRecebimentos === 'function') corpo = blocoHubRecebimentos();
+  else if (a === 'bordero' && typeof blocoBorderoFrotas === 'function') corpo = blocoBorderoFrotas();
   else if (typeof blocoBanco === 'function') corpo = blocoBanco();
 
   const fnBrlCurto = (typeof brlCurto === 'function') ? brlCurto : (v => 'R$ ' + Number(v || 0).toFixed(2));

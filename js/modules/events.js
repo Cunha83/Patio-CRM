@@ -24,6 +24,7 @@ document.addEventListener('click', e => {
   if (typeof tratarEventosPatioBoxes === 'function' && tratarEventosPatioBoxes(a, b, e, o)) return;
   if (typeof tratarEventosEstoqueCompras === 'function' && tratarEventosEstoqueCompras(a, b, e, o)) return;
   if (typeof tratarEventosFinanceiroCaixa === 'function' && tratarEventosFinanceiroCaixa(a, b, e, o)) return;
+  if (typeof tratarEventosFinanceiroBordero === 'function' && tratarEventosFinanceiroBordero(a, b, e, o)) return;
   if (typeof tratarEventosWhatsAppVoz === 'function' && tratarEventosWhatsAppVoz(a, b, e, o)) return;
   if (typeof tratarEventosCadastros === 'function' && tratarEventosCadastros(a, b, e, o)) return;
   if (typeof tratarEventosSistemaConfig === 'function' && tratarEventosSistemaConfig(a, b, e, o)) return;
@@ -76,6 +77,7 @@ document.addEventListener('change', e => {
   if (typeof tratarChangePatioBoxes === 'function' && tratarChangePatioBoxes(a, el, e, o)) return;
   if (typeof tratarChangeEstoqueCompras === 'function' && tratarChangeEstoqueCompras(a, el, e, o)) return;
   if (typeof tratarChangeFinanceiroCaixa === 'function' && tratarChangeFinanceiroCaixa(a, el, e, o)) return;
+  if (typeof tratarChangeFinanceiroBordero === 'function' && tratarChangeFinanceiroBordero(a, el, e, o)) return;
   if (typeof tratarChangeWhatsAppVoz === 'function' && tratarChangeWhatsAppVoz(a, el, e, o)) return;
   if (typeof tratarChangeSistemaConfig === 'function' && tratarChangeSistemaConfig(a, el, e, o)) return;
 });

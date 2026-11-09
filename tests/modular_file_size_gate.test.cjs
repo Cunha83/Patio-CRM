@@ -177,6 +177,7 @@ test('Quality Gate de Tamanho Modular de Arquivo (Teto <= 350 Linhas)', async (t
       'events_patio_boxes.js',
       'events_estoque_compras.js',
       'events_financeiro_caixa.js',
+      'events_financeiro_bordero.js',
       'events_whatsapp_voz.js',
       'events_cadastros.js',
       'events_sistema_config.js'

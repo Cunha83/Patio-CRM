@@ -142,7 +142,7 @@ function folhaOS() {
     </div>
   </div>`;
 
-  return `<div class="folha-os-container">${cabecalho}${bannerPendencia}${abasHtml}${conteudoAba}${rodapeHtml}</div>`;
+  return `<div class="folha-os-container">${cabecalho}${bannerPendencia}${typeof renderSubtotaisArticuladoOS === 'function' ? renderSubtotaisArticuladoOS(o) : ''}${abasHtml}${conteudoAba}${rodapeHtml}</div>`;
 }
 
 function abaItens(o, tipo) {
@@ -182,6 +182,7 @@ function abaItens(o, tipo) {
               <div style="font-weight:600;color:var(--aco-900);display:flex;align-items:center;gap:6px;flex-wrap:wrap">
                 <span>${esc(item.nome)}</span>
                 ${item.autorizado ? ' <span class="selo" style="background:#def7ec;color:#03543f;font-size:10px;padding:2px 6px">AUTORIZADO</span>' : ''}
+                ${typeof renderAlvoItemBadge === 'function' ? renderAlvoItemBadge(item, tipo, o) : ''}
                 ${isPeca ? `
                   <span class="selo" style="${
                     (item.st === 'consumida' || item.status === 'consumida') ? 'background:#def7ec;color:#03543f' :

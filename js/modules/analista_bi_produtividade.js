@@ -143,6 +143,7 @@ function calcularProdutividadeFrontend(periodo = 'mensal') {
 
 function dashboardBiProdutividadeHtml() {
   const periodoAtivo = (typeof S !== 'undefined' && S && S.ui && S.ui.periodoBi) || 'mensal';
+  const subAba = (typeof S !== 'undefined' && S && S.ui && S.ui.biSubAba) || 'indicadores';
   const bi = calcularProdutividadeFrontend(periodoAtivo);
   const brlFmt = typeof brl === 'function' ? brl : (n => `R$ ${Number(n || 0).toFixed(2)}`);
 
@@ -163,18 +164,33 @@ function dashboardBiProdutividadeHtml() {
           <div style="font-weight:700;font-size:16px;color:var(--aco-900);display:flex;align-items:center;gap:6px">
             <span>📈</span> <b>Painel de Produtividade & Indicadores</b><!-- Dashboard BI & Produtividade -->
           </div>
-          <div class="mini">Indicadores de desempenho operacional de boxes, ranking de mecânicos e provisão de comissões.</div>
+          <div class="mini">Indicadores de desempenho operacional de boxes, ranking de mecânicos e fechamento de comissões.</div>
         </div>
-        <div style="display:flex;gap:6px;align-items:center">
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+          <div class="btn-group btn-group-sm mr-2" role="group">
+            <button type="button" class="btn ${subAba === 'indicadores' ? 'btn-primary' : 'btn-outline-secondary'}" data-act="mudar-subaba-bi" data-subaba="indicadores">
+              📊 Indicadores
+            </button>
+            <button type="button" class="btn ${subAba === 'comissoes' ? 'btn-primary' : 'btn-outline-secondary'}" data-act="mudar-subaba-bi" data-subaba="comissoes">
+              🤝 Comissões
+            </button>
+          </div>
+          ${subAba === 'indicadores' ? `
           <button class="chip ${periodoAtivo === 'semanal' ? 'ativo' : ''}" data-act="mudar-periodo-bi" data-periodo="semanal" style="font-size:12px;cursor:pointer;padding:4px 10px;border-radius:16px;${periodoAtivo === 'semanal' ? 'background:#3b82f6;color:#fff;font-weight:700;' : ''}">
             📅 Visão Semanal
           </button>
           <button class="chip ${periodoAtivo === 'mensal' ? 'ativo' : ''}" data-act="mudar-periodo-bi" data-periodo="mensal" style="font-size:12px;cursor:pointer;padding:4px 10px;border-radius:16px;${periodoAtivo === 'mensal' ? 'background:#3b82f6;color:#fff;font-weight:700;' : ''}">
             🗓️ Visão Mensal
           </button>
+          ` : ''}
         </div>
       </div>
 
+      ${subAba === 'comissoes' ? `
+        <div>
+          ${typeof blocoExtratoComissoesHtml === 'function' ? blocoExtratoComissoesHtml() : (typeof window !== 'undefined' && typeof window.blocoExtratoComissoesHtml === 'function' ? window.blocoExtratoComissoesHtml() : '')}
+        </div>
+      ` : `
       <!-- CARTÕES DE KPI (Cards) -->
       <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));gap:12px;margin-bottom:16px">
         <div style="background:rgba(99, 102, 241, 0.06);border:1px solid rgba(99, 102, 241, 0.3);border-radius:8px;padding:12px">
@@ -264,6 +280,7 @@ function dashboardBiProdutividadeHtml() {
           `}
         </div>
       </div>
+      `}
     </div>
   `;
 }
