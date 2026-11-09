@@ -2,9 +2,9 @@
   "projeto": "Patio-CRM",
   "versao": "1.1.2",
   "fase": "Fase 3 — Piloto Controlado em Ambiente Operacional",
-  "dataGeracao": "2026-11-09T12:19:15.705Z",
+  "dataGeracao": "2026-11-09T13:24:49.978Z",
   "git": {
-    "commit": "fc8f32ac9d5f63d05270a891633b04b538882c1c",
+    "commit": "60456fdb61f70787ff0c3b1d16ef24f4ad5584e7",
     "branch": "main"
   },
   "ambienteExecucao": {
@@ -22,7 +22,7 @@
       "credenciais e certificados SEFAZ A1"
     ]
   },
-  "totalArquivosAuditados": 443,
+  "totalArquivosAuditados": 447,
   "arquivos": {
     "css/automations-modal.css": "2b38b55b99835d237daa04bab807ecf2a491d5a323c912a8425ba5d3480e59d1",
     "css/base-layout.css": "05517f58b6d6ad2aa065b29125bc85ed3f4eb715654ba925353d85327401582c",
@@ -160,7 +160,7 @@
     "lib/repository/migration.js": "0c5a5a433a6de395d039d7b709f27dcd1d00a8d119bfbd6ca9f582b2b06ebfcf",
     "lib/repository/stateRepository.js": "5b83e968c3b1167c4ab35c6295f52e4a1c5ffda362e29111b42bb6021db4b703",
     "lib/repository/stateRoleFilter.js": "7855026610b2b20d6156c68a0aa7ce9babe7862c630963297768174f60894bf3",
-    "lib/repository/stateSanitizer.js": "77f347b649c799fd53077e9f4f9be3d604bb086292a37673879381610a1e4422",
+    "lib/repository/stateSanitizer.js": "ffb19da5656d2f71001c1462aac3de19b619f68c80fc7acb16e67865a4ff402d",
     "lib/security/logSanitizer.js": "bf67a0111f32c5f4e3fc7c7d3d827ec27b7204896c70e8f4bee015746771d0d3",
     "lib/security/testPaths.js": "f1ed1c947fcb8da33b93cb9b54d36f16832add8a660293e7b90fd1f45c5ea7e8",
     "lib/serverContext.js": "ad274e237757d624360584f8c4bd939909b1f75eabf5ac1fd81dc1fc5965ab08",
@@ -203,7 +203,8 @@
     "routes/crm_agendamentos_posvenda.routes.js": "cafca4b97cf651c402e20f16934c19fd8f03c50acb90ca1ec1dc8ef0f97944d1",
     "routes/crm_clientes_frotas.routes.js": "bedb24c5ca10d711f093c2ff579841fbde15371eb4901d5f0893d0d31c6d0e14",
     "routes/crm_manutencao_oportunidades.routes.js": "3a5d3d0c4476ca1720f857572d0465a53dda107cd0724a9ceda8b73a8fe99552",
-    "routes/financial.routes.js": "5a1f3b5c1516afc504a5a8eeae5a27105b0ed7f8f470ba1b7ed2495747cd8eb4",
+    "routes/financial.routes.js": "a9fcf3bcf758e254f02e01bf21ca838095ed157c993d33729c0a4dc13ce3b14c",
+    "routes/financial_bordero.routes.js": "6f5dca6d8d9c5588e4d2638bdbe1706df0ed74ba323f990cb1583788c7bfab65",
     "routes/financial_cash.routes.js": "27b444d04b3519f0fa474d9f1636c41bb20d7e86ece352cf590988eae4ece8b3",
     "routes/financial_checklist.routes.js": "fe19dde0297ee99774344667e66fc32bc23b35659eecebff26a69474260d6055",
     "routes/financial_commission.routes.js": "f41c4491c333d766220b8b27dce96af38cb14e03a962b8f9b315bcb3b415cdd9",
@@ -285,6 +286,9 @@
     "services/billing/billingPersistence.js": "3eb4f298ce3c66c99e9eca7cafb7b392ccad7d6650d8bf2982c2eb055e5871a9",
     "services/billing/billingService.js": "58bbaf9821cfba28c6cc2879458e0b86fd68f9ac4a8abe0c36d89290af81645e",
     "services/billing/billingWebhookProcessor.js": "f8f91d2ef56282efc5268aa5a828fee4b20f6b11852cb032e8d786d658570dfb",
+    "services/billing/boletoEngine.js": "9e46c44b071a375ff8f02d030a53e58ff15529324cc45128c90171f4520139a4",
+    "services/billing/fleetBorderoCalc.js": "1645b97113b46c3327e75d5b49c327d84797401d1fc161bbff7a62e7396c24a4",
+    "services/billing/fleetBorderoService.js": "5328069f6338eac55881383451e70a46c7fd1224ffaeace0f066dbc268b29670",
     "services/billing/paymentAsaasAdapter.js": "1208e1abaec0d31ce08defdd3938a9cbf1beba74dfc5ddaa7bdd6d9d2c14f292",
     "services/billing/paymentBaseAdapter.js": "450a3ac2e959f8cc558e4570db116991647a50e77b1e2f8d3b04a8ae63d69156",
     "services/billing/paymentProviderAdapter.js": "66773efe48152c509345367c5e894826558ff5afe61ef2319bee572f50b119a5",

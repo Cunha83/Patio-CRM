@@ -1,12 +1,12 @@
 {
   "tipo": "IMPLANTACAO_REAL_HOST_OFICINA",
-  "dataExecucao": "2026-11-09T12:14:40.121Z",
+  "dataExecucao": "2026-11-09T13:25:57.201Z",
   "host": "ShockerNote",
   "nodeVersion": "v24.19.0",
   "plataforma": "win32 (x64)",
-  "deployDir": "C:\\Users\\AUTOMO~1\\AppData\\Local\\Temp\\patio-preflight-guard-bj3Ebg",
+  "deployDir": "C:\\Users\\AUTOMO~1\\AppData\\Local\\Temp\\patio-preflight-guard-ss6JWn",
   "externalBackupDir": "C:\\Users\\AutoMolasFort\\PatioCRM_Backups_Externos",
   "etapas": [],
-  "erroGeral": "INSTALACAO_JA_EXISTE: Destino \"C:\\Users\\AUTOMO~1\\AppData\\Local\\Temp\\patio-preflight-guard-bj3Ebg\" já contém uma instalação ativa (detectados: patio.db, .env, public). Implantação abortada antes de qualquer escrita para proteger dados operacionais.",
+  "erroGeral": "INSTALACAO_JA_EXISTE: Destino \"C:\\Users\\AUTOMO~1\\AppData\\Local\\Temp\\patio-preflight-guard-ss6JWn\" já contém uma instalação ativa (detectados: patio.db, .env, public). Implantação abortada antes de qualquer escrita para proteger dados operacionais.",
   "parecerFinal": "FALHOU"
 }

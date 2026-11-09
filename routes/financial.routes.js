@@ -25,6 +25,7 @@ router.use(require('./financial_parts.routes'));
 router.use(require('./financial_checklist.routes'));
 router.use(require('./financial_dre.routes'));
 router.use(require('./financial_commission.routes'));
+router.use(require('./financial_bordero.routes'));
 
 
 // Suporte a inspeção direta de router.stack para suítes de testes de regressão
