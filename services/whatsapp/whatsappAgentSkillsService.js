@@ -40,7 +40,7 @@ function identificarIntencaoEPerfilWhatsApp(mensagem = '', options = {}) {
   if (/extrato|concili|ofx|cnab/i.test(texto)) {
     return 'SKILL_CONCILIACAO_EXTRATO';
   }
-  if (/faturament|border[oô]|inadimpl[eê]ncia|contas a pagar|contas a receber|dre|caixa|briefing financeiro/i.test(texto)) {
+  if (/faturament|border[oô]|inadimpl[eê]ncia|contas a pagar|contas a receber|dre|caixa|briefing financeiro|ponto de equil|break-?even|lucro|rentabil/i.test(texto)) {
     return 'SKILL_ANALISTA_FINANCEIRO';
   }
   return 'SKILL_RECEPCAO_PATIO';
@@ -131,6 +131,20 @@ function executarSkillAnalistaFinanceiroGerencia(state, payload = {}) {
     err.code = 'WHATSAPP_UNAUTHORIZED_MANAGEMENT_SKILL';
     err.status = 403;
     throw err;
+  }
+
+  if (/dre|ponto de equil|break-?even|lucro|rentabil/i.test(payload.mensagem || '') || payload.comandoAcao === 'consultar_dre') {
+    const executiveDreBreakEvenService = require('../finance/executiveDreBreakEvenService');
+    const resDre = executiveDreBreakEvenService.gerarRelatorioExecutivoDreWhatsApp(state, {
+      competencia: payload.competencia,
+      metaLucroDesejado: payload.metaLucroDesejado
+    });
+    return {
+      skill: 'SKILL_ANALISTA_FINANCEIRO',
+      subtipo: 'dre_breakeven_briefing',
+      respostaTextoWhatsApp: resDre.respostaTextoWhatsApp,
+      dadosExecutivos: resDre
+    };
   }
 
   if (payload.anexoExtrato || payload.skill === 'SKILL_CONCILIACAO_EXTRATO') {

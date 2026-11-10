@@ -26,6 +26,7 @@ function mountRoutes(app) {
   app.use(require('./financeiro_bordero_inadimplencia.routes'));
   app.use(require('./suprimentos_whatsapp_conciliacao.routes'));
   app.use(require('./aprovacao_externa_frotista.routes'));
+  app.use(require('./financeiro_dre_rentabilidade.routes'));
   app.use(require('./coreLoop.routes'));
   app.use(require('./static.routes'));
 }
