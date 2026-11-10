@@ -21,6 +21,7 @@ function mountRoutes(app) {
   app.use(require('./platform.routes'));
   app.use(require('./financial.routes'));
   app.use(require('./patio_produtividade_comissoes.routes'));
+  app.use(require('./patio_qualidade_folha.routes'));
   app.use(require('./coreLoop.routes'));
   app.use(require('./static.routes'));
 }
