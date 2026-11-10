@@ -3,10 +3,10 @@
 **Projeto:** Pátio CRM  
 **Versão:** `1.2.0`  
 **Fase:** Piloto Controlado em Ambiente Operacional (1 Oficina)  
-**Data de Congelamento:** 2026-11-10T19:31:09.606Z  
-**Commit Git:** `0d5348ddf34ef9ab225ca6c7c44b0c071be003ac` (`branch: main`)  
+**Data de Congelamento:** 2026-11-10T19:56:22.135Z  
+**Commit Git:** `4e48cf29e6211e63e79ce8c9a5bb160351227bfe` (`branch: main`)  
 **Ambiente:** Node.js `v24.19.0` em `win32-x64`  
-**Total de Arquivos Auditados:** 490  
+**Total de Arquivos Auditados:** 494  
 
 ---
 
@@ -38,7 +38,7 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 
 ---
 
-## 3. Inventário Completo de Arquivos da Release (490 Arquivos)
+## 3. Inventário Completo de Arquivos da Release (494 Arquivos)
 
 | Caminho Relativo | Checksum SHA-256 |
 |---|---|
@@ -55,7 +55,7 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 | `css/voice-drawer.css` | `e23f1da831b5bb4e30d1f4c2ba888387b7dfe1bb15712b94d779835ff0c889bd` |
 | `css/voice-modal.css` | `8d39b98ce292b541cbe89e5662e9c30f4513789e3ba75d7a354f681bac5f3b96` |
 | `db.js` | `c7dcf6aea0e5d593a3c74e70eaa88ff896b8c6b48fbdb08ceb7276360e889178` |
-| `index.html` | `df9ac14cc34fa51a54cd52e404ca1b4f1223e21c17af302756045d14381917a9` |
+| `index.html` | `7077f6c57bfd00fe6b8e62888f3bc02e4bbc561c6148c460bb6d98d41ddcb38c` |
 | `js/.eslintrc.json` | `836f600602e4b1e54d0800bd6f6c28e9252532c10c0893790bfa63688aa473b4` |
 | `js/app.js` | `8afa4a02e6bd5d5fe905f8612cf32b10d907d6fac318f13b0ce80436d2e0ddce` |
 | `js/cadastros.js` | `1204f0b4ebeeea7919abff5262df0d6fc549d3a6770f7683d519a3b1ce076e4b` |
@@ -84,6 +84,8 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 | `js/modules/app_modals_sheets.js` | `353799e7df63e78352d6095cb5128d525b26994a23b36f32249e18e6ac5a7532` |
 | `js/modules/app_onboarding_tour.js` | `3960efefed310cd22d1d9760d181229b4ca62ecc35a93158149fefdec19df663` |
 | `js/modules/app_sync_auth.js` | `45b45cdf99e4f8cf0e2e75cfb5ff59b9b8b4297b67a672a6798c6c84d4cd086a` |
+| `js/modules/aprovacao_externa_frotista_actions.js` | `c1bdd1e8e1f0dc167fe388d7b7f1e3cdd183c7515e0f35b5b8d06f635536f195` |
+| `js/modules/aprovacao_externa_frotista_ui.js` | `63a1a3d0a5bc8b33aee296684bea085b5fd2fe738cc2dd9455d2b0b22727ab27` |
 | `js/modules/automations_modal.js` | `c5f74a15fcaebe622fe0cd3450a91c2eab30deca70aee2b6e2588359e909f26f` |
 | `js/modules/brand_theme.js` | `f053318fcb9696be90c9161379b4b8fb4931f81a5a0efd60454802cb5cfcf10b` |
 | `js/modules/cadastros_config_integracoes.js` | `fc592104ec6e0b9b186b7ce2536145f7b6487aa2d4a4d9699d03791cd2758eff` |
@@ -219,6 +221,7 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 | `public/support/support.css` | `b5888dd062ca74ec0ce0c5c9bde4c1412b470940401fccf75c9ee49d86e9aff7` |
 | `public/termos.html` | `104c995a5400155c0ba15576c4d506673d244a71e192ff9b9e08f4c2b706f8ea` |
 | `public/video-motion.html` | `4c735bb2f064a05eafe9bae7bc38a3b49b6ced007c0aa8ae8c0cab9ad14127ae` |
+| `routes/aprovacao_externa_frotista.routes.js` | `46273c3a770496b328fe516e6879e6b4f51dc8bd78d727731624cd5f13d33c5d` |
 | `routes/auth.routes.js` | `5569acbdb273b7b5c37f3b2448aa933ed073c8ec3257f65393f3ea4af0a50a78` |
 | `routes/auth_password.routes.js` | `d12b1c885b32aa68af882bbc4a8cea08cc24cf0932af094e6dd39f4889e897c7` |
 | `routes/auth_session.routes.js` | `3db2ae75923c7b8808809866b0d94f5f23d5ef1da24596b5f0dfb2a8a87fcf73` |
@@ -251,7 +254,7 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 | `routes/financial_patio.routes.js` | `49b758f76de34b9e764d035997e4147dfdbd8e87240f9c5bdbd0a36c70d57b3d` |
 | `routes/financial_treasury.routes.js` | `f6702e5d57d473960cc875ad42a7205ddc5c7d58b6f06169e1b3d0addf95b38e` |
 | `routes/health.routes.js` | `1b7cbfcaa978b57041475ed2ebab495eac91836121301f5f931047357a042f65` |
-| `routes/index.js` | `4eaaf87e70b7a50a6578a164f8abb793584ea03b4c988b821e161d5550ca25db` |
+| `routes/index.js` | `572646cbc2c30c9ab90b4a2ee2f7bcaadd33f0c367eaa66cfeb499fb347906e9` |
 | `routes/inspection.routes.js` | `cc3940861f6199d1c42da9deea82647e1861f5277e9cfe3d2a8f88e452ad8469` |
 | `routes/inventory.routes.js` | `bf62be003a1b0d80395efc318704aaa312d6dd8eda76f5ef2f1b0502e38cbce2` |
 | `routes/inventory_catalog.routes.js` | `d61be240ac1666d2810b41895948c12b1d5016f4f533c766b867b210613e15d1` |
@@ -461,6 +464,7 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 | `services/procurement/procurementRequirements.js` | `74d13797acd0356ee7311a973b6243aade587848c6820bb5b8dbe29f9cb72bc7` |
 | `services/procurementService.js` | `de078f0819364dc936966cda7425a628821cb5f0cd665bad201b66a97fc322e0` |
 | `services/productivityService.js` | `9c0fafc58c462d709b7c135c1f04617ef02eeffb78170893f2ad0f502fe0a8fa` |
+| `services/quotation/externalFleetApprovalService.js` | `18aa6f2abb5a3e059a5677a754077200e338c7fe64396530fa39d46c124fae80` |
 | `services/quotation/partialApprovalService.js` | `75a5f92b16af23d90b2547a3dc5578ae94bd02362daf0bfeb44b91f81003b621` |
 | `services/quotation/quotationApproval.js` | `36eb7a80da245b0be6833cc8d230ea2c4a0b659b4ca5b9b969b13459e927e987` |
 | `services/quotation/quotationCrud.js` | `70cdb68f009309306714de9d3b6f157c4e4cdf89001bd42e8ca6f890e867e093` |
