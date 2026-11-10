@@ -23,6 +23,7 @@ function mountRoutes(app) {
   app.use(require('./patio_produtividade_comissoes.routes'));
   app.use(require('./patio_qualidade_folha.routes'));
   app.use(require('./patio_boxes_gargalos.routes'));
+  app.use(require('./financeiro_bordero_inadimplencia.routes'));
   app.use(require('./coreLoop.routes'));
   app.use(require('./static.routes'));
 }

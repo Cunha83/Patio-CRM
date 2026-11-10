@@ -3,10 +3,10 @@
 **Projeto:** Pátio CRM  
 **Versão:** `1.2.0`  
 **Fase:** Piloto Controlado em Ambiente Operacional (1 Oficina)  
-**Data de Congelamento:** 2026-11-10T17:59:31.741Z  
-**Commit Git:** `be552f2bf8815a3cc0e1e01b92d31a4a6bc8ef02` (`branch: main`)  
+**Data de Congelamento:** 2026-11-10T18:58:30.992Z  
+**Commit Git:** `c5c05fb18b42a61d8be8703f33b6504f2c6ce6a3` (`branch: main`)  
 **Ambiente:** Node.js `v24.19.0` em `win32-x64`  
-**Total de Arquivos Auditados:** 479  
+**Total de Arquivos Auditados:** 484  
 
 ---
 
@@ -38,7 +38,7 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 
 ---
 
-## 3. Inventário Completo de Arquivos da Release (479 Arquivos)
+## 3. Inventário Completo de Arquivos da Release (484 Arquivos)
 
 | Caminho Relativo | Checksum SHA-256 |
 |---|---|
@@ -55,7 +55,7 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 | `css/voice-drawer.css` | `e23f1da831b5bb4e30d1f4c2ba888387b7dfe1bb15712b94d779835ff0c889bd` |
 | `css/voice-modal.css` | `8d39b98ce292b541cbe89e5662e9c30f4513789e3ba75d7a354f681bac5f3b96` |
 | `db.js` | `c7dcf6aea0e5d593a3c74e70eaa88ff896b8c6b48fbdb08ceb7276360e889178` |
-| `index.html` | `037afdc8ecbb435682760f963eefe8d2d7697e44725c73412e4ae5d08e671d4d` |
+| `index.html` | `c4292e09c820c6862c89a0f3232e60f6c78f6d245d6e03b5997f21f62b4ba50c` |
 | `js/.eslintrc.json` | `836f600602e4b1e54d0800bd6f6c28e9252532c10c0893790bfa63688aa473b4` |
 | `js/app.js` | `8afa4a02e6bd5d5fe905f8612cf32b10d907d6fac318f13b0ce80436d2e0ddce` |
 | `js/cadastros.js` | `1204f0b4ebeeea7919abff5262df0d6fc549d3a6770f7683d519a3b1ce076e4b` |
@@ -120,6 +120,8 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 | `js/modules/events_sistema_config.js` | `1e69c1f868abefb8b59623f63592afa6bbb3437d14751bdf81f972bf3348836d` |
 | `js/modules/events_whatsapp_voz.js` | `1729a68f139d4702f389860f4f49ddcc906c60bfe6a9469b1b444650a43f7c28` |
 | `js/modules/financeiro_analista.js` | `5b0b5f087ebc0f9faafafbba019d97bef4a4cb9a38cd61a55c46f2f6561838c3` |
+| `js/modules/financeiro_bordero_conciliacao_actions.js` | `d5a4f98e7af65e2aaff0a549597dd6056b11fa5ab67ad34dd27683c4a8d10f10` |
+| `js/modules/financeiro_bordero_conciliacao_ui.js` | `55db201b3868ddc0a36a7a9b47729f8df1aab384026029a77d3acdf9865f124f` |
 | `js/modules/financeiro_bordero_modal.js` | `b4fd5aec157bc654c902ad69c6bfa06494c7eda314421100a4ffec5f1e1b3006` |
 | `js/modules/financeiro_bordero_ui.js` | `05ed370c95719a1cbaa7af24003c3789b0015fd4a8c94df9cefe68565c1e5c4d` |
 | `js/modules/financeiro_caixa.js` | `fcf32418e6a70737e3f48b2ea16b3e06459d0602a1f957b2ab6212353e48d512` |
@@ -235,6 +237,7 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 | `routes/crm_agendamentos_posvenda.routes.js` | `cafca4b97cf651c402e20f16934c19fd8f03c50acb90ca1ec1dc8ef0f97944d1` |
 | `routes/crm_clientes_frotas.routes.js` | `ebf01e7f1929da354cd590423c2e8ea5b4d2081c8dcc40d981c3d17c49c13086` |
 | `routes/crm_manutencao_oportunidades.routes.js` | `5a2e7a6abe3baf5c268e2961c64427ff811bcb063a3ac37c3534d80af10eb36f` |
+| `routes/financeiro_bordero_inadimplencia.routes.js` | `6945202b23c3e4f0f7bbebffd018131ae8203af782f5ed2218058fb0bdf91fa3` |
 | `routes/financial.routes.js` | `a9fcf3bcf758e254f02e01bf21ca838095ed157c993d33729c0a4dc13ce3b14c` |
 | `routes/financial_bordero.routes.js` | `6f5dca6d8d9c5588e4d2638bdbe1706df0ed74ba323f990cb1583788c7bfab65` |
 | `routes/financial_cash.routes.js` | `27b444d04b3519f0fa474d9f1636c41bb20d7e86ece352cf590988eae4ece8b3` |
@@ -246,7 +249,7 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 | `routes/financial_patio.routes.js` | `49b758f76de34b9e764d035997e4147dfdbd8e87240f9c5bdbd0a36c70d57b3d` |
 | `routes/financial_treasury.routes.js` | `f6702e5d57d473960cc875ad42a7205ddc5c7d58b6f06169e1b3d0addf95b38e` |
 | `routes/health.routes.js` | `1b7cbfcaa978b57041475ed2ebab495eac91836121301f5f931047357a042f65` |
-| `routes/index.js` | `65e102ecc8d7eb407fb029875465c51406347268916323428fc88994fed39b82` |
+| `routes/index.js` | `12b6e965a03064637091de4ac89c70af337d7092969d16398b16d9479eed6ea1` |
 | `routes/inspection.routes.js` | `cc3940861f6199d1c42da9deea82647e1861f5277e9cfe3d2a8f88e452ad8469` |
 | `routes/inventory.routes.js` | `bf62be003a1b0d80395efc318704aaa312d6dd8eda76f5ef2f1b0502e38cbce2` |
 | `routes/inventory_catalog.routes.js` | `d61be240ac1666d2810b41895948c12b1d5016f4f533c766b867b210613e15d1` |
@@ -325,6 +328,8 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 | `services/billing/boletoEngine.js` | `9e46c44b071a375ff8f02d030a53e58ff15529324cc45128c90171f4520139a4` |
 | `services/billing/fleetBorderoCalc.js` | `4eeb075f0fad0656430a66771c3b86135af2780920b13eb7434d038ca9c5efea` |
 | `services/billing/fleetBorderoService.js` | `5ff5b048e4b7067fe738eb4f7d8c6b57782bc85d1c4adbbcff97530b5ee8e986` |
+| `services/billing/fleetBorderoSettlementService.js` | `53309864110636a122bf8b47609760e3b7cf2f675778f6977626fefaf7f65b63` |
+| `services/billing/fleetDelinquencyGuardService.js` | `382b4af1275d62c0d89ece8ba02a5d7d513f8ee8c519e363b13eeb96646b6a45` |
 | `services/billing/paymentAsaasAdapter.js` | `1208e1abaec0d31ce08defdd3938a9cbf1beba74dfc5ddaa7bdd6d9d2c14f292` |
 | `services/billing/paymentBaseAdapter.js` | `450a3ac2e959f8cc558e4570db116991647a50e77b1e2f8d3b04a8ae63d69156` |
 | `services/billing/paymentProviderAdapter.js` | `66773efe48152c509345367c5e894826558ff5afe61ef2319bee572f50b119a5` |
