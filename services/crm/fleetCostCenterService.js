@@ -229,12 +229,19 @@ function agruparBorderoPorCentroCusto({ itensOS = [], centrosCusto = [] }) {
   return Array.from(grupos.values());
 }
 
+const {
+  definirOrcamentoCentroCusto,
+  calcularConsumoOrcamentoCentroCusto
+} = require('./fleetCostCenterBudgetService');
+
 module.exports = {
   cadastrarCentroCusto,
   listarCentrosCustoPorCliente,
   atualizarCentroCusto,
   vincularCentroCustoVeiculo,
   vincularCentroCustoOS,
-  agruparBorderoPorCentroCusto
+  agruparBorderoPorCentroCusto,
+  definirOrcamentoCentroCusto,
+  calcularConsumoOrcamentoCentroCusto
 };
 

@@ -228,6 +228,26 @@ function tratarEventosPatioOS(a, b, e, o) {
       `);
       return true;
     }
+    case 'abrir-modal-converter-oportunidade': {
+      if (typeof abrirModalConverterOportunidade === 'function') abrirModalConverterOportunidade(b.dataset.id);
+      return true;
+    }
+    case 'confirmar-conversao-oportunidade': {
+      if (typeof confirmarConversaoOportunidade === 'function') confirmarConversaoOportunidade(b.dataset.id);
+      return true;
+    }
+    case 'abrir-modal-followup-oportunidade': {
+      if (typeof abrirModalRegistrarFollowUp === 'function') abrirModalRegistrarFollowUp(b.dataset.id);
+      return true;
+    }
+    case 'confirmar-followup-oportunidade': {
+      if (typeof confirmarRegistroFollowUp === 'function') confirmarRegistroFollowUp(b.dataset.id);
+      return true;
+    }
+    case 'salvar-orcamento-centro-custo': {
+      if (typeof salvarOrcamentoCentroCusto === 'function') salvarOrcamentoCentroCusto(b.dataset.cliente, b.dataset.id);
+      return true;
+    }
     default:
       return false;
   }

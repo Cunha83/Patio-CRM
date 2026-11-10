@@ -3,10 +3,10 @@
 **Projeto:** Pátio CRM  
 **Versão:** `1.2.0`  
 **Fase:** Piloto Controlado em Ambiente Operacional (1 Oficina)  
-**Data de Congelamento:** 2026-11-09T20:15:55.433Z  
-**Commit Git:** `f5004226505da0ffe51c24c6d0dfed0f49d14aaa` (`branch: main`)  
+**Data de Congelamento:** 2026-11-10T12:34:04.907Z  
+**Commit Git:** `2a9a38f10704701b2970f38d4ef2aaa274e4da90` (`branch: main`)  
 **Ambiente:** Node.js `v24.19.0` em `win32-x64`  
-**Total de Arquivos Auditados:** 460  
+**Total de Arquivos Auditados:** 464  
 
 ---
 
@@ -38,7 +38,7 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 
 ---
 
-## 3. Inventário Completo de Arquivos da Release (460 Arquivos)
+## 3. Inventário Completo de Arquivos da Release (464 Arquivos)
 
 | Caminho Relativo | Checksum SHA-256 |
 |---|---|
@@ -55,7 +55,7 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 | `css/voice-drawer.css` | `e23f1da831b5bb4e30d1f4c2ba888387b7dfe1bb15712b94d779835ff0c889bd` |
 | `css/voice-modal.css` | `8d39b98ce292b541cbe89e5662e9c30f4513789e3ba75d7a354f681bac5f3b96` |
 | `db.js` | `c7dcf6aea0e5d593a3c74e70eaa88ff896b8c6b48fbdb08ceb7276360e889178` |
-| `index.html` | `614d5aaa98a00de10fc8115f5a8a9e657f581b718aec6eab594bf3f882784e22` |
+| `index.html` | `a6caaece47ab44f8c0dfce89afd60d7db04a6ee9ecd266b47843ed45ce070c2d` |
 | `js/.eslintrc.json` | `836f600602e4b1e54d0800bd6f6c28e9252532c10c0893790bfa63688aa473b4` |
 | `js/app.js` | `8afa4a02e6bd5d5fe905f8612cf32b10d907d6fac318f13b0ce80436d2e0ddce` |
 | `js/cadastros.js` | `1204f0b4ebeeea7919abff5262df0d6fc549d3a6770f7683d519a3b1ce076e4b` |
@@ -100,6 +100,7 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 | `js/modules/compras_nova_modal.js` | `a3708f4bb49603ccec929b802d74fe6bdc5a0004f246fe989f57dd137b5d916d` |
 | `js/modules/compras_xml_import.js` | `64d55881e62813a80451fbd313f253c1b1522e09bfa415136d9066886735e0f8` |
 | `js/modules/consulta_cliente.js` | `75ea0f422a2a7b8c374a3675053464f1e476c96fa37860068e0d0cbf22c3b7de` |
+| `js/modules/crm_conversao_oportunidades_ui.js` | `cbda8849f2d45c80a52ec4d62fff7a6d17acdae5a2427e7105eae75244458c4e` |
 | `js/modules/dashboard_alertas_entregas.js` | `3c62c26e3bb41c5cc950605416f42bba716534b6b0afd164d29a51d769fe6b54` |
 | `js/modules/dashboard_boxes_gargalos.js` | `819947c063fc71814ffe6b488a021d15db0a6c8585628fe8adcf77ebbc09e029` |
 | `js/modules/dashboard_charts.js` | `a23052b491d526aee57b8942ab3eff987effe3b55db3fc8f0af385ed29a9d9a6` |
@@ -115,7 +116,7 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 | `js/modules/events_financeiro_bordero.js` | `d40d6639b5fd128e79d6d8635aeac3323bf99a068054109a7dba9b82eeb179d8` |
 | `js/modules/events_financeiro_caixa.js` | `69cc726b6699b99e7302a37e6ff316aa33e1ce4b3dd8d8882f996c5e7f21bfc3` |
 | `js/modules/events_patio_boxes.js` | `275f21735e231b1ee072784a8cbbe0683e2ceed5c0c3558a6cf467db3905b710` |
-| `js/modules/events_patio_os.js` | `0bb063af3404c3c8e1c029107a6e6d7b4c59529106cffead42e3c95e56984080` |
+| `js/modules/events_patio_os.js` | `b1fcf362c04b51c4e83caaa24a502d39043c94f5b0f95a4856a101c4db53d680` |
 | `js/modules/events_sistema_config.js` | `1e69c1f868abefb8b59623f63592afa6bbb3437d14751bdf81f972bf3348836d` |
 | `js/modules/events_whatsapp_voz.js` | `1729a68f139d4702f389860f4f49ddcc906c60bfe6a9469b1b444650a43f7c28` |
 | `js/modules/financeiro_analista.js` | `5b0b5f087ebc0f9faafafbba019d97bef4a4cb9a38cd61a55c46f2f6561838c3` |
@@ -226,8 +227,8 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 | `routes/coreLoop_search_theme.routes.js` | `a08e5711b11fef2bc07575796dd8c9097ddd9dd63aa36af505e202c6b8175b7b` |
 | `routes/crm.routes.js` | `f9a9c522150d3f7cb90b3951acef38b99374aa0fc5d73d88be65e8bdd03fadca` |
 | `routes/crm_agendamentos_posvenda.routes.js` | `cafca4b97cf651c402e20f16934c19fd8f03c50acb90ca1ec1dc8ef0f97944d1` |
-| `routes/crm_clientes_frotas.routes.js` | `c5006165e9e5b528706ec81ad023bb0684eeaf0b396475157e19eb81f289297e` |
-| `routes/crm_manutencao_oportunidades.routes.js` | `3ed3756adff7b65dfef342646f69b79d8eb056170a2e336286a59d4bbcb1922e` |
+| `routes/crm_clientes_frotas.routes.js` | `ebf01e7f1929da354cd590423c2e8ea5b4d2081c8dcc40d981c3d17c49c13086` |
+| `routes/crm_manutencao_oportunidades.routes.js` | `5a2e7a6abe3baf5c268e2961c64427ff811bcb063a3ac37c3534d80af10eb36f` |
 | `routes/financial.routes.js` | `a9fcf3bcf758e254f02e01bf21ca838095ed157c993d33729c0a4dc13ce3b14c` |
 | `routes/financial_bordero.routes.js` | `6f5dca6d8d9c5588e4d2638bdbe1706df0ed74ba323f990cb1583788c7bfab65` |
 | `routes/financial_cash.routes.js` | `27b444d04b3519f0fa474d9f1636c41bb20d7e86ece352cf590988eae4ece8b3` |
@@ -326,7 +327,10 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 | `services/commissionService.js` | `246365958f1197cd7d87655ac6d5c99794bb773594659d32fa51cc5665918407` |
 | `services/consultaClienteService.js` | `7afb4a86b287c4349dc0221d0ae17ea3f646ea1343a5719593d6ce713bb08f09` |
 | `services/costingService.js` | `667a8d331571a7dcb8888b3bb8e7bf2328bbbaf3fa89faacdf5b7aab754b0c4b` |
-| `services/crm/fleetCostCenterService.js` | `cd9b4ab7f8ab1a5284f06d27b8dd58665ae67db4a6e33684903d12e0b21ae8d3` |
+| `services/crm/fleetCostCenterBudgetService.js` | `b32edf7a0ea7800c54e7aa9b10dc891865e5ad4b2ce9664424916b8cd3463e16` |
+| `services/crm/fleetCostCenterService.js` | `f27007bb633abec42119219bde59182a42c9b012ee8d5990c8f677073d6daaeb` |
+| `services/crm/opportunityConversionService.js` | `6540e32c1cb55f75fd65a1b8138cecdcffc3319e5a7568a68b94c274affde61b` |
+| `services/crm/opportunityFollowUpQueue.js` | `03bde38f97079019e2e17b441daabcce99590d3ae99862ad8c31fc395bf4db28` |
 | `services/customerTimelineService.js` | `bc57d2a865fc1f8310305f1558ac84ea20b2f0c155b1c6f84d151fdd16be0fe5` |
 | `services/demoDataService.js` | `3cc9f0a5e903ec3382bfbf7ec96150abfb1a4340a991e90096b51dcc2bee2cda` |
 | `services/erp/erpExportCanonical.js` | `94eb5f1c68315c606d845700565dc1632a4573718eefaaa8a8c49e0134953dc0` |

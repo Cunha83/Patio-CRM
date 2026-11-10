@@ -232,4 +232,61 @@ router.post('/api/clientes/:id/centros-custo', requirePermission('crm:manage', '
   }
 });
 
+router.patch('/api/clientes/:id/centros-custo/:ccId/orcamento', requirePermission('crm:manage', 'crm:write'), async (req, res) => {
+  try {
+    const tenantId = extractTenantId(req);
+    const actorId = req.securityContext?.actorId || 'operador';
+    const { ccId } = req.params;
+    const { limiteMensal, alertaPercentual, bloquearEstouro } = req.body || {};
+
+    let operacao = null;
+    const saveRes = await mutateTenantState(req, (draft) => {
+      operacao = fleetCostCenterService.definirOrcamentoCentroCusto({
+        tenantId,
+        state: draft,
+        centroCustoId: ccId,
+        limiteMensal,
+        alertaPercentual,
+        bloquearEstouro,
+        actorId
+      });
+    });
+
+    if (!saveRes || !saveRes.ok) {
+      return res.status(saveRes?.status || 500).json({
+        success: false,
+        error: saveRes?.error || 'Falha ao definir orçamento do Centro de Custo.'
+      });
+    }
+
+    res.json({ success: true, ...operacao });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+router.get('/api/clientes/:id/centros-custo/:ccId/consumo', requirePermission('crm:read'), async (req, res) => {
+  try {
+    const state = await getOrLoadState(req);
+    const tenantId = extractTenantId(req);
+    const { ccId } = req.params;
+    const { competencia } = req.query || {};
+
+    const consumo = fleetCostCenterService.calcularConsumoOrcamentoCentroCusto({
+      state,
+      tenantId,
+      centroCustoId: ccId,
+      competencia
+    });
+
+    if (!consumo || !consumo.ok) {
+      return res.status(404).json({ success: false, error: consumo?.error || 'Centro de Custo não encontrado.' });
+    }
+
+    res.json({ success: true, consumo });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 module.exports = router;
