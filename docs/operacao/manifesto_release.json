@@ -2,9 +2,9 @@
   "projeto": "Patio-CRM",
   "versao": "1.2.0",
   "fase": "Fase 3 — Piloto Controlado em Ambiente Operacional",
-  "dataGeracao": "2026-11-10T12:34:04.907Z",
+  "dataGeracao": "2026-11-10T13:29:55.274Z",
   "git": {
-    "commit": "2a9a38f10704701b2970f38d4ef2aaa274e4da90",
+    "commit": "cc38d5466fb5f713c8402e365e5627ec838c2669",
     "branch": "main"
   },
   "ambienteExecucao": {
@@ -22,7 +22,7 @@
       "credenciais e certificados SEFAZ A1"
     ]
   },
-  "totalArquivosAuditados": 464,
+  "totalArquivosAuditados": 469,
   "arquivos": {
     "css/automations-modal.css": "2b38b55b99835d237daa04bab807ecf2a491d5a323c912a8425ba5d3480e59d1",
     "css/base-layout.css": "05517f58b6d6ad2aa065b29125bc85ed3f4eb715654ba925353d85327401582c",
@@ -37,7 +37,7 @@
     "css/voice-drawer.css": "e23f1da831b5bb4e30d1f4c2ba888387b7dfe1bb15712b94d779835ff0c889bd",
     "css/voice-modal.css": "8d39b98ce292b541cbe89e5662e9c30f4513789e3ba75d7a354f681bac5f3b96",
     "db.js": "c7dcf6aea0e5d593a3c74e70eaa88ff896b8c6b48fbdb08ceb7276360e889178",
-    "index.html": "a6caaece47ab44f8c0dfce89afd60d7db04a6ee9ecd266b47843ed45ce070c2d",
+    "index.html": "9b021ec9a1fe9eaa2f5bf4e9728a9395bcb4b842e4a37eff3374e9dc917487cb",
     "js/.eslintrc.json": "836f600602e4b1e54d0800bd6f6c28e9252532c10c0893790bfa63688aa473b4",
     "js/app.js": "8afa4a02e6bd5d5fe905f8612cf32b10d907d6fac318f13b0ce80436d2e0ddce",
     "js/cadastros.js": "1204f0b4ebeeea7919abff5262df0d6fc549d3a6770f7683d519a3b1ce076e4b",
@@ -98,7 +98,7 @@
     "js/modules/events_financeiro_bordero.js": "d40d6639b5fd128e79d6d8635aeac3323bf99a068054109a7dba9b82eeb179d8",
     "js/modules/events_financeiro_caixa.js": "69cc726b6699b99e7302a37e6ff316aa33e1ce4b3dd8d8882f996c5e7f21bfc3",
     "js/modules/events_patio_boxes.js": "275f21735e231b1ee072784a8cbbe0683e2ceed5c0c3558a6cf467db3905b710",
-    "js/modules/events_patio_os.js": "b1fcf362c04b51c4e83caaa24a502d39043c94f5b0f95a4856a101c4db53d680",
+    "js/modules/events_patio_os.js": "03a776129c82a449eb730094d62e3516d8f7e8c74215b72f73b5a742a03f56f0",
     "js/modules/events_sistema_config.js": "1e69c1f868abefb8b59623f63592afa6bbb3437d14751bdf81f972bf3348836d",
     "js/modules/events_whatsapp_voz.js": "1729a68f139d4702f389860f4f49ddcc906c60bfe6a9469b1b444650a43f7c28",
     "js/modules/financeiro_analista.js": "5b0b5f087ebc0f9faafafbba019d97bef4a4cb9a38cd61a55c46f2f6561838c3",
@@ -127,6 +127,8 @@
     "js/modules/patio_articulado_ui.js": "7ef5c44e06301147380bceb2702b9666f78be4faea13d21e2ffddc222d98b0f2",
     "js/modules/patio_board_view.js": "cab3141f8e238f762cf5f11c933d1d151cd357c79ef5b5d4d8ee8bc5ca1eabc3",
     "js/modules/patio_os_sheet.js": "0c9cce67e1d91348fc9767bee0c0dbc9e53e83ae3f84eefc2b5ee885ad17e3f9",
+    "js/modules/patio_produtividade_actions.js": "cc0989787f334046aa14249c25808578bc066dc72a4991888770f217c4b25e49",
+    "js/modules/patio_produtividade_ui.js": "622de44838da053608097439448cd76e62c8e87020d062d3d9f714a682f90f01",
     "js/modules/patio_radar_gargalos.js": "7faf04ec91ac6432e3e6890f9faee1809bb901ed0b2d3a04c0251f6abe285f82",
     "js/modules/patio_render.js": "079c0a641a2ebc3d74db7b9271097df155addfecb77d0e7fe5eaeac1b7b94417",
     "js/modules/patio_triagem_vistoria.js": "1dae404954c45681b6df06f91d1bf885dcdeb0f0a9e6c882221dc524c6b3411e",
@@ -222,7 +224,7 @@
     "routes/financial_patio.routes.js": "49b758f76de34b9e764d035997e4147dfdbd8e87240f9c5bdbd0a36c70d57b3d",
     "routes/financial_treasury.routes.js": "f6702e5d57d473960cc875ad42a7205ddc5c7d58b6f06169e1b3d0addf95b38e",
     "routes/health.routes.js": "1b7cbfcaa978b57041475ed2ebab495eac91836121301f5f931047357a042f65",
-    "routes/index.js": "6b581933399e1eed041e108abdda3d76f8a5aa46b6108e5c12f9293ac284b063",
+    "routes/index.js": "b7efdaf47a775c7dee515962b3cddc1acbb1e33f76aa3e26b94fcc3cab332b22",
     "routes/inspection.routes.js": "cc3940861f6199d1c42da9deea82647e1861f5277e9cfe3d2a8f88e452ad8469",
     "routes/inventory.routes.js": "bf62be003a1b0d80395efc318704aaa312d6dd8eda76f5ef2f1b0502e38cbce2",
     "routes/inventory_catalog.routes.js": "d61be240ac1666d2810b41895948c12b1d5016f4f533c766b867b210613e15d1",
@@ -230,6 +232,7 @@
     "routes/inventory_purchases.routes.js": "b570ed016405593d439c88b19beda3b469b2decca647f41d8af9d2cc9189c219",
     "routes/operation.routes.js": "cde0ccfdeeabd279f2705c227e7e2e2eb6f4723e82e8dd06bc1f7bf2c8722da7",
     "routes/os.routes.js": "65a3af724d60c6a2ff3f0d92dcd628fa956992b4ea7b6b11c2da671b795c2cad",
+    "routes/patio_produtividade_comissoes.routes.js": "3e90d03c94d107ed86c0350dda8f75b3b2935e77eb4939e139d5692ccfecb095",
     "routes/platform.routes.js": "33f262a318560c2836015d0e1f09ec81a7d9eedb447b7d636266df6398758c71",
     "routes/preOs.routes.js": "165e88bff9439c2c6ae7469fea7f69239f47a2229bb986898fa85d0d452173a0",
     "routes/preOs_core.routes.js": "435013e04a8d78b5ea5c36cd80337ed76f0c17dbd6c4fe3fb5ab072214c16983",
@@ -403,6 +406,8 @@
     "services/operationalIntelligenceEngine.js": "224caf7f93e32ac222033bc2552d04e7a021e788dc9f1aba271d3c3d2d418809",
     "services/operationalNotificationPolicy.js": "23baf4a156e6cc154901fa2d03f581e9bc388ae6e77ad0c3c5dcc2c81c8b07bb",
     "services/operationalSummaryService.js": "7aaa5d32c571d7128d7ffb86d67974f82e2671fe2fc248a2e6e219f6acd94936",
+    "services/patio/mechanicProductivityCommissionService.js": "6d0c64ce0a36520a85cd41fee133701ea5124ae1b012f5cf25694a287439e470",
+    "services/patio/mechanicTimeTrackingService.js": "565113b74ed2128d2ec46e19e617556f1ccb18b4eb844080d4b1396224831cd3",
     "services/preOSEngine.js": "3716fdafb1d3df71227fca4f83bf492619549500fde4e57239f6cdb8668122c6",
     "services/pricing/pricingCore.js": "b3bbdbac6dfb9dfb69ce70c19a43633d0fb8e399729155c13396a4805788c8a6",
     "services/pricing/pricingHistory.js": "67ec885eafb9b827c8203de41d42e7a65c2cd3a34258b004c028e4dfb9a6f3fe",

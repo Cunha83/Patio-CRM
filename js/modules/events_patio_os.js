@@ -228,26 +228,42 @@ function tratarEventosPatioOS(a, b, e, o) {
       `);
       return true;
     }
-    case 'abrir-modal-converter-oportunidade': {
+    case 'abrir-modal-converter-oportunidade':
       if (typeof abrirModalConverterOportunidade === 'function') abrirModalConverterOportunidade(b.dataset.id);
       return true;
-    }
-    case 'confirmar-conversao-oportunidade': {
+    case 'confirmar-conversao-oportunidade':
       if (typeof confirmarConversaoOportunidade === 'function') confirmarConversaoOportunidade(b.dataset.id);
       return true;
-    }
-    case 'abrir-modal-followup-oportunidade': {
+    case 'abrir-modal-followup-oportunidade':
       if (typeof abrirModalRegistrarFollowUp === 'function') abrirModalRegistrarFollowUp(b.dataset.id);
       return true;
-    }
-    case 'confirmar-followup-oportunidade': {
+    case 'confirmar-followup-oportunidade':
       if (typeof confirmarRegistroFollowUp === 'function') confirmarRegistroFollowUp(b.dataset.id);
       return true;
-    }
-    case 'salvar-orcamento-centro-custo': {
+    case 'salvar-orcamento-centro-custo':
       if (typeof salvarOrcamentoCentroCusto === 'function') salvarOrcamentoCentroCusto(b.dataset.cliente, b.dataset.id);
       return true;
-    }
+    case 'abrir-modal-iniciar-apontamento':
+      if (typeof abrirModalIniciarApontamento === 'function') abrirModalIniciarApontamento(b.dataset.id || b.dataset.os);
+      return true;
+    case 'iniciar-apontamento-servico':
+      if (typeof confirmarIniciarApontamento === 'function') confirmarIniciarApontamento(b.dataset.os);
+      return true;
+    case 'pausar-apontamento-servico':
+      if (typeof pausarApontamento === 'function') pausarApontamento(b.dataset.id);
+      return true;
+    case 'retomar-apontamento-servico':
+      if (typeof retomarApontamento === 'function') retomarApontamento(b.dataset.id);
+      return true;
+    case 'concluir-apontamento-servico':
+      if (typeof concluirApontamento === 'function') concluirApontamento(b.dataset.id);
+      return true;
+    case 'abrir-modal-config-comissao':
+      if (typeof abrirModalConfigurarComissaoMecanico === 'function') abrirModalConfigurarComissaoMecanico(b.dataset.mecanico || b.dataset.id);
+      return true;
+    case 'salvar-regra-comissao-mecanico':
+      if (typeof salvarRegraComissaoMecanico === 'function') salvarRegraComissaoMecanico(b.dataset.mecanico);
+      return true;
     default:
       return false;
   }
@@ -311,14 +327,7 @@ function tratarChangePatioOS(a, el, e, o) {
   return false;
 }
 
-if (typeof window !== 'undefined') {
-  window.textoOrcamento = textoOrcamento;
-  window.tratarEventosPatioOS = tratarEventosPatioOS;
-  window.tratarChangePatioOS = tratarChangePatioOS;
-}
-if (typeof globalThis !== 'undefined') {
-  globalThis.textoOrcamento = textoOrcamento;
-  globalThis.tratarEventosPatioOS = tratarEventosPatioOS;
-  globalThis.tratarChangePatioOS = tratarChangePatioOS;
-}
+const patioOSExports = { textoOrcamento, tratarEventosPatioOS, tratarChangePatioOS };
+if (typeof window !== 'undefined') Object.assign(window, patioOSExports);
+if (typeof globalThis !== 'undefined') Object.assign(globalThis, patioOSExports);
 
