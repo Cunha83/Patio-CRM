@@ -1,5 +1,6 @@
 // js/modules/orcamento_parcial_ui.js
 // Interface de Aprovação Parcial de Orçamentos, Conversão em CRM e Centros de Custo B2B
+// Teto Modular: <= 250 linhas
 
 (function (root) {
   'use strict';
@@ -124,194 +125,80 @@
     }
 
     return `
-      <div class="p-3">
-        <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3">
+      <div class="modal-aprovacao-parcial" style="max-width:820px;margin:0 auto">
+        <div class="entre" style="border-bottom:1px solid var(--border-color,#e2e8f0);padding-bottom:12px;margin-bottom:14px">
           <div>
-            <h5 class="mb-0 font-weight-bold">Aprovação Parcial de Orçamento — OS #${esc(os.num || os.id)}</h5>
-            <small class="text-muted">Placa: <strong>${esc(os.placa || 'N/A')}</strong> | Cliente: <strong>${esc(os.cliente || os.cli || 'Cliente')}</strong></small>
+            <h3 style="margin:0;font-size:18px;font-weight:700">Aprovação de Orçamento — OS #${esc(os.num || os.id)}</h3>
+            <div class="small text-muted">Cliente: <b>${esc(os.cliente || os.cliNome || 'Frotista')}</b> • Placa: <b>${esc(os.placa || 'N/A')}</b></div>
           </div>
-          <button type="button" class="btn btn-outline-secondary btn-sm" data-act="fechar-modal">✕</button>
+          <button class="btn-fechar" onclick="fecharModalGenerico()">&times;</button>
         </div>
 
-        <div class="card bg-light p-2 mb-3">
-          <div class="row align-items-center">
-            <div class="col-md-6">
-              <label class="form-label small font-weight-bold mb-1">Centro de Custo do Frotista:</label>
-              <select id="aprov_centro_custo_id" class="form-select form-select-sm">
-                <option value="">-- Sem Centro de Custo Vinculado --</option>
-                ${optionsCC}
-              </select>
-            </div>
-            <div class="col-md-6 text-end">
-              <div class="small text-muted">Total Orçado Original: <strong>${moeda(totalOriginal)}</strong></div>
-              <div class="small text-success">Total Aprovado Imediato: <strong id="resumo_total_aprovado">${moeda(totalOriginal)}</strong></div>
-              <div class="small text-warning">Demanda Reprimida (CRM): <strong id="resumo_total_adiado">R$ 0,00</strong></div>
-            </div>
+        <div class="row g-2 mb-3 align-items-center">
+          <div class="col-md-6">
+            <label class="form-label small fw-bold mb-1">Centro de Custo / Sub-frota (Opcional):</label>
+            <select id="aprov_centro_custo_id" class="form-select form-select-sm">
+              <option value="">-- Sem Centro de Custo Definido --</option>
+              ${optionsCC}
+            </select>
+          </div>
+          <div class="col-md-6 text-end">
+            <span class="small text-muted">Valor Total Original:</span>
+            <span class="fs-5 fw-bold text-primary ms-1">${moeda(totalOriginal)}</span>
           </div>
         </div>
 
-        <h6 class="font-weight-bold text-primary mt-2">Mão de Obra e Serviços</h6>
-        <div class="table-responsive mb-3">
-          <table class="table table-sm table-bordered align-middle">
-            <thead class="table-light small">
+        <h5 class="fw-bold mb-2">Serviços Apontados</h5>
+        <div class="table-responsive mb-3 border rounded">
+          <table class="table table-sm table-hover align-middle mb-0">
+            <thead class="table-light">
               <tr>
-                <th>Serviço</th>
+                <th>Descrição</th>
                 <th class="text-end">Valor</th>
                 <th>Decisão</th>
-                <th>Gestão de Demanda (CRM)</th>
+                <th>Classificação / Motivo</th>
               </tr>
             </thead>
             <tbody>${srvHtml}</tbody>
           </table>
         </div>
 
-        <h6 class="font-weight-bold text-primary mt-2">Peças e Componentes de Suspensão</h6>
-        <div class="table-responsive mb-3">
-          <table class="table table-sm table-bordered align-middle">
-            <thead class="table-light small">
+        <h5 class="fw-bold mb-2">Peças e Componentes</h5>
+        <div class="table-responsive mb-3 border rounded">
+          <table class="table table-sm table-hover align-middle mb-0">
+            <thead class="table-light">
               <tr>
-                <th>Peça / Lote</th>
-                <th class="text-end">Subtotal</th>
+                <th>Descrição</th>
+                <th class="text-end">Total</th>
                 <th>Decisão</th>
-                <th>Gestão de Demanda (CRM)</th>
+                <th>Classificação / Motivo</th>
               </tr>
             </thead>
             <tbody>${pecasHtml}</tbody>
           </table>
         </div>
 
-        <div class="alert alert-info py-2 small mb-3">
-          ℹ️ <strong>Rastreabilidade de Estoque:</strong> Peças marcadas como <em>Adiado</em> ou <em>Recusado</em> terão suas reservas atômicas canceladas imediatamente, recompondo o saldo disponível do almoxarifado.
+        <div class="card p-3 bg-light mb-3 border">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <span class="text-muted small">Total Imediato Aprovado:</span>
+              <strong id="resumo_total_aprovado" class="fs-5 text-success ms-1">${moeda(totalOriginal)}</strong>
+            </div>
+            <div>
+              <span class="text-muted small">Total Adiado (Demanda Reprimida CRM):</span>
+              <strong id="resumo_total_adiado" class="fs-5 text-warning ms-1">${moeda(0)}</strong>
+            </div>
+          </div>
         </div>
 
-        <div class="d-flex justify-content-end gap-2 border-top pt-2">
-          <button type="button" class="btn btn-secondary btn-sm" data-act="fechar-modal">Cancelar</button>
-          <button type="button" class="btn btn-primary btn-sm font-weight-bold" data-act="confirmar-aprovacao-parcial" data-os-id="${esc(os.id)}">
-            💾 Confirmar Aprovação e Gerar CRM
+        <div class="d-flex justify-content-end gap-2">
+          <button type="button" class="btn btn-outline-secondary" onclick="fecharModalGenerico()">Cancelar</button>
+          <button type="button" class="btn btn-primary fw-bold" data-act="confirmar-aprovacao-parcial" onclick="confirmarAprovacaoParcial('${esc(os.id)}')">
+            Salvar e Atualizar OS
           </button>
         </div>
       </div>
     `;
-  }
-
-  function atualizarCalculoAprovacaoParcial() {
-    const rows = document.querySelectorAll('.item-aprovacao-row');
-    let totalAprovado = 0;
-    let totalAdiado = 0;
-
-    rows.forEach(row => {
-      const val = Number(row.getAttribute('data-valor') || 0);
-      const sel = row.querySelector('.select-status-item');
-      const camposAdiado = row.querySelector('.campos-adiamento');
-      const st = sel ? sel.value : 'aprovado';
-
-      if (camposAdiado) {
-        if (st === 'aprovado') {
-          camposAdiado.classList.add('d-none');
-        } else {
-          camposAdiado.classList.remove('d-none');
-        }
-      }
-
-      if (st === 'aprovado') {
-        totalAprovado += val;
-      } else {
-        totalAdiado += val;
-      }
-    });
-
-    const elAprov = document.getElementById('resumo_total_aprovado');
-    if (elAprov) elAprov.textContent = moeda(totalAprovado);
-
-    const elAdiado = document.getElementById('resumo_total_adiado');
-    if (elAdiado) elAdiado.textContent = moeda(totalAdiado);
-  }
-
-  async function abrirModalAprovacaoParcial(osId) {
-    if (!osId) return;
-    const state = root.S || {};
-    const os = (state.os || []).find(o => o.id === osId || String(o.num) === String(osId));
-    if (!os) {
-      if (typeof root.toast === 'function') root.toast('Ordem de serviço não encontrada.', 'warning');
-      return;
-    }
-
-    const clienteId = os.cli || os.clienteId;
-    const cliente = (state.clientes || []).find(c => c.id === clienteId);
-    const centrosCusto = (cliente && Array.isArray(cliente.centrosCusto)) ? cliente.centrosCusto : (state.costCenters || []);
-
-    const html = modalAprovacaoParcialHtml(os, centrosCusto);
-    if (typeof root.abrirModalGenerico === 'function') {
-      root.abrirModalGenerico(html);
-    } else if (typeof root.abrirFolha === 'function') {
-      root.abrirFolha(html);
-    }
-    atualizarCalculoAprovacaoParcial();
-  }
-
-  async function confirmarAprovacaoParcial(osId) {
-    if (!osId) return;
-    const rows = document.querySelectorAll('.item-aprovacao-row');
-    const itens = [];
-
-    rows.forEach(row => {
-      const id = row.getAttribute('data-id');
-      const tipo = row.getAttribute('data-tipo');
-      const selStatus = row.querySelector('.select-status-item');
-      const selCrit = row.querySelector('.select-criticidade');
-      const inputMotivo = row.querySelector('.input-motivo');
-
-      const statusItem = selStatus ? selStatus.value : 'aprovado';
-      const criticidade = selCrit ? selCrit.value : 'media';
-      const motivo = inputMotivo ? inputMotivo.value.trim() : '';
-
-      itens.push({
-        id,
-        tipo,
-        statusItem,
-        criticidade,
-        motivo,
-        prazoDias: criticidade === 'alta' ? 15 : (criticidade === 'media' ? 30 : 45)
-      });
-    });
-
-    const selCC = document.getElementById('aprov_centro_custo_id');
-    const centroCustoId = selCC ? selCC.value : null;
-
-    try {
-      const res = await fetch(`/api/os/${encodeURIComponent(osId)}/aprovacao-parcial`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          itens,
-          centroCustoId,
-          observacoes: 'Aprovação parcial registrada pelo painel web'
-        })
-      });
-
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Erro ao processar aprovação parcial.');
-      }
-
-      if (typeof root.toast === 'function') {
-        root.toast('Aprovação parcial concluída com sucesso! Demanda reprimida enviada ao CRM.', 'success');
-      }
-
-      if (typeof root.fecharModalGenerico === 'function') {
-        root.fecharModalGenerico();
-      } else if (typeof root.fecharFolha === 'function') {
-        root.fecharFolha();
-      }
-
-      if (typeof root.render === 'function') root.render();
-    } catch (err) {
-      if (typeof root.toast === 'function') {
-        root.toast(err.message, 'danger');
-      } else {
-        alert(err.message);
-      }
-    }
   }
 
   function renderSeletorCentroCustoBorderoHtml(centrosCusto = []) {
@@ -331,10 +218,6 @@
   root.renderBadgeStatusItemHtml = renderBadgeStatusItemHtml;
   root.renderBadgeCriticidadeHtml = renderBadgeCriticidadeHtml;
   root.modalAprovacaoParcialHtml = modalAprovacaoParcialHtml;
-  root.atualizarCalculoAprovacaoParcial = atualizarCalculoAprovacaoParcial;
-  root.abrirModalAprovacaoParcial = abrirModalAprovacaoParcial;
-  root.confirmarAprovacaoParcial = confirmarAprovacaoParcial;
   root.renderSeletorCentroCustoBorderoHtml = renderSeletorCentroCustoBorderoHtml;
 
 })(typeof window !== 'undefined' ? window : globalThis);
-

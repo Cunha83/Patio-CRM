@@ -299,3 +299,4 @@ test('Sprint 9.3 — Portaria Inteligente, Triagem 360º & Fast Check-in de Linh
     }
   });
 });
+

@@ -102,3 +102,4 @@ router.get('/api/patio/portaria/movimentacoes', requirePermission('patio:read'),
 });
 
 module.exports = router;
+

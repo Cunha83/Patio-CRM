@@ -239,3 +239,4 @@
   root.registrarSaidaVeiculoPortariaAction = registrarSaidaVeiculoPortariaAction;
 
 })(typeof window !== 'undefined' ? window : globalThis);
+

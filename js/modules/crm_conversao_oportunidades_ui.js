@@ -2,7 +2,7 @@
 
 /**
  * Pátio CRM — UI de Conversão de Demanda Reprimida & Fila Ativa de Follow-up
- * Módulo de interface (< 300 linhas) para operação comercial B2B.
+ * Módulo de interface (< 250 linhas) para operação comercial B2B.
  */
 
 function escapeHtml(str) {
@@ -212,116 +212,46 @@ function modalRegistrarFollowUpHtml(opp) {
   `;
 }
 
-function abrirModalConverterOportunidade(oportunidadeId) {
+function abrirModalConverterOportunidade(id) {
+  const root = typeof window !== 'undefined' ? window : globalThis;
+  if (typeof root.abrirModalConverterOportunidadeAction === 'function') return root.abrirModalConverterOportunidadeAction(id);
   if (typeof S === 'undefined' || !S.opportunities) return;
-  const opp = S.opportunities.find(o => o.id === oportunidadeId);
-  if (!opp) {
-    if (typeof torrar === 'function') torrar('Oportunidade não encontrada.');
-    return;
-  }
-
+  const opp = S.opportunities.find(o => o.id === id);
+  if (!opp) return (typeof torrar === 'function') && torrar('Oportunidade não encontrada.');
   const centrosCusto = (S.costCenters || []).filter(c => !c.clienteId || c.clienteId === opp.clienteId);
-  if (typeof abrirModalGenerico === 'function') {
-    abrirModalGenerico(modalConverterOportunidadeHtml(opp, centrosCusto));
-  }
+  if (typeof abrirModalGenerico === 'function') abrirModalGenerico(modalConverterOportunidadeHtml(opp, centrosCusto));
 }
 
-async function confirmarConversaoOportunidade(oportunidadeId) {
-  const chks = document.querySelectorAll('.chk-item-conversao:checked');
-  const itensSelecionadosIds = Array.from(chks).map(c => c.value);
-  const selCC = document.getElementById('sel-cc-conversao');
-  const centroCustoId = selCC ? selCC.value : null;
-  const chkAlcada = document.getElementById('chk-alcada-override');
-  const autorizarEstouroAlcada = Boolean(chkAlcada && chkAlcada.checked);
-
-  if (typeof torrar === 'function') torrar('Convertendo oportunidade em OS...');
-  try {
-    const res = await fetch(`/api/crm/oportunidades-adiadas/${encodeURIComponent(oportunidadeId)}/converter-os`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        itensSelecionadosIds,
-        centroCustoId: centroCustoId || null,
-        autorizarEstouroAlcada
-      })
-    });
-    const data = await res.json();
-    if (!res.ok || !data.success) {
-      if (typeof torrar === 'function') torrar(data.error || 'Erro ao converter oportunidade em OS.');
-      return;
-    }
-    if (typeof torrar === 'function') torrar(`OS #${data.novaOS.num} criada com sucesso!`);
-    if (typeof fecharModalGenerico === 'function') fecharModalGenerico();
-    if (typeof carregarEstado === 'function') await carregarEstado();
-    if (typeof render === 'function') render();
-  } catch (err) {
-    if (typeof torrar === 'function') torrar('Erro de rede ao converter oportunidade.');
-  }
-}
-
-function abrirModalRegistrarFollowUp(oportunidadeId) {
+function abrirModalRegistrarFollowUp(id) {
+  const root = typeof window !== 'undefined' ? window : globalThis;
+  if (typeof root.abrirModalRegistrarFollowUpAction === 'function') return root.abrirModalRegistrarFollowUpAction(id);
   if (typeof S === 'undefined' || !S.opportunities) return;
-  const opp = S.opportunities.find(o => o.id === oportunidadeId);
-  if (!opp) {
-    if (typeof torrar === 'function') torrar('Oportunidade não encontrada.');
-    return;
-  }
-  if (typeof abrirModalGenerico === 'function') {
-    abrirModalGenerico(modalRegistrarFollowUpHtml(opp));
-  }
+  const opp = S.opportunities.find(o => o.id === id);
+  if (!opp) return (typeof torrar === 'function') && torrar('Oportunidade não encontrada.');
+  if (typeof abrirModalGenerico === 'function') abrirModalGenerico(modalRegistrarFollowUpHtml(opp));
 }
 
-async function confirmarRegistroFollowUp(oportunidadeId) {
-  const selCanal = document.getElementById('sel-follow-canal');
-  const selResultado = document.getElementById('sel-follow-resultado');
-  const txtData = document.getElementById('txt-follow-nova-data');
-  const txtObs = document.getElementById('txt-follow-obs');
-
-  const canal = selCanal ? selCanal.value : 'whatsapp';
-  const resultado = selResultado ? selResultado.value : 'contatado';
-  const novaDataFollowUp = txtData ? txtData.value : null;
-  const observacao = txtObs ? txtObs.value : '';
-
-  if (typeof torrar === 'function') torrar('Salvando interação...');
-  try {
-    const res = await fetch(`/api/crm/oportunidades-adiadas/${encodeURIComponent(oportunidadeId)}/follow-up`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        canal,
-        resultado,
-        novaDataFollowUp: novaDataFollowUp || null,
-        observacao
-      })
-    });
-    const data = await res.json();
-    if (!res.ok || !data.success) {
-      if (typeof torrar === 'function') torrar(data.error || 'Erro ao registrar interação.');
-      return;
-    }
-    if (typeof torrar === 'function') torrar('Follow-up registrado com sucesso!');
-    if (typeof fecharModalGenerico === 'function') fecharModalGenerico();
-    if (typeof carregarEstado === 'function') await carregarEstado();
-    if (typeof render === 'function') render();
-  } catch (err) {
-    if (typeof torrar === 'function') torrar('Erro de rede ao salvar follow-up.');
-  }
+function confirmarConversaoOportunidade(id) {
+  const root = typeof window !== 'undefined' ? window : globalThis;
+  if (typeof root.confirmarConversaoOportunidadeAction === 'function') return root.confirmarConversaoOportunidadeAction(id);
 }
 
-async function salvarOrcamentoCentroCusto(clienteId, centroCustoId, orcamentoData = {}) {
-  try {
-    const res = await fetch(`/api/clientes/${encodeURIComponent(clienteId)}/centros-custo/${encodeURIComponent(centroCustoId)}/orcamento`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(orcamentoData)
-    });
-    return await res.json();
-  } catch (err) {
-    return { success: false, error: err.message };
-  }
+function confirmarRegistroFollowUp(id) {
+  const root = typeof window !== 'undefined' ? window : globalThis;
+  if (typeof root.confirmarRegistroFollowUpAction === 'function') return root.confirmarRegistroFollowUpAction(id);
 }
 
-const apiExports = {
+function salvarOrcamentoCentroCusto(clienteId, centroCustoId, orcamentoData = {}) {
+  const root = typeof window !== 'undefined' ? window : globalThis;
+  if (typeof root.salvarOrcamentoCentroCustoAction === 'function') return root.salvarOrcamentoCentroCustoAction(clienteId, centroCustoId, orcamentoData);
+  return fetch(`/api/clientes/${encodeURIComponent(clienteId)}/centros-custo/${encodeURIComponent(centroCustoId)}/orcamento`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(orcamentoData)
+  }).then(r => r.json()).catch(err => ({ success: false, error: err.message }));
+}
+
+const templates = {
   renderFilaFollowUpHtml,
   modalConverterOportunidadeHtml,
   modalRegistrarFollowUpHtml,
@@ -332,5 +262,5 @@ const apiExports = {
   salvarOrcamentoCentroCusto
 };
 
-if (typeof window !== 'undefined') Object.assign(window, apiExports);
-if (typeof globalThis !== 'undefined') Object.assign(globalThis, apiExports);
+if (typeof window !== 'undefined') Object.assign(window, templates);
+if (typeof globalThis !== 'undefined') Object.assign(globalThis, templates);

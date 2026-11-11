@@ -323,3 +323,4 @@
   root.modalRegistrarSaidaPortariaHtml = modalRegistrarSaidaPortariaHtml;
 
 })(typeof window !== 'undefined' ? window : globalThis);
+

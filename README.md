@@ -1,8 +1,8 @@
-# 🚗 Pátio-CRM & Gestão de Oficina Pesada (v1.0.0)
+# 🚗 Pátio-CRM & Gestão de Oficina Pesada (v2.0.0 Enterprise)
 
-[![Release](https://img.shields.io/badge/Release-v1.0.0--homologado-success?style=for-the-badge&logo=git)](https://github.com/Cunha83/Patio-CRM)
+[![Release](https://img.shields.io/badge/Release-v2.0.0--Enterprise-success?style=for-the-badge&logo=git)](https://github.com/Cunha83/Patio-CRM)
 [![Status](https://img.shields.io/badge/Status-Production%20Ready%20%2F%20Homologado-blue?style=for-the-badge)](docs/operacao/PILOTO_WHATSAPP_FINANCEIRO.md)
-[![Testes](https://img.shields.io/badge/Testes-98%2F98%20Verdes-brightgreen?style=for-the-badge&logo=node.js)](tests/)
+[![Testes](https://img.shields.io/badge/Testes-913%2B%20Verdes-brightgreen?style=for-the-badge&logo=node.js)](tests/)
 [![Node.js](https://img.shields.io/badge/Node.js-v20%2B-green?style=for-the-badge&logo=node.js)](https://nodejs.org/)
 [![Database](https://img.shields.io/badge/Database-SQLite%203%20WAL-lightgrey?style=for-the-badge&logo=sqlite)](https://sqlite.org/)
 [![WhatsApp](https://img.shields.io/badge/WhatsApp%20API-Baileys%20Multi--Device-25D366?style=for-the-badge&logo=whatsapp)](services/whatsapp/)

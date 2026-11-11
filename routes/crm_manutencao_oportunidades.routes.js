@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const {
   getOrLoadState,
-  salvarEstado,
   mutateTenantState,
   extractTenantId,
   requirePermission
@@ -13,9 +12,12 @@ const relationshipService = require('../services/relationshipService');
 const appointmentService = require('../services/appointmentService');
 const afterSalesService = require('../services/afterSalesService');
 const consultaClienteService = require('../services/consultaClienteService');
-const partialApprovalService = require('../services/quotation/partialApprovalService');
-const opportunityConversionService = require('../services/crm/opportunityConversionService');
+const conversaoOportunidadesRouter = require('./crm_oportunidades_conversao.routes');
 
+// Monta submódulo de conversão e follow-up de oportunidades
+router.use(conversaoOportunidadesRouter);
+
+// ── 1. PLANOS DE MANUTENÇÃO ──────────────────────────────────────
 router.get('/api/manutencao/planos', requirePermission('maintenance:read'), async (req, res) => {
   try {
     const state = await getOrLoadState(req);
@@ -31,21 +33,13 @@ router.get('/api/manutencao/planos', requirePermission('maintenance:read'), asyn
 router.post('/api/manutencao/planos', requirePermission('maintenance:write'), async (req, res) => {
   try {
     const tenantId = extractTenantId(req);
-    const secCtx = req.securityContext;
-    const actorId = secCtx?.actorId || 'operador';
-
+    const actorId = req.securityContext?.actorId || 'operador';
     let resultado;
     const saveRes = await mutateTenantState(req, (draft) => {
-      resultado = maintenancePlanService.criarPlano({
-        tenantId,
-        state: draft,
-        actorId,
-        ...req.body
-      });
+      resultado = maintenancePlanService.criarPlano({ tenantId, state: draft, actorId, ...req.body });
     });
-
-    if (!saveRes || !saveRes.ok) {
-      return res.status(saveRes?.status || 500).json({ success: false, error: saveRes?.error || 'Falha ao persistir plano de manutenção.' });
+    if (!saveRes?.ok) {
+      return res.status(saveRes?.status || 500).json({ success: false, error: saveRes?.error || 'Falha ao persistir plano.' });
     }
     res.json({ success: true, ...resultado });
   } catch (err) {
@@ -58,13 +52,7 @@ router.get('/api/manutencao/vencimentos', requirePermission('maintenance:read'),
     const state = await getOrLoadState(req);
     const tenantId = extractTenantId(req);
     const { vehicleId, fleetId, data } = req.query || {};
-    const resultado = maintenancePlanService.avaliarVencimentos({
-      tenantId,
-      state,
-      vehicleId,
-      fleetId,
-      dataReferencia: data
-    });
+    const resultado = maintenancePlanService.avaliarVencimentos({ tenantId, state, vehicleId, fleetId, dataReferencia: data });
     res.json({ success: true, ...resultado });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -74,156 +62,30 @@ router.get('/api/manutencao/vencimentos', requirePermission('maintenance:read'),
 router.post('/api/manutencao/atualizar-km', requirePermission('maintenance:write'), async (req, res) => {
   try {
     const tenantId = extractTenantId(req);
-    const secCtx = req.securityContext;
-    const actorId = secCtx?.actorId || 'operador';
+    const actorId = req.securityContext?.actorId || 'operador';
     const { vehicleId, placa, km, fonte, permitirOverride } = req.body || {};
 
     let resultado;
     const saveRes = await mutateTenantState(req, (draft) => {
       resultado = maintenancePlanService.atualizarKmVeiculo({
-        tenantId,
-        state: draft,
-        vehicleId,
-        placa,
-        kmInformado: km,
-        fonte: fonte || 'web',
-        ator: actorId,
-        permitirOverride: Boolean(permitirOverride)
+        tenantId, state: draft, vehicleId, placa, kmInformado: km, fonte: fonte || 'web', ator: actorId, permitirOverride: Boolean(permitirOverride)
       });
-      if (!resultado.ok) {
-        return { abort: true, error: resultado.erro || 'Atualização de KM inválida' };
-      }
+      if (!resultado.ok) return { abort: true, error: resultado.erro || 'Atualização de KM inválida' };
     });
 
     if (!resultado?.ok) {
       return res.status(resultado?.incoerente ? 409 : 400).json({ success: false, ...resultado });
     }
-
-    if (!saveRes || !saveRes.ok) {
+    if (!saveRes?.ok) {
       return res.status(saveRes?.status || 500).json({ success: false, error: saveRes?.error || 'Falha ao persistir KM.' });
     }
-
     res.json({ success: true, ...resultado });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// ── 4. CRM & OPORTUNIDADES ──────────────────────────────────────
-router.get('/api/crm/oportunidades-adiadas', requirePermission('crm:read'), async (req, res) => {
-  try {
-    const state = await getOrLoadState(req);
-    const tenantId = extractTenantId(req);
-    const { clienteId, placa, criticidade } = req.query || {};
-    const oportunidades = partialApprovalService.listarOportunidadesAdiadas({
-      tenantId,
-      state,
-      clienteId,
-      placa,
-      criticidade
-    });
-    res.json({ success: true, total: oportunidades.length, oportunidades });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-router.get('/api/crm/oportunidades-adiadas/fila-followup', requirePermission('crm:read'), async (req, res) => {
-  try {
-    const state = await getOrLoadState(req);
-    const tenantId = extractTenantId(req);
-    const { clienteId, placa, criticidade, statusFollowUp, centroCustoId } = req.query || {};
-    const resultado = opportunityConversionService.listarFilaFollowUpDemandaReprimida({
-      tenantId,
-      state,
-      clienteId,
-      placa,
-      criticidade,
-      statusFollowUp,
-      centroCustoId
-    });
-    res.json({ success: true, ...resultado });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-router.post('/api/crm/oportunidades-adiadas/:id/follow-up', requirePermission('crm:contact', 'crm:write'), async (req, res) => {
-  try {
-    const tenantId = extractTenantId(req);
-    const actorId = req.securityContext?.actorId || 'operador';
-    const oportunidadeId = req.params.id;
-    const { canal, resultado: resultadoContato, observacao, dataProximoContato, novaDataFollowUp, responsavel } = req.body || {};
-
-    let operacao = null;
-    const saveRes = await mutateTenantState(req, (draft) => {
-      operacao = opportunityConversionService.registrarFollowUpOportunidade({
-        tenantId,
-        state: draft,
-        oportunidadeId,
-        responsavel: responsavel || actorId,
-        canal,
-        resultado: resultadoContato,
-        observacao,
-        novaDataFollowUp: novaDataFollowUp || dataProximoContato || null,
-        actorId
-      });
-    });
-
-    if (!saveRes || !saveRes.ok) {
-      return res.status(saveRes?.status || 500).json({
-        success: false,
-        error: saveRes?.error || 'Falha ao registrar follow-up de oportunidade.'
-      });
-    }
-
-    res.json({ success: true, ...operacao });
-  } catch (err) {
-    res.status(400).json({ success: false, error: err.message });
-  }
-});
-
-router.post('/api/crm/oportunidades-adiadas/:id/converter-os', requirePermission('crm:write', 'os:write'), async (req, res) => {
-  try {
-    const tenantId = extractTenantId(req);
-    const actorId = req.securityContext?.actorId || 'operador';
-    const oportunidadeId = req.params.id;
-    const { itensSelecionadosIds, centroCustoId, autorizarEstouroAlcada, clienteId, veiculoId, placa, modelo } = req.body || {};
-
-    let operacao = null;
-    const saveRes = await mutateTenantState(req, (draft) => {
-      operacao = opportunityConversionService.converterOportunidadeEmOS({
-        tenantId,
-        state: draft,
-        oportunidadeId,
-        opcoes: {
-          itensSelecionadosIds,
-          centroCustoId,
-          autorizarEstouroAlcada,
-          clienteId,
-          veiculoId,
-          placa,
-          modelo
-        },
-        actorId
-      });
-    });
-
-    if (!saveRes || !saveRes.ok) {
-      return res.status(saveRes?.status || 500).json({
-        success: false,
-        error: saveRes?.error || 'Falha ao converter oportunidade em OS.'
-      });
-    }
-
-    res.json({ success: true, ...operacao });
-  } catch (err) {
-    const code = err.code || 'CONVERSION_ERROR';
-    const status = (code === 'INSUFFICIENT_STOCK' || code === 'COST_CENTER_BUDGET_EXCEEDED') ? 400 : 422;
-    res.status(status).json({ success: false, code, error: err.message });
-  }
-});
-
+// ── 2. OPORTUNIDADES & CRM ──────────────────────────────────────
 router.get('/api/crm/oportunidades', requirePermission('crm:read'), async (req, res) => {
   try {
     const state = await getOrLoadState(req);
@@ -240,104 +102,105 @@ router.post('/api/crm/oportunidades/:id/contatar', requirePermission('crm:contac
   try {
     const tenantId = extractTenantId(req);
     const { canal = 'whatsapp', mensagem = '' } = req.body || {};
-
     let opoRetornado, motivo403 = null, naoEncontrado = false;
+
     const saveRes = await mutateTenantState(req, (draft) => {
       const list = draft.opportunities || [];
       const opo = list.find(o => o.id === req.params.id && o.tenantId === tenantId);
-      if (!opo) {
-        naoEncontrado = true;
-        return { abort: true, error: 'Oportunidade não encontrada.' };
-      }
+      if (!opo) { naoEncontrado = true; return { abort: true, error: 'Oportunidade não encontrada.' }; }
 
       const cliente = (draft.clientes || []).find(c => c.id === opo.customerId);
       const val = relationshipService.validarEnvioNotificacao({ cliente, tipoMensagem: 'comercial', canal });
-      if (!val.permitido) {
-        motivo403 = val.motivo;
-        return { abort: true, error: val.motivo };
-      }
+      if (!val.permitido) { motivo403 = val.motivo; return { abort: true, error: val.motivo }; }
 
       opo.status = 'contatado';
-      opo.contatadoEm = new Date().toISOString();
-      opo.ultimoCanal = canal;
-      if (cliente) cliente.ultimoContatoRelacionamento = new Date().toISOString();
+      opo.ultimoContato = new Date().toISOString();
+      opo.canalContato = canal;
+      opo.historicoContatos = opo.historicoContatos || [];
+      opo.historicoContatos.push({ data: new Date().toISOString(), canal, mensagem });
       opoRetornado = opo;
     });
 
     if (naoEncontrado) return res.status(404).json({ success: false, error: 'Oportunidade não encontrada.' });
     if (motivo403) return res.status(403).json({ success: false, error: motivo403 });
-    if (!saveRes || !saveRes.ok) {
-      return res.status(saveRes?.status || 500).json({ success: false, error: saveRes?.error || 'Falha ao persistir oportunidade.' });
-    }
+    if (!saveRes?.ok) return res.status(saveRes?.status || 500).json({ success: false, error: saveRes?.error || 'Falha ao salvar oportunidade.' });
 
-    res.json({ success: true, oportunidade: opoRetornado, mensagemEnviada: mensagem });
+    res.json({ success: true, oportunidade: opoRetornado });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-router.get('/api/crm/metricas', requirePermission('crm:read'), async (req, res) => {
+router.get('/api/crm/oportunidades/metricas', requirePermission('crm:read'), async (req, res) => {
   try {
     const state = await getOrLoadState(req);
     const tenantId = extractTenantId(req);
-    const metricas = relationshipService.obterMetricasCRM({ tenantId, state });
+    const metricas = relationshipService.obterMetricas({ tenantId, state });
     res.json({ success: true, metricas });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-router.get('/api/crm/frotistas', requirePermission('crm:read'), async (req, res) => {
+
+// ── 4. PÓS-VENDA ────────────────────────────────────────────────
+router.get('/api/pos-venda/pesquisas-pendentes', requirePermission('crm:read'), async (req, res) => {
   try {
     const state = await getOrLoadState(req);
     const tenantId = extractTenantId(req);
-    const secCtx = req.securityContext;
-    const temPermissaoFinanceira = (secCtx?.permissions || []).includes('financial:read') || (secCtx?.permissions || []).includes('*');
-
-    const clientes = state.clientes || [];
-    const veiculos = state.veiculos || [];
-    const ordens = state.os || [];
-    const frotas = state.fleets || state.frotas || [];
-    const quotations = state.quotations || [];
-
-    const frotistas = clientes.filter(c => c.tipo === 'frotista' || frotas.some(f => f.customerId === c.id));
-    const prev = maintenancePlanService.avaliarVencimentos({ tenantId, state });
-
-    const painel = frotistas.map(f => {
-      const veics = veiculos.filter(v => v.cli === f.id);
-      const veicsIds = new Set(veics.map(v => v.id));
-      const osAtivas = ordens.filter(o => o.st !== 'finalizada' && (o.cli === f.id || veicsIds.has(o.vei)));
-      const osFinalizadas = ordens.filter(o => o.st === 'finalizada' && (o.cli === f.id || veicsIds.has(o.vei)));
-      const orcamentosPendentes = quotations.filter(q => q.customerId === f.id && q.status === 'enviado');
-
-      const itensPrev = (prev.itens || []).filter(i => veicsIds.has(i.vehicleId));
-      const prox = itensPrev.filter(i => i.status === 'proximo').length;
-      const venc = itensPrev.filter(i => i.status === 'vencido').length;
-
-      const valorMovimentado = osFinalizadas.reduce((acc, o) => acc + (Number(o.total) || 0), 0);
-
-      return {
-        id: f.id,
-        nome: f.nome,
-        nomeFantasia: f.nomeFantasia || f.fantasia,
-        doc: f.doc || f.documento,
-        contatoPrincipal: (f.contatos && f.contatos.find(c => c.principal)) || f.contato,
-        veiculosTotal: veics.length,
-        veiculosNaOficina: osAtivas.length,
-        manutencoesProximas: prox,
-        manutencoesVencidas: venc,
-        orçamentosPendentes: orcamentosPendentes.length,
-        valorMovimentado: temPermissaoFinanceira ? valorMovimentado : null,
-        ultimoContato: f.ultimoContatoRelacionamento || null
-      };
-    });
-
-    res.json({ success: true, total: painel.length, frotistas: painel });
+    const pendentes = afterSalesService.listarPesquisasPendentes({ tenantId, state });
+    res.json({ success: true, total: pendentes.length, pesquisas: pendentes });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// ── 5. AGENDAMENTOS ─────────────────────────────────────────────
+router.post('/api/pos-venda/registrar-resposta', requirePermission('crm:write'), async (req, res) => {
+  try {
+    const tenantId = extractTenantId(req);
+    let resultado;
+    const saveRes = await mutateTenantState(req, (draft) => {
+      resultado = afterSalesService.registrarRespostaPesquisa({ tenantId, state: draft, ...req.body });
+    });
+    if (!saveRes?.ok) return res.status(saveRes?.status || 500).json({ success: false, error: saveRes?.error || 'Falha ao salvar pesquisa.' });
+    res.json({ success: true, ...resultado });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+router.get('/api/pos-venda/metricas', requirePermission('crm:read'), async (req, res) => {
+  try {
+    const state = await getOrLoadState(req);
+    const tenantId = extractTenantId(req);
+    const metricas = afterSalesService.calcularMetricas({ tenantId, state });
+    res.json({ success: true, metricas });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ── 5. TIMELINE & CONSULTA INTEGRADA ────────────────────────────
+router.get('/api/clientes/:id/timeline', requirePermission('customers:read'), async (req, res) => {
+  try {
+    const state = await getOrLoadState(req);
+    const tenantId = extractTenantId(req);
+    const timeline = customerTimelineService.obterTimelineCliente({ tenantId, state, clienteId: req.params.id });
+    res.json({ success: true, timeline });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.get('/api/clientes/:id/consulta-completa', requirePermission('customers:read'), async (req, res) => {
+  try {
+    const state = await getOrLoadState(req);
+    const tenantId = extractTenantId(req);
+    const dados = consultaClienteService.consultarClienteCompleto({ tenantId, state, clienteId: req.params.id });
+    res.json({ success: true, dados });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
 
 module.exports = router;
