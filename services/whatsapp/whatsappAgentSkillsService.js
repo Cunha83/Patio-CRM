@@ -109,6 +109,24 @@ function executarSkillRecepcaoPatio(state, payload = {}) {
     }
   }
 
+  if (/prontu[aá]rio|hist[oó]rico da placa|garantia eixo|laudo t[eé]cnico/i.test(payload.mensagem || '')) {
+    const vehicleTechnicalDossierService = require('../patio/vehicleTechnicalDossierService');
+    const pront = vehicleTechnicalDossierService.consolidarProntuarioTecnicoPlaca(state, placa);
+    const ind = pront.indicadoresProntuario;
+    const ultimoLaudo = (pront.laudosTecnicos || []).slice(-1)[0];
+    const txt = `📋 *Prontuário Técnico 360º — Placa ${placa}:*\n` +
+      `• OSs Históricas: ${ind.totalOS} (Total: R$ ${ind.totalInvestidoHistorico.toFixed(2)})\n` +
+      `• Monitoramento: ${ind.kmTotalMonitorado} km rodados (CPK: R$ ${ind.custoPorKmRodado.toFixed(2)}/km)\n` +
+      `• Garantias Ativas: ${ind.totalGarantiasAtivasCount} componente(s)\n` +
+      `• Laudo Técnico: ${ultimoLaudo ? `Emitido (${ultimoLaudo.parecerFinal}) [SHA-256: ${ultimoLaudo.hashAutenticidadeLaudo.slice(0, 10)}...]` : 'Nenhum laudo emitido'}`;
+    return {
+      skill: 'SKILL_RECEPCAO_PATIO',
+      acaoExecutada: 'consulta_prontuario_tecnico',
+      respostaTextoWhatsApp: txt,
+      dadosOperacionais: { prontuario: pront }
+    };
+  }
+
   const os = state.os.find(o =>
     o.placa && o.placa.replace(/[^A-Za-z0-9]/g, '').toUpperCase() === placa &&
     o.st !== 'finalizada' && o.st !== 'entregue'
