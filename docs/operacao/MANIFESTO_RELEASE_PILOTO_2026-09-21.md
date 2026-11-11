@@ -3,10 +3,10 @@
 **Projeto:** Pátio CRM  
 **Versão:** `1.2.0`  
 **Fase:** Piloto Controlado em Ambiente Operacional (1 Oficina)  
-**Data de Congelamento:** 2026-11-11T12:28:08.451Z  
-**Commit Git:** `94c1c6cf50702aa23beb949efd4a94fad283cbaa` (`branch: main`)  
+**Data de Congelamento:** 2026-11-11T13:31:40.198Z  
+**Commit Git:** `97a440d0c272fe9f8fd35e720a101d90cfbfcfe0` (`branch: main`)  
 **Ambiente:** Node.js `v24.19.0` em `win32-x64`  
-**Total de Arquivos Auditados:** 502  
+**Total de Arquivos Auditados:** 506  
 
 ---
 
@@ -38,7 +38,7 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 
 ---
 
-## 3. Inventário Completo de Arquivos da Release (502 Arquivos)
+## 3. Inventário Completo de Arquivos da Release (506 Arquivos)
 
 | Caminho Relativo | Checksum SHA-256 |
 |---|---|
@@ -55,7 +55,7 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 | `css/voice-drawer.css` | `e23f1da831b5bb4e30d1f4c2ba888387b7dfe1bb15712b94d779835ff0c889bd` |
 | `css/voice-modal.css` | `8d39b98ce292b541cbe89e5662e9c30f4513789e3ba75d7a354f681bac5f3b96` |
 | `db.js` | `c7dcf6aea0e5d593a3c74e70eaa88ff896b8c6b48fbdb08ceb7276360e889178` |
-| `index.html` | `6d92b3e75300bde358d503b77d4b8ed11134bf3d8895321e5958ff162dbae26f` |
+| `index.html` | `41af7c2645a63a3a001d82c9c692f56af549c7f578794383cd27e9747c9ddda9` |
 | `js/.eslintrc.json` | `836f600602e4b1e54d0800bd6f6c28e9252532c10c0893790bfa63688aa473b4` |
 | `js/app.js` | `8afa4a02e6bd5d5fe905f8612cf32b10d907d6fac318f13b0ce80436d2e0ddce` |
 | `js/cadastros.js` | `1204f0b4ebeeea7919abff5262df0d6fc549d3a6770f7683d519a3b1ce076e4b` |
@@ -103,8 +103,8 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 | `js/modules/compras_xml_import.js` | `64d55881e62813a80451fbd313f253c1b1522e09bfa415136d9066886735e0f8` |
 | `js/modules/consulta_cliente.js` | `75ea0f422a2a7b8c374a3675053464f1e476c96fa37860068e0d0cbf22c3b7de` |
 | `js/modules/crm_conversao_oportunidades_ui.js` | `cbda8849f2d45c80a52ec4d62fff7a6d17acdae5a2427e7105eae75244458c4e` |
-| `js/modules/crm_preventiva_preditiva_actions.js` | `20cb5c007eea213965e622c7ac0d170550d99823929ba17115587470b7f9140c` |
-| `js/modules/crm_preventiva_preditiva_ui.js` | `98d61b5695f2682a4ffa7beff15dbb55def73ae1268f293ba1c2315d8a3f15b4` |
+| `js/modules/crm_preventiva_preditiva_actions.js` | `ac4676372aa5f1312f1caf5a42a82324e30e1ab3e3182d77b56cf0412c291b48` |
+| `js/modules/crm_preventiva_preditiva_ui.js` | `98cf1e3576094d9a064d6ad927d38379ab705a6397b7bdb22303385137d5aca2` |
 | `js/modules/dashboard_alertas_entregas.js` | `3c62c26e3bb41c5cc950605416f42bba716534b6b0afd164d29a51d769fe6b54` |
 | `js/modules/dashboard_boxes_gargalos.js` | `819947c063fc71814ffe6b488a021d15db0a6c8585628fe8adcf77ebbc09e029` |
 | `js/modules/dashboard_charts.js` | `a23052b491d526aee57b8942ab3eff987effe3b55db3fc8f0af385ed29a9d9a6` |
@@ -138,6 +138,8 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 | `js/modules/financeiro_graficos.js` | `d4b8cf118cbf0e66123ac26a99d0e8af4c0ed878cfa1ddf4c6328f10d889fd66` |
 | `js/modules/financeiro_pix_hub.js` | `f6e5b6090a70d31de1a2aedd5e27e5b81c5cedcd0ccdfbf1a103c732af86a2e8` |
 | `js/modules/financeiro_titulos.js` | `50a56703dd7c54272408d1e52e3ca9099562328b12dcc194f08499f72bdf2edd` |
+| `js/modules/fiscal_b2b_actions.js` | `10f9e720efd83d0b7e3e2480b922888907a2087db5eaf09e6d3921d420056cbe` |
+| `js/modules/fiscal_b2b_ui.js` | `72182a6d3f094d80e2e784f6af5e6bdc6c808d890d1d75564c9d527b149255e6` |
 | `js/modules/integrations.js` | `509286cb08ee7d29bb5bdd294596069ce7823623583aaf569251f9ae0d4b6597` |
 | `js/modules/migracao_importador_ui.js` | `148af21a890a3706cd94bd6bd265a5afd2204d39298ac227d0808dd49ec29e61` |
 | `js/modules/migracao_normalizador.js` | `50e951cf444d1ab67570d1904ea715c8c6b182aaec38a72a7aa642429cbabb0a` |
@@ -246,7 +248,7 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 | `routes/crm_agendamentos_posvenda.routes.js` | `cafca4b97cf651c402e20f16934c19fd8f03c50acb90ca1ec1dc8ef0f97944d1` |
 | `routes/crm_clientes_frotas.routes.js` | `ebf01e7f1929da354cd590423c2e8ea5b4d2081c8dcc40d981c3d17c49c13086` |
 | `routes/crm_manutencao_oportunidades.routes.js` | `5a2e7a6abe3baf5c268e2961c64427ff811bcb063a3ac37c3534d80af10eb36f` |
-| `routes/crm_preventiva_preditiva.routes.js` | `e6b62aebcf0ec82c439dd1bf74e92ebe796cca724f6381d0b8e45b4c15a6dd3b` |
+| `routes/crm_preventiva_preditiva.routes.js` | `eae12c61bb6531f809028b26b001e2ef3cc7ec24701227828adfdd54789dad55` |
 | `routes/financeiro_bordero_inadimplencia.routes.js` | `6945202b23c3e4f0f7bbebffd018131ae8203af782f5ed2218058fb0bdf91fa3` |
 | `routes/financeiro_dre_rentabilidade.routes.js` | `1ef566fbfcca47a7cb1886764f2c0df36b759bd3f67405e1adf102e88d9b94d5` |
 | `routes/financial.routes.js` | `a9fcf3bcf758e254f02e01bf21ca838095ed157c993d33729c0a4dc13ce3b14c` |
@@ -259,8 +261,9 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 | `routes/financial_parts.routes.js` | `d0a0fde00cb7385a2b8574c7f97902e7345c2c539d985fa6b6ae77a733b5980b` |
 | `routes/financial_patio.routes.js` | `49b758f76de34b9e764d035997e4147dfdbd8e87240f9c5bdbd0a36c70d57b3d` |
 | `routes/financial_treasury.routes.js` | `f6702e5d57d473960cc875ad42a7205ddc5c7d58b6f06169e1b3d0addf95b38e` |
+| `routes/fiscal_b2b_fechamento.routes.js` | `70beadaf9543caa60c58138c4989e7b3ed3068ec9a340480fa269f6e90eeb644` |
 | `routes/health.routes.js` | `1b7cbfcaa978b57041475ed2ebab495eac91836121301f5f931047357a042f65` |
-| `routes/index.js` | `6449ef444d84fadedac15c6888371a75fd7b7b84c01f73f15bb26e65bc98114b` |
+| `routes/index.js` | `d2ef10ec013433734065f57c7e3d8eb621cc5b665a17028e02f8e4c35f4741e7` |
 | `routes/inspection.routes.js` | `cc3940861f6199d1c42da9deea82647e1861f5277e9cfe3d2a8f88e452ad8469` |
 | `routes/inventory.routes.js` | `bf62be003a1b0d80395efc318704aaa312d6dd8eda76f5ef2f1b0502e38cbce2` |
 | `routes/inventory_catalog.routes.js` | `d61be240ac1666d2810b41895948c12b1d5016f4f533c766b867b210613e15d1` |
@@ -396,6 +399,7 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 | `services/financial/workshopWarrantyService.js` | `1afbd531efa29276a7cb35ba3ab6ff3ede44ab39f16eac1ee6b7dc2a80e1ecec` |
 | `services/financialAnalystService.js` | `25b5ff9269fad849cf9130a26223c361586adfd65f2d9f31e7089db907c61e71` |
 | `services/financialEngine.js` | `3197f4063c965995fe439592e2b80bf16220673e8cec0444c48981abeb15a622` |
+| `services/fiscal/b2bFiscalClosingService.js` | `df5c19a2825081b56705a96616b886ecee2a7573cfa10810efd61b94bcaf6275` |
 | `services/fiscal/decimal.js` | `af535ff030962863d4c302159774c6f9b4ba41f1fd205d10b5e163f2bbceb686` |
 | `services/fiscal/fiscalCalculationEngine.js` | `762fc1f2bfa25c8ead43773f2abf0beb2e081c8652dc22b32cc5160fece1bc2e` |
 | `services/fiscal/fiscalConfigService.js` | `4573557b3fb0b82ab2fce0665c5c11a7f67eb0bdb4856d7ce85e9189afc217ad` |
