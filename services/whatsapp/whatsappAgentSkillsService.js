@@ -89,6 +89,26 @@ function executarSkillRecepcaoPatio(state, payload = {}) {
     };
   }
 
+  if (/revis[aã]o preventiva|pr[oó]xima revis[aã]o|agendar preventiva/i.test(payload.mensagem || '')) {
+    const fleetPredictiveMaintenanceService = require('../crm/fleetPredictiveMaintenanceService');
+    const radar = fleetPredictiveMaintenanceService.apurarRadarPreventivaPreditiva(state, { placa });
+    const alertaPlaca = (radar.alertas || []).find(a => a.placa === placa);
+    if (alertaPlaca) {
+      const statusTxt = alertaPlaca.statusPreventivo === 'vencida' ? 'VENCIDA' : alertaPlaca.statusPreventivo.toUpperCase();
+      const txt = `🔧 *Radar de Manutenção Preventiva — Placa ${placa}:*\n` +
+        `• Sistema: ${alertaPlaca.sistemaTecnico}\n` +
+        `• KM Estimado: ${alertaPlaca.kmEstimadoAtual} km (${alertaPlaca.kmRestante <= 0 ? 'VENCIDA' : `Restam ${alertaPlaca.kmRestante} km`})\n` +
+        `• Status: *${statusTxt}*\n` +
+        `• Deseja agendar o box de pátio para esta preventiva?`;
+      return {
+        skill: 'SKILL_RECEPCAO_PATIO',
+        acaoExecutada: 'consulta_preventiva_preditiva',
+        respostaTextoWhatsApp: txt,
+        dadosOperacionais: { alerta: alertaPlaca }
+      };
+    }
+  }
+
   const os = state.os.find(o =>
     o.placa && o.placa.replace(/[^A-Za-z0-9]/g, '').toUpperCase() === placa &&
     o.st !== 'finalizada' && o.st !== 'entregue'

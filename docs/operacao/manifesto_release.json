@@ -2,9 +2,9 @@
   "projeto": "Patio-CRM",
   "versao": "1.2.0",
   "fase": "Fase 3 — Piloto Controlado em Ambiente Operacional",
-  "dataGeracao": "2026-11-10T20:19:30.209Z",
+  "dataGeracao": "2026-11-11T12:28:08.451Z",
   "git": {
-    "commit": "f1173689b5dbdeacdddaf36b871801082288c4f0",
+    "commit": "94c1c6cf50702aa23beb949efd4a94fad283cbaa",
     "branch": "main"
   },
   "ambienteExecucao": {
@@ -22,7 +22,7 @@
       "credenciais e certificados SEFAZ A1"
     ]
   },
-  "totalArquivosAuditados": 498,
+  "totalArquivosAuditados": 502,
   "arquivos": {
     "css/automations-modal.css": "2b38b55b99835d237daa04bab807ecf2a491d5a323c912a8425ba5d3480e59d1",
     "css/base-layout.css": "05517f58b6d6ad2aa065b29125bc85ed3f4eb715654ba925353d85327401582c",
@@ -37,7 +37,7 @@
     "css/voice-drawer.css": "e23f1da831b5bb4e30d1f4c2ba888387b7dfe1bb15712b94d779835ff0c889bd",
     "css/voice-modal.css": "8d39b98ce292b541cbe89e5662e9c30f4513789e3ba75d7a354f681bac5f3b96",
     "db.js": "c7dcf6aea0e5d593a3c74e70eaa88ff896b8c6b48fbdb08ceb7276360e889178",
-    "index.html": "3bf56ca4e602e396ddb64395a82a44da747871b94c557a6a298a1049b54fd0af",
+    "index.html": "6d92b3e75300bde358d503b77d4b8ed11134bf3d8895321e5958ff162dbae26f",
     "js/.eslintrc.json": "836f600602e4b1e54d0800bd6f6c28e9252532c10c0893790bfa63688aa473b4",
     "js/app.js": "8afa4a02e6bd5d5fe905f8612cf32b10d907d6fac318f13b0ce80436d2e0ddce",
     "js/cadastros.js": "1204f0b4ebeeea7919abff5262df0d6fc549d3a6770f7683d519a3b1ce076e4b",
@@ -85,6 +85,8 @@
     "js/modules/compras_xml_import.js": "64d55881e62813a80451fbd313f253c1b1522e09bfa415136d9066886735e0f8",
     "js/modules/consulta_cliente.js": "75ea0f422a2a7b8c374a3675053464f1e476c96fa37860068e0d0cbf22c3b7de",
     "js/modules/crm_conversao_oportunidades_ui.js": "cbda8849f2d45c80a52ec4d62fff7a6d17acdae5a2427e7105eae75244458c4e",
+    "js/modules/crm_preventiva_preditiva_actions.js": "20cb5c007eea213965e622c7ac0d170550d99823929ba17115587470b7f9140c",
+    "js/modules/crm_preventiva_preditiva_ui.js": "98d61b5695f2682a4ffa7beff15dbb55def73ae1268f293ba1c2315d8a3f15b4",
     "js/modules/dashboard_alertas_entregas.js": "3c62c26e3bb41c5cc950605416f42bba716534b6b0afd164d29a51d769fe6b54",
     "js/modules/dashboard_boxes_gargalos.js": "819947c063fc71814ffe6b488a021d15db0a6c8585628fe8adcf77ebbc09e029",
     "js/modules/dashboard_charts.js": "a23052b491d526aee57b8942ab3eff987effe3b55db3fc8f0af385ed29a9d9a6",
@@ -226,6 +228,7 @@
     "routes/crm_agendamentos_posvenda.routes.js": "cafca4b97cf651c402e20f16934c19fd8f03c50acb90ca1ec1dc8ef0f97944d1",
     "routes/crm_clientes_frotas.routes.js": "ebf01e7f1929da354cd590423c2e8ea5b4d2081c8dcc40d981c3d17c49c13086",
     "routes/crm_manutencao_oportunidades.routes.js": "5a2e7a6abe3baf5c268e2961c64427ff811bcb063a3ac37c3534d80af10eb36f",
+    "routes/crm_preventiva_preditiva.routes.js": "e6b62aebcf0ec82c439dd1bf74e92ebe796cca724f6381d0b8e45b4c15a6dd3b",
     "routes/financeiro_bordero_inadimplencia.routes.js": "6945202b23c3e4f0f7bbebffd018131ae8203af782f5ed2218058fb0bdf91fa3",
     "routes/financeiro_dre_rentabilidade.routes.js": "1ef566fbfcca47a7cb1886764f2c0df36b759bd3f67405e1adf102e88d9b94d5",
     "routes/financial.routes.js": "a9fcf3bcf758e254f02e01bf21ca838095ed157c993d33729c0a4dc13ce3b14c",
@@ -239,7 +242,7 @@
     "routes/financial_patio.routes.js": "49b758f76de34b9e764d035997e4147dfdbd8e87240f9c5bdbd0a36c70d57b3d",
     "routes/financial_treasury.routes.js": "f6702e5d57d473960cc875ad42a7205ddc5c7d58b6f06169e1b3d0addf95b38e",
     "routes/health.routes.js": "1b7cbfcaa978b57041475ed2ebab495eac91836121301f5f931047357a042f65",
-    "routes/index.js": "d1b201d7970188b8fdfeae221622903f0e659a831247290c81816c96982dfb3a",
+    "routes/index.js": "6449ef444d84fadedac15c6888371a75fd7b7b84c01f73f15bb26e65bc98114b",
     "routes/inspection.routes.js": "cc3940861f6199d1c42da9deea82647e1861f5277e9cfe3d2a8f88e452ad8469",
     "routes/inventory.routes.js": "bf62be003a1b0d80395efc318704aaa312d6dd8eda76f5ef2f1b0502e38cbce2",
     "routes/inventory_catalog.routes.js": "d61be240ac1666d2810b41895948c12b1d5016f4f533c766b867b210613e15d1",
@@ -334,6 +337,7 @@
     "services/costingService.js": "667a8d331571a7dcb8888b3bb8e7bf2328bbbaf3fa89faacdf5b7aab754b0c4b",
     "services/crm/fleetCostCenterBudgetService.js": "b32edf7a0ea7800c54e7aa9b10dc891865e5ad4b2ce9664424916b8cd3463e16",
     "services/crm/fleetCostCenterService.js": "f27007bb633abec42119219bde59182a42c9b012ee8d5990c8f677073d6daaeb",
+    "services/crm/fleetPredictiveMaintenanceService.js": "d4ad78780c3701eedd218f375b61a3f84e30f0ab8ef7789f405ce76ace34e94c",
     "services/crm/opportunityConversionService.js": "6540e32c1cb55f75fd65a1b8138cecdcffc3319e5a7568a68b94c274affde61b",
     "services/crm/opportunityFollowUpQueue.js": "03bde38f97079019e2e17b441daabcce99590d3ae99862ad8c31fc395bf4db28",
     "services/customerTimelineService.js": "bc57d2a865fc1f8310305f1558ac84ea20b2f0c155b1c6f84d151fdd16be0fe5",
@@ -515,7 +519,7 @@
     "services/whatsapp/handlers/whatsappPendingConfirmations.js": "4dcf42eda3d0937e2dba048f043293e14642e28a194cf8547c8d73a7b172d7af",
     "services/whatsapp/handlers/whatsappSecurity.js": "7f32fa7eee314a383894e30877aa1b92918b0a24252ae5ba5f1b99f3aaf33742",
     "services/whatsapp/handlers/whatsappStatusHandler.js": "955c967ddecb33e0be178c1d27c6b4f63910679686c0e4aac82cf43721372a9a",
-    "services/whatsapp/whatsappAgentSkillsService.js": "5f3a93ea86143ed4813a3c53ef8794819af7ad691e2768f00b936af83fb0b668",
+    "services/whatsapp/whatsappAgentSkillsService.js": "ac4c352aeb2a46f5fd9a13df391ea9d0b25d0b90e63e3b830f250590a4ddde12",
     "services/whatsapp/whatsappClient.js": "88f56d1d1d16f2b6f84bd264f5c7e874eb124602a6b0a172e5525390b123f98a",
     "services/whatsapp/whatsappHandlers.js": "04a7a36497dafc83500acd152e0287d6e54f2319b624482f35e4bc540d154bd8",
     "services/whatsapp/whatsappScheduler.js": "35ec22137277f934448249abe7a4acbc45987914f7e0b5a95f1978881e50fc2f",
