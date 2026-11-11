@@ -143,6 +143,7 @@ function processarAprovacaoParcial({
 
         if (p.statusItem === 'aprovado') {
           p.status = 'aprovado';
+          if (p.statusAprovacao) p.statusAprovacao = 'aprovado';
           totalItensAprovados++;
         } else {
           // Peça adiada ou recusada: libera reserva atômica de estoque

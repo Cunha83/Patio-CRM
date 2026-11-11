@@ -280,6 +280,15 @@ function submeterDecisaoExternaFrotista(state, tokenStr, payload = {}) {
     });
   }
 
+  if (Array.isArray(os.evidenciasDesmontagemBox)) {
+    for (const ev of os.evidenciasDesmontagemBox) {
+      if (ev.status === 'aguardando_aprovacao_frotista') {
+        ev.status = 'aprovada_frotista';
+        ev.aprovadoEm = agoraDecisao;
+      }
+    }
+  }
+
   return { ok: true, token: tokenObj, decisaoAuditada, osId: os.id };
 }
 
