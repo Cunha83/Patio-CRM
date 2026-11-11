@@ -40,7 +40,7 @@ function identificarIntencaoEPerfilWhatsApp(mensagem = '', options = {}) {
   if (/extrato|concili|ofx|cnab/i.test(texto)) {
     return 'SKILL_CONCILIACAO_EXTRATO';
   }
-  if (/faturament|border[oô]|inadimpl[eê]ncia|contas a pagar|contas a receber|dre|caixa|briefing financeiro|ponto de equil|break-?even|lucro|rentabil/i.test(texto)) {
+  if (/torre de controle|briefing|faturament|border[oô]|inadimpl[eê]ncia|contas a pagar|contas a receber|dre|caixa|briefing financeiro|ponto de equil|break-?even|lucro|rentabil/i.test(texto)) {
     return 'SKILL_ANALISTA_FINANCEIRO';
   }
   return 'SKILL_RECEPCAO_PATIO';
@@ -162,13 +162,28 @@ function executarSkillRecepcaoPatio(state, payload = {}) {
  */
 function executarSkillAnalistaFinanceiroGerencia(state, payload = {}) {
   const perfil = String(payload.perfilRemetente || '').toLowerCase();
-  const autorizado = ['gerencia', 'admin', 'diretoria', 'owner'].includes(perfil);
+  const autorizado = ['gerencia', 'gerente', 'admin', 'diretoria', 'owner'].includes(perfil);
 
   if (!autorizado) {
     const err = new Error('Acesso negado: Comandos financeiros são restritos à gerência/diretoria.');
     err.code = 'WHATSAPP_UNAUTHORIZED_MANAGEMENT_SKILL';
     err.status = 403;
     throw err;
+  }
+
+  if (/torre de controle|briefing di[aá]rio|resumo geral/i.test(payload.mensagem || '')) {
+    const controlTowerService = require('../executive/controlTowerService');
+    const bRes = controlTowerService.dispararBriefingDiarioDiretoriaWhatsApp(state, {
+      turno: payload.turno || 'matinal',
+      competencia: payload.competencia,
+      dataReferencia: payload.dataReferencia
+    });
+    return {
+      skill: 'SKILL_ANALISTA_FINANCEIRO',
+      subtipo: 'torre_controle_briefing',
+      respostaTextoWhatsApp: bRes.briefing.respostaTextoWhatsApp,
+      dadosExecutivos: bRes.briefing
+    };
   }
 
   if (/dre|ponto de equil|break-?even|lucro|rentabil/i.test(payload.mensagem || '') || payload.comandoAcao === 'consultar_dre') {

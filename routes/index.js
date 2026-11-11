@@ -30,6 +30,7 @@ function mountRoutes(app) {
   app.use(require('./crm_preventiva_preditiva.routes'));
   app.use(require('./fiscal_b2b_fechamento.routes'));
   app.use(require('./patio_prontuario_laudo.routes'));
+  app.use(require('./torre_controle_executiva.routes'));
   app.use(require('./coreLoop.routes'));
   app.use(require('./static.routes'));
 }
