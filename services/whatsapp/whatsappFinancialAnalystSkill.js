@@ -127,7 +127,22 @@ function executarSkillAnalistaFinanceiroAutonomo(state, payload = {}) {
     };
   }
 
-  // 3. DRE Gerencial Dual e Ponto de Equilíbrio
+  // 3. Fechamento de Caixa Diário da Gerência
+  if (/fechamento de caixa|caixa di[aá]rio|fechar caixa/i.test(msg)) {
+    const dailyCash = require('../finance/dailyCashRegisterClosingService');
+    const resCx = dailyCash.gerarRelatorioFechamentoCaixaWhatsApp(state, {
+      dataCaixa: payload.dataCaixa,
+      responsavel: payload.remetente || 'Gerência'
+    });
+    return {
+      skill: 'SKILL_ANALISTA_FINANCEIRO',
+      subtipo: 'fechamento_caixa_diario',
+      respostaTextoWhatsApp: resCx.respostaTextoWhatsApp,
+      fechamento: resCx.fechamento
+    };
+  }
+
+  // 4. DRE Gerencial Dual e Ponto de Equilíbrio
   if (/dre|ponto de equil|break-?even|lucro|rentabil/i.test(msg) || cmd === 'consultar_dre') {
     const executiveDreBreakEvenService = require('../finance/executiveDreBreakEvenService');
     const resDre = executiveDreBreakEvenService.gerarRelatorioExecutivoDreWhatsApp(state, {

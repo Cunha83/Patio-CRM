@@ -134,6 +134,7 @@ test('Sprint 10.3 — Task 2: Conversão em OS com Reserva de Peças e Trava de 
   // 2.1: Bloqueio de conversão a prazo para cliente inadimplente sem override
   assert.throws(() => {
     converterPreOrcamentoWhatsAppEmOS(state, quoteInadimplente.id, {
+      modalidadePagamento: 'faturado_prazo',
       autorizarOverrideCreditoCliente: false
     });
   }, (err) => {
@@ -141,7 +142,19 @@ test('Sprint 10.3 — Task 2: Conversão em OS com Reserva de Peças e Trava de 
     return true;
   });
 
-  // 2.2: Conversão autorizada com override gerencial
+  // 2.2: Conversão permitida à vista / PIX mesmo com crédito bloqueado
+  const quoteInad2 = gerarPreOrcamentoRapidoSuspensao(state, {
+    clienteId: 'cli_inadimplente',
+    placa: 'INA-8888',
+    mensagemItens: '1 pino de centro',
+    timestamp: '2026-11-12T10:16:00.000Z'
+  });
+  const convPix = converterPreOrcamentoWhatsAppEmOS(state, quoteInad2.id, {
+    modalidadePagamento: 'a_vista_pix'
+  });
+  assert.equal(convPix.ok, true, 'Conversão à vista PIX deve ser autorizada');
+
+  // 2.3: Conversão autorizada com override gerencial
   const convInad = converterPreOrcamentoWhatsAppEmOS(state, quoteInadimplente.id, {
     autorizarOverrideCreditoCliente: true,
     justificativaOverride: 'Autorizado pelo Diretor Comercial via WhatsApp'
@@ -150,16 +163,16 @@ test('Sprint 10.3 — Task 2: Conversão em OS com Reserva de Peças e Trava de 
   assert.ok(convInad.novaOS.id);
   assert.equal(convInad.preOrcamento.status, 'convertido_os');
 
-  // 2.3: Conversão regular com criação de OS e reservas de peças prontas
+  // 2.4: Conversão regular com criação de OS e reservas de peças prontas
   const convReg = converterPreOrcamentoWhatsAppEmOS(state, quoteRegular.id, {
     gerarLinkPortalB2B: true,
     timestamp: '2026-11-12T10:20:00.000Z'
   });
   assert.equal(convReg.ok, true);
-  assert.equal(state.os.length, 2);
+  assert.equal(state.os.length, 3);
   assert.ok(state.partReservations.length >= 1, 'Deve reservar peças com estoque');
 
-  // 2.4: Bloqueio de conversão duplicada
+  // 2.5: Bloqueio de conversão duplicada
   assert.throws(() => {
     converterPreOrcamentoWhatsAppEmOS(state, quoteRegular.id);
   }, (err) => {
@@ -315,5 +328,15 @@ test('Sprint 10.3 — Task 5: Roteamento no Agente WhatsApp, Rotas REST e UI Fro
   assert.equal(typeof mockGlobal.modalFecharCaixaDiarioHtml, 'function');
   assert.equal(typeof mockGlobal.abrirModalPreOrcamentoWhatsApp, 'function');
   assert.equal(typeof mockGlobal.abrirModalFecharCaixaDiario, 'function');
+
+  // Teste 5.4: Comando de fechamento de caixa recebido pelo Analista Financeiro
+  const { executarSkillAnalistaFinanceiroAutonomo } = require('../services/whatsapp/whatsappFinancialAnalystSkill');
+  const resCxGerencia = executarSkillAnalistaFinanceiroAutonomo(state, {
+    mensagem: 'Verônica, por favor faça o fechamento de caixa de hoje',
+    perfilRemetente: 'gerente',
+    dataCaixa: '2026-11-12'
+  });
+  assert.equal(resCxGerencia.subtipo, 'fechamento_caixa_diario');
+  assert.match(resCxGerencia.respostaTextoWhatsApp, /Boletim de Fechamento de Caixa/i);
 });
 

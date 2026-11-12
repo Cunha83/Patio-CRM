@@ -88,13 +88,14 @@ function gerarPreOrcamentoRapidoSuspensao(state, payload = {}) {
       itensCalculados.push({ tipo: 'servico', servicoId: itemDb?.id || gerarId('srv'), descricao: itemDb?.nome || it.termo || 'Serviço de Suspensão', quantidade: qtd, precoUnitario: precoUnit, subtotal: sub });
     } else {
       const qtdFisica = Number(itemDb?.quantidade ?? itemDb?.qtd ?? 0);
+      const resAtivas = (state.partReservations || []).filter(r => r.partId === itemDb?.id && r.status === 'ativa').reduce((s, r) => s + Number(r.quantity || 0), 0);
+      const qtdDisponivel = Math.max(0, qtdFisica - resAtivas);
       const custoCMP = Number(itemDb?.custoMedio ?? itemDb?.custo ?? 0);
       const precoTabela = Number(itemDb?.preco ?? itemDb?.precoVenda ?? 0);
       const precoMinimoCMP = +(custoCMP * (1 + markupMin / 100)).toFixed(2);
       const precoUnitarioOrcado = Math.max(precoTabela, precoMinimoCMP);
-      const prontaEntrega = qtdFisica >= qtd;
+      const prontaEntrega = qtdDisponivel >= qtd;
       const sub = +(precoUnitarioOrcado * qtd).toFixed(2);
-
       subtotalPecas = +(subtotalPecas + sub).toFixed(2);
       custoTotalCMP = +(custoTotalCMP + (custoCMP * qtd)).toFixed(2);
 
@@ -176,13 +177,13 @@ function converterPreOrcamentoWhatsAppEmOS(state, preOrcamentoId, options = {}) 
     err.status = 409;
     throw err;
   }
-  if (pre.condicaoPagamentoPermitida === 'somente_a_vista_pix' && !options.autorizarOverrideCreditoCliente) {
+  const modalidade = options.modalidadePagamento || 'faturado_prazo';
+  if (pre.condicaoPagamentoPermitida === 'somente_a_vista_pix' && modalidade !== 'a_vista_pix' && !options.autorizarOverrideCreditoCliente) {
     const err = new Error('Cliente com crédito bloqueado por inadimplência. Conversão exige pagamento à vista ou autorização com justificativa.');
     err.code = 'CLIENT_CREDIT_BLOCKED_FOR_QUOTATION';
     err.status = 422;
     throw err;
   }
-
   const timestamp = options.timestamp || new Date().toISOString();
   const novaOS = {
     id: gerarId('os'),
