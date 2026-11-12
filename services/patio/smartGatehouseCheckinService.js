@@ -54,6 +54,9 @@ function garantirColecoes(state) {
 }
 
 function identificarClientePorPlaca(state, placaNorm) {
+  const vcl = (state.veiculos || []).find(v => normalizarPlaca(v.placa) === placaNorm && v.clienteId);
+  if (vcl) return { clienteId: vcl.clienteId, clienteNome: vcl.clienteNome };
+
   const pln = (state.preventivePlans || []).find(p => normalizarPlaca(p.placa) === placaNorm && p.clienteId);
   if (pln) return { clienteId: pln.clienteId, clienteNome: pln.clienteNome };
 
@@ -82,7 +85,7 @@ function avaliarSituacaoCreditoCliente(state, clienteId, dataReferencia) {
   let valorVencidoContas = 0, totalReceber = 0;
 
   for (const c of (state.contas || [])) {
-    if (c.tipo === 'receber' && c.status !== 'pago' && c.status !== 'cancelado' && (c.clienteId === clienteId || c.cli === clienteId)) {
+    if (c.tipo === 'receber' && c.status !== 'pago' && c.status !== 'cancelado' && c.status !== 'renegociado_acordo' && (c.clienteId === clienteId || c.cli === clienteId)) {
       const v = Number(c.valor || c.valorLiquido || 0);
       totalReceber = round2(totalReceber + v);
       if (c.vencimento && toDateYmd(c.vencimento) < refYmd) valorVencidoContas = round2(valorVencidoContas + v);

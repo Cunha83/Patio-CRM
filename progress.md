@@ -53,5 +53,13 @@
    - **Aprovação e Destravamento de Gargalo de Pátio:** Aprovação da proposta vencedora convertida automaticamente em Pedido de Compra Oficial (`state.purchaseOrders`). Ao registrar o recebimento da NF de compra (`receberNotaFiscalCompraPecas`), encerra automaticamente o gargalo de parada da OS (`aguardando_peca`), liberando o box para status ocupado em produção.
    - **Integração no Agente WhatsApp e Rotas REST:** Roteamento enxuto de intenção de cotação na fachada (`whatsappAgentSkillsService.js`, 146L), 7 endpoints REST dedicados (`routes/whatsapp_compras_cotacoes.routes.js`), modal de cotação de compras e ações delegadas globais (`whatsapp_compras_cotacoes_ui.js` e `actions.js`).
    - **Garantia de Qualidade:** 932+ testes passando (0 falhas), 100% dos arquivos <= 350 linhas e manifesto de release limpo certificado.
+10. **Fase 10 (Sprint 10.5 - Cobrança Ativa & Acordos por Cliente, Gateway Real Evolution/Cloud API e Ciclo Autônomo 360º):**
+    - **Skill de Cobrança Ativa e Acordo de Dívida (`whatsappCreditRecoverySkill.js`):** Régua automatizada por cliente (`clienteId`) com 4 estágios (`preventivo_d_menos_2`, `atraso_d_mais_1`, `bloqueio_credito_d_mais_5`, `acordo_renegociacao_d_mais_15`). Formalização de acordos de renegociação com entrada mínima de 30% e parcelas futuras em `state.contas`.
+    - **Reabilitação Condicional de Crédito:** Ao liquidar a entrada do acordo via `liquidarEntradaAcordoEDesbloquearCreditoCliente`, borderôs e títulos vencidos originais passam para `renegociado_acordo` com saldo zero, reabilitando o crédito do cliente imediatamente no Fast Check-in da Portaria Inteligente (`realizarTriagemPortariaPorPlaca`).
+    - **Adaptador para Gateway Real Evolution API / Cloud API (`whatsappGatewayAdapterService.js`):** Validação estrita de assinatura HMAC-SHA256, deduplicação idempotente por `externalMessageId`, fila outbound resiliente com retentativas e Dead Letter Queue (DLQ), e extrator de extratos bancários em PDF/OFX acionando conciliação automática.
+    - **Orquestrador do Ciclo Autônomo Diário 360º (`whatsappAutonomousCommandCenterService.js`):** Execução encadeada do Autopilot diário unindo Cobrança Ativa (P1) -> Manutenção Preditiva da Frota (P2) -> Processamento da Fila Outbound (P3) -> Briefing Executivo da Diretoria (P4), gravado em `autonomousCycleLogs`.
+    - **Rotas REST e UI Frontend:** 8 endpoints REST em `routes/whatsapp_cobranca_gateway.routes.js`, painel com 3 abas e ações delegadas globais (`whatsapp_cobranca_gateway_ui.js` e `actions.js`).
+    - **Garantia de Qualidade:** 939+ testes passando (0 falhas), 100% dos arquivos <= 350 linhas e manifesto de release atualizado.
+
 
 
