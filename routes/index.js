@@ -37,6 +37,7 @@ function mountRoutes(app) {
   app.use(require('./whatsapp_orcamentista_caixa.routes'));
   app.use(require('./whatsapp_compras_cotacoes.routes'));
   app.use(require('./whatsapp_cobranca_gateway.routes'));
+  app.use(require('./whatsapp_nlu_producao.routes'));
   app.use(require('./coreLoop.routes'));
   app.use(require('./static.routes'));
 }

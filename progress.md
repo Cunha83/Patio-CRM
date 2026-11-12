@@ -60,6 +60,13 @@
     - **Orquestrador do Ciclo Autônomo Diário 360º (`whatsappAutonomousCommandCenterService.js`):** Execução encadeada do Autopilot diário unindo Cobrança Ativa (P1) -> Manutenção Preditiva da Frota (P2) -> Processamento da Fila Outbound (P3) -> Briefing Executivo da Diretoria (P4), gravado em `autonomousCycleLogs`.
     - **Rotas REST e UI Frontend:** 8 endpoints REST em `routes/whatsapp_cobranca_gateway.routes.js`, painel com 3 abas e ações delegadas globais (`whatsapp_cobranca_gateway_ui.js` e `actions.js`).
     - **Garantia de Qualidade:** 939+ testes passando (0 falhas), 100% dos arquivos <= 350 linhas e manifesto de release atualizado.
+11. **Fase 11 (Sprint 11.1 - Motor NLU Híbrido Ollama Local GPU com Tool Calling & Monitor de Stack Docker):**
+    - **Motor NLU Híbrido com Catálogo de 6 Skills (`whatsappLocalLlmNluService.js`):** Extração de entidades estruturadas (placas Mercosul/antigo, km de entrada, clienteId, valores, peças) e mapeamento de Tools para todas as 6 Skills oficiais do Agente WhatsApp. Integração configurável com Ollama local (ex: `qwen2.5-coder:7b`) com telemetria analítica (`whatsappNluTelemetryLogs`).
+    - **Resiliência com Fallback Determinístico:** Em caso de indisponibilidade ou baixa confiança do Ollama, comuta instantaneamente para o fallback determinístico local com 100% de disponibilidade, preservando a guarda RBAC (bloqueio 403 `WHATSAPP_UNAUTHORIZED_MANAGEMENT_SKILL` para comandos gerenciais acionados por clientes comuns).
+    - **Monitor de Stack Docker & Blueprint de Produção (`productionDockerStackService.js`):** Geração de Docker Compose v3.8 completo (Pátio-CRM + Evolution API + Ollama com GPU NVIDIA + Postgres + Redis), variáveis `.env.example` protegidas e healthcheck integrado avaliando 4 subsistemas (Core ERP, Evolution Gateway, Ollama NLU e Banco), apurando o `scoreProntidaoInfra` (0-100).
+    - **Rotas REST e UI Frontend:** 4 endpoints REST em `routes/whatsapp_nlu_producao.routes.js`, console interativo de testes NLU e monitor visual de containers (`whatsapp_nlu_producao_ui.js` e `actions.js`).
+    - **Garantia de Qualidade:** 943+ testes passando (0 falhas), 100% dos arquivos <= 350 linhas e manifesto de release atualizado.
+
 
 
 
