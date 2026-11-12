@@ -3,31 +3,29 @@
 /**
  * services/whatsapp/whatsappAgentSkillsService.js
  *
- * Agente Conversacional e Operacional de WhatsApp Multi-Skill:
- * - SKILL_RECEPCAO_PATIO: Consulta de placa, box, gargalos e pré-check-in.
- * - SKILL_ANALISTA_FINANCEIRO: Briefing executivo com guarda RBAC.
- * - SKILL_CONCILIACAO_EXTRATO: Baixa automática de extratos bancários enviados no chat.
+ * Fachada Central e Orquestrador do Agente de WhatsApp Multi-Skill:
+ * - SKILL_RECEPCAO_PATIO: Delegado para whatsappReceptionPatioSkill.js
+ * - SKILL_ANALISTA_FINANCEIRO: Delegado para whatsappFinancialAnalystSkill.js
+ * - SKILL_CONCILIACAO_EXTRATO: Delegado para whatsappFinancialAnalystSkill.js
  *
- * Teto Modular: <= 350 linhas
+ * Teto Modular: <= 200 linhas (Padrão Fachada Re-Export)
  */
 
 const crypto = require('crypto');
-const bankStatementReconciliationService = require('../finance/bankStatementReconciliationService');
+const {
+  executarSkillRecepcaoInterativaWhatsApp,
+  executarSkillRecepcaoPatio,
+  extrairPlaca
+} = require('./whatsappReceptionPatioSkill');
 
-function round2(v) {
-  return Math.round((Number(v) || 0) * 100) / 100;
-}
+const {
+  executarSkillAnalistaFinanceiroAutonomo,
+  executarSkillAnalistaFinanceiroGerencia,
+  gerarCobrancaPixBoletoWhatsApp
+} = require('./whatsappFinancialAnalystSkill');
 
 function gerarId(prefix) {
   return prefix + '_' + Date.now() + '_' + crypto.randomBytes(3).toString('hex');
-}
-
-function extrairPlaca(texto = '', placaParam = '') {
-  if (placaParam) {
-    return String(placaParam).replace(/[^A-Za-z0-9]/g, '').toUpperCase();
-  }
-  const m = String(texto).match(/[A-Za-z]{3}[- ]?[0-9][A-Za-z0-9][0-9]{2}/i);
-  return m ? m[0].replace(/[^A-Za-z0-9]/g, '').toUpperCase() : null;
 }
 
 /**
@@ -40,224 +38,10 @@ function identificarIntencaoEPerfilWhatsApp(mensagem = '', options = {}) {
   if (/extrato|concili|ofx|cnab/i.test(texto)) {
     return 'SKILL_CONCILIACAO_EXTRATO';
   }
-  if (/torre de controle|briefing|faturament|border[oô]|inadimpl[eê]ncia|contas a pagar|contas a receber|dre|caixa|briefing financeiro|ponto de equil|break-?even|lucro|rentabil/i.test(texto)) {
+  if (/torre de controle|briefing|faturament|border[oô]|inadimpl[eê]ncia|contas a pagar|contas a receber|dre|caixa|briefing financeiro|ponto de equil|break-?even|lucro|rentabil|cobranca|pix|boleto/i.test(texto)) {
     return 'SKILL_ANALISTA_FINANCEIRO';
   }
   return 'SKILL_RECEPCAO_PATIO';
-}
-
-/**
- * Skill de Recepção de Pátio: status de box, gargalo e pré-check-in.
- */
-function executarSkillRecepcaoPatio(state, payload = {}) {
-  state.receptionQueue = Array.isArray(state.receptionQueue) ? state.receptionQueue : [];
-  state.os = Array.isArray(state.os) ? state.os : [];
-  state.patioBoxes = Array.isArray(state.patioBoxes) ? state.patioBoxes : [];
-  state.patioBottlenecks = Array.isArray(state.patioBottlenecks) ? state.patioBottlenecks : [];
-
-  const placa = extrairPlaca(payload.mensagem, payload.placa);
-  const isCheckin = payload.acaoRecepcao === 'pre_checkin' || /cheg|check-?in|entrada|fila|recep[cç][aã]o/i.test(payload.mensagem || '');
-
-  if (isCheckin) {
-    const protocolo = 'REC-' + Date.now().toString().slice(-4);
-    const itemFila = {
-      id: gerarId('rec'),
-      protocolo,
-      placa: placa || 'NÃO_INFORMADA',
-      clienteNome: payload.clienteNome || 'Motorista Frotista',
-      dataChegada: payload.timestamp || new Date().toISOString(),
-      status: 'aguardando_triagem'
-    };
-    state.receptionQueue.push(itemFila);
-
-    const txt = `Olá! Seu pré-check-in foi registrado com sucesso sob o protocolo *${protocolo}* para o veículo placa ${placa || ''}. Dirija-se ao Box de Triagem Inicial para vistoria.`;
-    return {
-      skill: 'SKILL_RECEPCAO_PATIO',
-      acaoExecutada: 'pre_checkin',
-      protocolo,
-      respostaTextoWhatsApp: txt,
-      dadosOperacionais: { itemFila, filaRecepcao: state.receptionQueue }
-    };
-  }
-
-  if (!placa) {
-    return {
-      skill: 'SKILL_RECEPCAO_PATIO',
-      acaoExecutada: 'solicitar_placa',
-      respostaTextoWhatsApp: 'Por favor, informe a placa do veículo (ex: ABC1D23) para consultarmos a situação no pátio.',
-      dadosOperacionais: null
-    };
-  }
-
-  if (/revis[aã]o preventiva|pr[oó]xima revis[aã]o|agendar preventiva/i.test(payload.mensagem || '')) {
-    const fleetPredictiveMaintenanceService = require('../crm/fleetPredictiveMaintenanceService');
-    const radar = fleetPredictiveMaintenanceService.apurarRadarPreventivaPreditiva(state, { placa });
-    const alertaPlaca = (radar.alertas || []).find(a => a.placa === placa);
-    if (alertaPlaca) {
-      const statusTxt = alertaPlaca.statusPreventivo === 'vencida' ? 'VENCIDA' : alertaPlaca.statusPreventivo.toUpperCase();
-      const txt = `🔧 *Radar de Manutenção Preventiva — Placa ${placa}:*\n` +
-        `• Sistema: ${alertaPlaca.sistemaTecnico}\n` +
-        `• KM Estimado: ${alertaPlaca.kmEstimadoAtual} km (${alertaPlaca.kmRestante <= 0 ? 'VENCIDA' : `Restam ${alertaPlaca.kmRestante} km`})\n` +
-        `• Status: *${statusTxt}*\n` +
-        `• Deseja agendar o box de pátio para esta preventiva?`;
-      return {
-        skill: 'SKILL_RECEPCAO_PATIO',
-        acaoExecutada: 'consulta_preventiva_preditiva',
-        respostaTextoWhatsApp: txt,
-        dadosOperacionais: { alerta: alertaPlaca }
-      };
-    }
-  }
-
-  if (/prontu[aá]rio|hist[oó]rico da placa|garantia eixo|laudo t[eé]cnico/i.test(payload.mensagem || '')) {
-    const vehicleTechnicalDossierService = require('../patio/vehicleTechnicalDossierService');
-    const pront = vehicleTechnicalDossierService.consolidarProntuarioTecnicoPlaca(state, placa);
-    const ind = pront.indicadoresProntuario;
-    const ultimoLaudo = (pront.laudosTecnicos || []).slice(-1)[0];
-    const txt = `📋 *Prontuário Técnico 360º — Placa ${placa}:*\n` +
-      `• OSs Históricas: ${ind.totalOS} (Total: R$ ${ind.totalInvestidoHistorico.toFixed(2)})\n` +
-      `• Monitoramento: ${ind.kmTotalMonitorado} km rodados (CPK: R$ ${ind.custoPorKmRodado.toFixed(2)}/km)\n` +
-      `• Garantias Ativas: ${ind.totalGarantiasAtivasCount} componente(s)\n` +
-      `• Laudo Técnico: ${ultimoLaudo ? `Emitido (${ultimoLaudo.parecerFinal}) [SHA-256: ${ultimoLaudo.hashAutenticidadeLaudo.slice(0, 10)}...]` : 'Nenhum laudo emitido'}`;
-    return {
-      skill: 'SKILL_RECEPCAO_PATIO',
-      acaoExecutada: 'consulta_prontuario_tecnico',
-      respostaTextoWhatsApp: txt,
-      dadosOperacionais: { prontuario: pront }
-    };
-  }
-
-  const os = state.os.find(o =>
-    o.placa && o.placa.replace(/[^A-Za-z0-9]/g, '').toUpperCase() === placa &&
-    o.st !== 'finalizada' && o.st !== 'entregue'
-  );
-
-  if (os) {
-    const box = state.patioBoxes.find(b => b.osAtualId === os.id || b.id === os.boxAtualId);
-    const gargalo = state.patioBottlenecks.find(g => g.osId === os.id && g.status !== 'encerrado');
-
-    const txt = `🚚 *Situação Operacional (${placa}):*\n` +
-      `• OS: #${os.num || os.id} (${os.st || 'em andamento'})\n` +
-      `• Localização: ${box?.nome || 'Box Pesado'}\n` +
-      `• Situação: ${gargalo ? `⚠️ Gargalo Ativo (${gargalo.motivoParada})` : '🟢 Em execução regular no box'}`;
-
-    return {
-      skill: 'SKILL_RECEPCAO_PATIO',
-      acaoExecutada: 'consulta_status',
-      respostaTextoWhatsApp: txt,
-      dadosOperacionais: { os, box, gargalo }
-    };
-  }
-
-  return {
-    skill: 'SKILL_RECEPCAO_PATIO',
-    acaoExecutada: 'consulta_status',
-    respostaTextoWhatsApp: `Não encontramos ordem de serviço ativa no pátio para o veículo placa ${placa}.`,
-    dadosOperacionais: null
-  };
-}
-
-/**
- * Skill Analista Financeiro da Gerência: Briefing executivo ou baixa de extrato com guarda RBAC.
- */
-function executarSkillAnalistaFinanceiroGerencia(state, payload = {}) {
-  const perfil = String(payload.perfilRemetente || '').toLowerCase();
-  const autorizado = ['gerencia', 'gerente', 'admin', 'diretoria', 'owner'].includes(perfil);
-
-  if (!autorizado) {
-    const err = new Error('Acesso negado: Comandos financeiros são restritos à gerência/diretoria.');
-    err.code = 'WHATSAPP_UNAUTHORIZED_MANAGEMENT_SKILL';
-    err.status = 403;
-    throw err;
-  }
-
-  if (/torre de controle|briefing di[aá]rio|resumo geral/i.test(payload.mensagem || '')) {
-    const controlTowerService = require('../executive/controlTowerService');
-    const bRes = controlTowerService.dispararBriefingDiarioDiretoriaWhatsApp(state, {
-      turno: payload.turno || 'matinal',
-      competencia: payload.competencia,
-      dataReferencia: payload.dataReferencia
-    });
-    return {
-      skill: 'SKILL_ANALISTA_FINANCEIRO',
-      subtipo: 'torre_controle_briefing',
-      respostaTextoWhatsApp: bRes.briefing.respostaTextoWhatsApp,
-      dadosExecutivos: bRes.briefing
-    };
-  }
-
-  if (/dre|ponto de equil|break-?even|lucro|rentabil/i.test(payload.mensagem || '') || payload.comandoAcao === 'consultar_dre') {
-    const executiveDreBreakEvenService = require('../finance/executiveDreBreakEvenService');
-    const resDre = executiveDreBreakEvenService.gerarRelatorioExecutivoDreWhatsApp(state, {
-      competencia: payload.competencia,
-      metaLucroDesejado: payload.metaLucroDesejado
-    });
-    return {
-      skill: 'SKILL_ANALISTA_FINANCEIRO',
-      subtipo: 'dre_breakeven_briefing',
-      respostaTextoWhatsApp: resDre.respostaTextoWhatsApp,
-      dadosExecutivos: resDre
-    };
-  }
-
-  if (payload.anexoExtrato || payload.skill === 'SKILL_CONCILIACAO_EXTRATO') {
-    const resConciliacao = bankStatementReconciliationService.conciliarExtratoBancarioAutomatico(state, {
-      ...(payload.anexoExtrato || { formato: 'pdf_texto', conteudoRaw: payload.mensagem }),
-      origemCanal: 'whatsapp_gerencia',
-      responsavel: payload.remetente || 'gerencia_wpp'
-    });
-
-    const txt = `📊 *Relatório de Conciliação Bancária via WhatsApp:*\n` +
-      `• Transações Lidas: ${resConciliacao.totalTransacoes}\n` +
-      `• Baixadas Automaticamente: ${resConciliacao.conciliadasAutomaticamenteCount}\n` +
-      `• Borderôs B2B Quitados: ${resConciliacao.borderosLiquidadosIds.length}\n` +
-      `• Contas a Pagar Baixadas: ${resConciliacao.contasBaixadasIds.length}\n` +
-      `• Pendentes de Revisão: ${resConciliacao.pendentesRevisaoHumana.length}`;
-
-    return {
-      skill: 'SKILL_CONCILIACAO_EXTRATO',
-      respostaTextoWhatsApp: txt,
-      conciliacao: resConciliacao
-    };
-  }
-
-  // Briefing Executivo
-  const borderos = [
-    ...(Array.isArray(state.borderosFrotistas) ? state.borderosFrotistas : []),
-    ...(Array.isArray(state.borderos) ? state.borderos : [])
-  ];
-  const contas = Array.isArray(state.contas) ? state.contas : [];
-  const hoje = new Date().toISOString().slice(0, 10);
-
-  let totalAberto = 0;
-  let totalAtraso = 0;
-  for (const b of borderos) {
-    if (b.status === 'liquidado' || b.status === 'pago') continue;
-    const saldo = b.saldoDevedor !== undefined ? Number(b.saldoDevedor) : (Number(b.valorTotal || 0) - Number(b.valorPagoAcumulado || 0));
-    totalAberto = round2(totalAberto + saldo);
-    if (b.dataVencimento && String(b.dataVencimento).slice(0, 10) < hoje) {
-      totalAtraso = round2(totalAtraso + saldo);
-    }
-  }
-
-  let totalPagar = 0;
-  for (const c of contas) {
-    if (c.tipo === 'pagar' && c.status !== 'pago') {
-      totalPagar = round2(totalPagar + Number(c.valor || 0));
-    }
-  }
-
-  const txt = `📈 *Briefing Financeiro Executivo (Analista Verônica):*\n` +
-    `• *Borderôs B2B em Aberto:* R$ ${totalAberto.toFixed(2)}\n` +
-    `• *Borderôs Vencidos:* R$ ${totalAtraso.toFixed(2)}\n` +
-    `• *Contas a Pagar Pendentes:* R$ ${totalPagar.toFixed(2)}\n` +
-    `• *Saldo Projetado:* R$ ${(totalAberto - totalPagar).toFixed(2)}`;
-
-  return {
-    skill: 'SKILL_ANALISTA_FINANCEIRO',
-    respostaTextoWhatsApp: txt,
-    kpisFinanceiros: { totalAberto, totalAtraso, totalPagar }
-  };
 }
 
 /**
@@ -272,9 +56,9 @@ function processarMensagemAgenteWhatsApp(state, payload = {}) {
   let resposta = null;
   try {
     if (skill === 'SKILL_RECEPCAO_PATIO') {
-      resposta = executarSkillRecepcaoPatio(state, payload);
+      resposta = executarSkillRecepcaoInterativaWhatsApp(state, payload);
     } else {
-      resposta = executarSkillAnalistaFinanceiroGerencia(state, { ...payload, skill });
+      resposta = executarSkillAnalistaFinanceiroAutonomo(state, { ...payload, skill });
     }
   } catch (err) {
     state.whatsappAgentLogs.push({
@@ -295,7 +79,7 @@ function processarMensagemAgenteWhatsApp(state, payload = {}) {
     remetente: payload.remetente || 'desconhecido',
     perfilRemetente: payload.perfilRemetente || 'cliente',
     mensagem: payload.mensagem || '',
-    skill: resposta.skill,
+    skill: resposta?.skill || skill,
     sucesso: true,
     timestamp: new Date().toISOString()
   });
@@ -306,6 +90,10 @@ function processarMensagemAgenteWhatsApp(state, payload = {}) {
 module.exports = {
   identificarIntencaoEPerfilWhatsApp,
   executarSkillRecepcaoPatio,
+  executarSkillRecepcaoInterativaWhatsApp,
   executarSkillAnalistaFinanceiroGerencia,
-  processarMensagemAgenteWhatsApp
+  executarSkillAnalistaFinanceiroAutonomo,
+  gerarCobrancaPixBoletoWhatsApp,
+  processarMensagemAgenteWhatsApp,
+  extrairPlaca
 };

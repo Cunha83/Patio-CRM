@@ -33,4 +33,11 @@
 6. **Fase 10 (Sprint 10.1 - Certificação Arquitetural):**
    - Decomposição cirúrgica de todos os 7 arquivos críticos (330-347 linhas) para <= 280 linhas cada.
    - Zero quebra de contratos públicos (Padrão Fachada / Re-Export em 100% dos módulos).
+7. **Fase 10 (Sprint 10.2 - Agente WhatsApp Autônomo & API Bancária Direta):**
+   - **Recepção Interativa no WhatsApp (`whatsappReceptionPatioSkill.js`):** Triagem 360º de veículos pesados por placa, pré-check-in com criação automática de OS em box livre, consulta de status/gargalos e geração/envio de link tokenizado de aprovação jurídica para frotistas.
+   - **Analista Financeiro no WhatsApp (`whatsappFinancialAnalystSkill.js`):** Consulta de saldos e DRE com RBAC estrito (403 para não autorizados), emissão de cobranças PIX BR Code / Boletos com registro em `paymentCharges`, e conciliação/baixa automática de extratos bancários (PDF, CNAB 240/400, OFX e API) com liquidação de borderôs e desbloqueio em cascata de comissões de mecânicos (`os_recebida`).
+   - **Fachada Re-Export do Agente (`whatsappAgentSkillsService.js`):** Decomposta para 99 linhas (<= 200L) com trilha de auditoria completa em `whatsappAgentLogs`.
+   - **Conector Direto de API Bancária & Webhook PIX (`bankDirectApiConnectorService.js`):** Sincronização direta de extratos via API bancária segura e processamento de webhooks de liquidação instantânea por `txid`/`nossoNumero`.
+   - **Rotas REST e UI Frontend:** 6 endpoints dedicados (`routes/whatsapp_banco_autonomo.routes.js`), modal de painel do agente autônomo e configuração bancária (`whatsapp_agente_autonomo_ui.js` e `whatsapp_agente_autonomo_actions.js`).
+   - **Garantia de Qualidade:** 923 testes passando (0 falhas), 100% dos arquivos <= 350 linhas e manifesto de release limpo certificado.
 
