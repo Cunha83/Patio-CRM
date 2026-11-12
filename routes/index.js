@@ -35,6 +35,7 @@ function mountRoutes(app) {
   app.use(require('./patio_portaria_inteligente.routes'));
   app.use(require('./whatsapp_banco_autonomo.routes'));
   app.use(require('./whatsapp_orcamentista_caixa.routes'));
+  app.use(require('./whatsapp_compras_cotacoes.routes'));
   app.use(require('./coreLoop.routes'));
   app.use(require('./static.routes'));
 }

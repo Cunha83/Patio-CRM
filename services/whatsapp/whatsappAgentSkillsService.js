@@ -9,6 +9,7 @@
  * - SKILL_CONCILIACAO_EXTRATO: Delegado para whatsappFinancialAnalystSkill.js
  * - SKILL_ORCAMENTISTA_TECNICO: Delegado para whatsappTechnicalQuotationSkill.js
  * - SKILL_FECHAMENTO_CAIXA: Delegado para dailyCashRegisterClosingService.js
+ * - SKILL_COMPRAS_FORNECEDORES: Delegado para whatsappSupplierQuotationSkill.js
  *
  * Teto Modular: <= 200 linhas (Padrão Fachada Re-Export)
  */
@@ -36,6 +37,15 @@ const {
   gerarRelatorioFechamentoCaixaWhatsApp
 } = require('../finance/dailyCashRegisterClosingService');
 
+const {
+  abrirCotacaoFornecedoresWhatsApp,
+  complementarFornecedoresCotacaoWhatsApp,
+  registrarPropostaFornecedorWhatsApp,
+  apurarMapaComparativoCotacao,
+  aprovarPropostaEGerarPedidoCompra,
+  executarSkillComprasFornecedoresWhatsApp
+} = require('./whatsappSupplierQuotationSkill');
+
 function gerarId(prefix) {
   return prefix + '_' + Date.now() + '_' + crypto.randomBytes(3).toString('hex');
 }
@@ -47,6 +57,9 @@ function identificarIntencaoEPerfilWhatsApp(mensagem = '', options = {}) {
   if (options.anexoExtrato) return 'SKILL_CONCILIACAO_EXTRATO';
 
   const texto = String(mensagem || '').toLowerCase();
+  if (/comprar pe[cç]a|cota[cç][aã]o fornecedor|cota[cç][aã]o de pe[cç]a|compras/i.test(texto)) {
+    return 'SKILL_COMPRAS_FORNECEDORES';
+  }
   if (/or[cç]amento|cota[cç][aã]o|quanto fica|pr[eé]-?or[cç]amento/i.test(texto)) {
     return 'SKILL_ORCAMENTISTA_TECNICO';
   }
@@ -73,7 +86,9 @@ function processarMensagemAgenteWhatsApp(state, payload = {}) {
 
   let resposta = null;
   try {
-    if (skill === 'SKILL_ORCAMENTISTA_TECNICO') {
+    if (skill === 'SKILL_COMPRAS_FORNECEDORES') {
+      resposta = executarSkillComprasFornecedoresWhatsApp(state, payload);
+    } else if (skill === 'SKILL_ORCAMENTISTA_TECNICO') {
       resposta = executarSkillOrcamentistaTecnicoWhatsApp(state, payload);
     } else if (skill === 'SKILL_FECHAMENTO_CAIXA') {
       resposta = gerarRelatorioFechamentoCaixaWhatsApp(state, payload);
@@ -120,6 +135,12 @@ module.exports = {
   converterPreOrcamentoWhatsAppEmOS,
   gerarRelatorioFechamentoCaixaWhatsApp,
   gerarCobrancaPixBoletoWhatsApp,
+  abrirCotacaoFornecedoresWhatsApp,
+  complementarFornecedoresCotacaoWhatsApp,
+  registrarPropostaFornecedorWhatsApp,
+  apurarMapaComparativoCotacao,
+  aprovarPropostaEGerarPedidoCompra,
+  executarSkillComprasFornecedoresWhatsApp,
   processarMensagemAgenteWhatsApp,
   extrairPlaca
 };
