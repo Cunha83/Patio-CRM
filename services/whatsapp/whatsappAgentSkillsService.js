@@ -7,6 +7,8 @@
  * - SKILL_RECEPCAO_PATIO: Delegado para whatsappReceptionPatioSkill.js
  * - SKILL_ANALISTA_FINANCEIRO: Delegado para whatsappFinancialAnalystSkill.js
  * - SKILL_CONCILIACAO_EXTRATO: Delegado para whatsappFinancialAnalystSkill.js
+ * - SKILL_ORCAMENTISTA_TECNICO: Delegado para whatsappTechnicalQuotationSkill.js
+ * - SKILL_FECHAMENTO_CAIXA: Delegado para dailyCashRegisterClosingService.js
  *
  * Teto Modular: <= 200 linhas (Padrão Fachada Re-Export)
  */
@@ -24,6 +26,16 @@ const {
   gerarCobrancaPixBoletoWhatsApp
 } = require('./whatsappFinancialAnalystSkill');
 
+const {
+  gerarPreOrcamentoRapidoSuspensao,
+  converterPreOrcamentoWhatsAppEmOS,
+  executarSkillOrcamentistaTecnicoWhatsApp
+} = require('./whatsappTechnicalQuotationSkill');
+
+const {
+  gerarRelatorioFechamentoCaixaWhatsApp
+} = require('../finance/dailyCashRegisterClosingService');
+
 function gerarId(prefix) {
   return prefix + '_' + Date.now() + '_' + crypto.randomBytes(3).toString('hex');
 }
@@ -35,10 +47,16 @@ function identificarIntencaoEPerfilWhatsApp(mensagem = '', options = {}) {
   if (options.anexoExtrato) return 'SKILL_CONCILIACAO_EXTRATO';
 
   const texto = String(mensagem || '').toLowerCase();
+  if (/or[cç]amento|cota[cç][aã]o|quanto fica|pr[eé]-?or[cç]amento/i.test(texto)) {
+    return 'SKILL_ORCAMENTISTA_TECNICO';
+  }
+  if (/fechamento de caixa|fechar caixa di[aá]rio/i.test(texto)) {
+    return 'SKILL_FECHAMENTO_CAIXA';
+  }
   if (/extrato|concili|ofx|cnab/i.test(texto)) {
     return 'SKILL_CONCILIACAO_EXTRATO';
   }
-  if (/torre de controle|briefing|faturament|border[oô]|inadimpl[eê]ncia|contas a pagar|contas a receber|dre|caixa|briefing financeiro|ponto de equil|break-?even|lucro|rentabil|cobranca|pix|boleto/i.test(texto)) {
+  if (/torre de controle|briefing|faturament|border[oô]|inadimpl[eê]ncia|contas a pagar|contas a receber|dre|caixa|ponto de equil|break-?even|lucro|rentabil|cobranca|pix|boleto/i.test(texto)) {
     return 'SKILL_ANALISTA_FINANCEIRO';
   }
   return 'SKILL_RECEPCAO_PATIO';
@@ -55,7 +73,11 @@ function processarMensagemAgenteWhatsApp(state, payload = {}) {
 
   let resposta = null;
   try {
-    if (skill === 'SKILL_RECEPCAO_PATIO') {
+    if (skill === 'SKILL_ORCAMENTISTA_TECNICO') {
+      resposta = executarSkillOrcamentistaTecnicoWhatsApp(state, payload);
+    } else if (skill === 'SKILL_FECHAMENTO_CAIXA') {
+      resposta = gerarRelatorioFechamentoCaixaWhatsApp(state, payload);
+    } else if (skill === 'SKILL_RECEPCAO_PATIO') {
       resposta = executarSkillRecepcaoInterativaWhatsApp(state, payload);
     } else {
       resposta = executarSkillAnalistaFinanceiroAutonomo(state, { ...payload, skill });
@@ -93,6 +115,10 @@ module.exports = {
   executarSkillRecepcaoInterativaWhatsApp,
   executarSkillAnalistaFinanceiroGerencia,
   executarSkillAnalistaFinanceiroAutonomo,
+  executarSkillOrcamentistaTecnicoWhatsApp,
+  gerarPreOrcamentoRapidoSuspensao,
+  converterPreOrcamentoWhatsAppEmOS,
+  gerarRelatorioFechamentoCaixaWhatsApp,
   gerarCobrancaPixBoletoWhatsApp,
   processarMensagemAgenteWhatsApp,
   extrairPlaca
