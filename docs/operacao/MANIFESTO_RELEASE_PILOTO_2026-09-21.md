@@ -3,10 +3,10 @@
 **Projeto:** Pátio CRM  
 **Versão:** `2.0.0`  
 **Fase:** Piloto Controlado em Ambiente Operacional (1 Oficina)  
-**Data de Congelamento:** 2026-11-12T19:56:47.860Z  
-**Commit Git:** `78d116931ff7232c6976a5512c48f527ec1ead32` (`branch: main`)  
+**Data de Congelamento:** 2026-11-16T14:45:06.621Z  
+**Commit Git:** `a30aa7a763d6dcbdf3b6127b6e5285434b828d04` (`branch: main`)  
 **Ambiente:** Node.js `v24.19.0` em `win32-x64`  
-**Total de Arquivos Auditados:** 556  
+**Total de Arquivos Auditados:** 560  
 
 ---
 
@@ -38,7 +38,7 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 
 ---
 
-## 3. Inventário Completo de Arquivos da Release (556 Arquivos)
+## 3. Inventário Completo de Arquivos da Release (560 Arquivos)
 
 | Caminho Relativo | Checksum SHA-256 |
 |---|---|
@@ -55,7 +55,7 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 | `css/voice-drawer.css` | `e23f1da831b5bb4e30d1f4c2ba888387b7dfe1bb15712b94d779835ff0c889bd` |
 | `css/voice-modal.css` | `8d39b98ce292b541cbe89e5662e9c30f4513789e3ba75d7a354f681bac5f3b96` |
 | `db.js` | `c7dcf6aea0e5d593a3c74e70eaa88ff896b8c6b48fbdb08ceb7276360e889178` |
-| `index.html` | `aea15e6069ccaffe75517476789289fb909d2422da2d84b3a74cdd54f933e4f2` |
+| `index.html` | `75513abaee7e2804afcc5ce2309ba590adcf8cbcd3fec5915f7107301326abda` |
 | `js/.eslintrc.json` | `836f600602e4b1e54d0800bd6f6c28e9252532c10c0893790bfa63688aa473b4` |
 | `js/app.js` | `8afa4a02e6bd5d5fe905f8612cf32b10d907d6fac318f13b0ce80436d2e0ddce` |
 | `js/cadastros.js` | `1204f0b4ebeeea7919abff5262df0d6fc549d3a6770f7683d519a3b1ce076e4b` |
@@ -193,6 +193,8 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 | `js/modules/whatsapp_compras_cotacoes_actions.js` | `590c5b9a20d7d4a708fd5f5a40a38356b1d8c9bc00c3991606699ddd0adf7158` |
 | `js/modules/whatsapp_compras_cotacoes_ui.js` | `67c802e006908915a76d47d4b234d5f2ceead859231f22e2ad2d996f68a389ae` |
 | `js/modules/whatsapp_conexao_qr.js` | `31ad5097021ed2bc0d36d7e7b23f229e81ebe47e438211390d40c8ab9f2af065` |
+| `js/modules/whatsapp_multimodal_ia_actions.js` | `b3dddc991f2770a23e82ddbd74977ff139c9d245867c164d9751f31bf5f8e1db` |
+| `js/modules/whatsapp_multimodal_ia_ui.js` | `77b87e5eee0e72475a5da1b88ae785a27d2e5ddfeda2753dbced3c254e2cc26a` |
 | `js/modules/whatsapp_nlu_producao_actions.js` | `2a8ff08cea3c754b959b2c887d9bfd27cb67d848a2f62d9e00a93f992c785035` |
 | `js/modules/whatsapp_nlu_producao_ui.js` | `6f33aeec4973fffd492d0669316aa2ec504a9ea9937cce7da088c153900e4a9d` |
 | `js/modules/whatsapp_orcamentista_caixa_actions.js` | `e39533a27d79e5ed29e3f2311fb48ad1a7575b6367965dcb438152be37e75f20` |
@@ -285,7 +287,7 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 | `routes/financial_treasury.routes.js` | `f6702e5d57d473960cc875ad42a7205ddc5c7d58b6f06169e1b3d0addf95b38e` |
 | `routes/fiscal_b2b_fechamento.routes.js` | `397f207888edb72f4a0befb66c1d977e53c95b9d1b109b842b5012927315e557` |
 | `routes/health.routes.js` | `1b7cbfcaa978b57041475ed2ebab495eac91836121301f5f931047357a042f65` |
-| `routes/index.js` | `dbf236e222301be782bc1a8828934706670e7fc7d23b095821e6bf3462570cd6` |
+| `routes/index.js` | `5e476b167df90c77fd163747c56a541a3db1cd63cc8cc64b9529eada0164d5c1` |
 | `routes/inspection.routes.js` | `cc3940861f6199d1c42da9deea82647e1861f5277e9cfe3d2a8f88e452ad8469` |
 | `routes/inventory.routes.js` | `bf62be003a1b0d80395efc318704aaa312d6dd8eda76f5ef2f1b0502e38cbce2` |
 | `routes/inventory_catalog.routes.js` | `d61be240ac1666d2810b41895948c12b1d5016f4f533c766b867b210613e15d1` |
@@ -322,6 +324,7 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 | `routes/whatsapp_cobranca_gateway.routes.js` | `da3ba75f371f4ce4c6d23a79e168c39538404ded23def8b5d7cd927ef755e6d0` |
 | `routes/whatsapp_compras_cotacoes.routes.js` | `73b144ebf641ddba3e89e63326cdc17f0932ca15ec69fd73712f6d51018de730` |
 | `routes/whatsapp_config.routes.js` | `1cddb9364b63a914905dabc2b0c857f1a8ef010d6a88c6b3ec131b8a5fd0fcab` |
+| `routes/whatsapp_multimodal_ia.routes.js` | `096cdec3cef639ee419fc67649928caba6e5693d95345dbbf99b9598fe67eff6` |
 | `routes/whatsapp_nlu_producao.routes.js` | `2e2c518bf834ce8fb382173666b53079e7b26d6251b6b23493cd9aa5f80b1d61` |
 | `routes/whatsapp_orcamentista_caixa.routes.js` | `91555c6ae767e8b3409604acb9e796182e8039737bd881642af962ae6deec3f5` |
 | `routes/whatsapp_reports.routes.js` | `de4e79048c6db0cbfb05d52eeddf52aeed0620692c15d088394e252fb08e10f9` |
@@ -588,9 +591,10 @@ Nenhum dado real, banco de dados de produção (`patio.db`), arquivo de backup, 
 | `services/whatsapp/whatsappClient.js` | `88f56d1d1d16f2b6f84bd264f5c7e874eb124602a6b0a172e5525390b123f98a` |
 | `services/whatsapp/whatsappCreditRecoverySkill.js` | `01e2dd890a719683dc70420ba9dd268788f071639d7417807caa0cb38d358e6e` |
 | `services/whatsapp/whatsappFinancialAnalystSkill.js` | `43b1c61ef0a2e20b5c409a4041cf186950d5af25b0981d74d23e079a6bfd788e` |
-| `services/whatsapp/whatsappGatewayAdapterService.js` | `27a4281246780e9aebde82a50337a835c115a20fafc3dd7cc2aedaa1798280d9` |
+| `services/whatsapp/whatsappGatewayAdapterService.js` | `b2df73e02fcd6d257fb2a814db5e3f6021189771f690651c948ebed1e129cd10` |
 | `services/whatsapp/whatsappHandlers.js` | `04a7a36497dafc83500acd152e0287d6e54f2319b624482f35e4bc540d154bd8` |
 | `services/whatsapp/whatsappLocalLlmNluService.js` | `55ce538a2cf69f3cc1cf9d62ca17e5703837d588c534ded84e3151bba5e3bec9` |
+| `services/whatsapp/whatsappMultimodalAudioVisionService.js` | `6af7652bcb1b2bd14cd4a755ebfbe5a9ff2542a6525e600869419c1c517ad53b` |
 | `services/whatsapp/whatsappReceptionPatioSkill.js` | `eb3392e645ee678abc595130d07adc75ffb9399f009dee6961e3a2e921d92068` |
 | `services/whatsapp/whatsappScheduler.js` | `35ec22137277f934448249abe7a4acbc45987914f7e0b5a95f1978881e50fc2f` |
 | `services/whatsapp/whatsappSchedulerCycle.js` | `802ef8b6a22cf4a3a3ff9ce5e5af85e2b34b626664349d18c61e90c257d12ee7` |

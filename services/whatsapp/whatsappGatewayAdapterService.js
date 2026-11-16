@@ -16,32 +16,9 @@ const gerarId = p => `${p}_${Date.now()}_${crypto.randomBytes(3).toString('hex')
 
 function configurarInstanciaGatewayWhatsApp(state, payload = {}) {
   if (!state) throw new Error('Estado da aplicação não informado');
-  const {
-    provedor = 'evolution_api',
-    instanceName = 'patio-crm-oficial',
-    baseUrl = 'http://localhost:8080',
-    apiKey = '',
-    webhookSecret = 'segredo-hmac-patio',
-    maxTentativasRetry = 3,
-    ativo = true,
-    timestamp
-  } = payload;
-
-  state.whatsappGatewayConfig = {
-    provedor,
-    instanceName,
-    baseUrl,
-    apiKey,
-    webhookSecret,
-    maxTentativasRetry: Math.max(1, Number(maxTentativasRetry) || 3),
-    ativo: !!ativo,
-    atualizadoEm: timestamp || new Date().toISOString()
-  };
-
-  return {
-    ...state.whatsappGatewayConfig,
-    apiKeyMascarada: apiKey ? '***' + String(apiKey).slice(-4) : ''
-  };
+  const { provedor = 'evolution_api', instanceName = 'patio-crm-oficial', baseUrl = 'http://localhost:8080', apiKey = '', webhookSecret = 'segredo-hmac-patio', maxTentativasRetry = 3, ativo = true, timestamp } = payload;
+  state.whatsappGatewayConfig = { provedor, instanceName, baseUrl, apiKey, webhookSecret, maxTentativasRetry: Math.max(1, Number(maxTentativasRetry) || 3), ativo: !!ativo, atualizadoEm: timestamp || new Date().toISOString() };
+  return { ...state.whatsappGatewayConfig, apiKeyMascarada: apiKey ? '***' + String(apiKey).slice(-4) : '' };
 }
 
 function validarAssinaturaHmac(secret, rawBody, signatureHeader) {
@@ -60,7 +37,7 @@ function normalizarInboundGateway(rawPayload = {}) {
       telefoneRemetente: metaMsg.from,
       perfilRemetente: 'cliente',
       textoMensagem: metaMsg.text?.body || '',
-      anexoMidia: metaMsg.document || metaMsg.audio || null
+      anexoMidia: metaMsg.document || metaMsg.audio || metaMsg.image || null
     };
   }
 
@@ -71,7 +48,7 @@ function normalizarInboundGateway(rawPayload = {}) {
   if (evoKey.id || evoData.sender) {
     const texto = evoMsg.conversation || evoMsg.extendedTextMessage?.text || evoData.text || '';
     const remetente = (evoKey.remoteJid || evoData.sender || '').replace(/@.*$/, '');
-    const anexo = evoMsg.documentMessage || evoMsg.audioMessage || evoData.media || null;
+    const anexo = evoMsg.documentMessage || evoMsg.audioMessage || evoMsg.imageMessage || evoData.media || null;
     return {
       externalMessageId: evoKey.id || evoData.id || gerarId('msg_ext'),
       telefoneRemetente: remetente,
@@ -122,25 +99,57 @@ function receberWebhookRealGatewayWhatsApp(state, rawPayload, { signatureHeader,
   state.processedWebhookMessageIds.push(inbound.externalMessageId);
   if (state.processedWebhookMessageIds.length > 500) state.processedWebhookMessageIds.shift();
 
-  // Se houver documento/extrato (PDF/OFX/CNAB), aciona conciliação
+  // Detecção de Anexo: Documento/Extrato ou Multimodal (Áudio/Imagem OCR)
   let anexoExtrato = null;
+  let multimodalRes = null;
   if (inbound.anexoMidia) {
     const m = inbound.anexoMidia;
     const isDoc = m.mimetype?.includes('pdf') || m.tipo === 'pdf_texto' || m.tipo === 'ofx_cnab' || /pdf|ofx|cnab/i.test(m.nomeArquivo || m.fileName || '');
-    if (isDoc) anexoExtrato = m;
+    if (isDoc) {
+      anexoExtrato = m;
+    } else if (m.mimetype?.includes('audio') || m.tipo === 'audio_voz' || m.audioMessage) {
+      try {
+        const mm = require('./whatsappMultimodalAudioVisionService');
+        multimodalRes = mm.transcreverAudioEExecutarSkillWhatsApp(state, {
+          audioBase64: m.base64 || m.data,
+          duracaoSegundos: m.seconds || m.duracaoSegundos,
+          textoTranscrito: m.textoTranscrito || inbound.textoMensagem,
+          telefoneRemetente: inbound.telefoneRemetente,
+          perfilRemetente: inbound.perfilRemetente,
+          timestamp
+        });
+      } catch (err) { multimodalRes = { erro: err.message, status: err.status || 500 }; }
+    } else if (m.mimetype?.includes('image') || m.tipo === 'imagem_ocr' || m.imageMessage) {
+      try {
+        const mm = require('./whatsappMultimodalAudioVisionService');
+        multimodalRes = mm.processarImagemOcrWhatsApp(state, {
+          tipoDocumento: m.tipoDocumento || 'comprovante_pagamento_pix',
+          imagemBase64: m.base64 || m.data,
+          textoBrutoOcr: m.textoBrutoOcr || inbound.textoMensagem,
+          dadosExtraidosOcr: m.dadosExtraidosOcr,
+          telefoneRemetente: inbound.telefoneRemetente,
+          perfilRemetente: inbound.perfilRemetente,
+          timestamp
+        });
+      } catch (err) { multimodalRes = { erro: err.message, status: err.status || 500 }; }
+    }
   }
 
   let respostaAgente = null;
   try {
-    const perfil = inbound.perfilRemetente === 'cliente' && anexoExtrato ? 'gerencia' : inbound.perfilRemetente;
-    respostaAgente = processarMensagemAgenteWhatsApp(state, {
-      remetente: inbound.telefoneRemetente,
-      perfilRemetente: perfil,
-      mensagem: inbound.textoMensagem,
-      anexoExtrato,
-      skill: anexoExtrato ? 'SKILL_CONCILIACAO_EXTRATO' : undefined,
-      timestamp: timestamp || new Date().toISOString()
-    });
+    if (multimodalRes) {
+      respostaAgente = multimodalRes.resultadoSkill || multimodalRes;
+    } else {
+      const perfil = inbound.perfilRemetente === 'cliente' && anexoExtrato ? 'gerencia' : inbound.perfilRemetente;
+      respostaAgente = processarMensagemAgenteWhatsApp(state, {
+        remetente: inbound.telefoneRemetente,
+        perfilRemetente: perfil,
+        mensagem: inbound.textoMensagem,
+        anexoExtrato,
+        skill: anexoExtrato ? 'SKILL_CONCILIACAO_EXTRATO' : undefined,
+        timestamp: timestamp || new Date().toISOString()
+      });
+    }
 
     if (respostaAgente && inbound.telefoneRemetente) {
       const textoResp = typeof respostaAgente === 'string'
@@ -162,6 +171,7 @@ function receberWebhookRealGatewayWhatsApp(state, rawPayload, { signatureHeader,
     sucesso: true,
     externalMessageId: inbound.externalMessageId,
     extratoProcessado: !!anexoExtrato,
+    multimodalProcessado: !!multimodalRes,
     respostaAgente
   };
 }

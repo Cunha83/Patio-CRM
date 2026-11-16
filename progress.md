@@ -66,6 +66,17 @@
     - **Monitor de Stack Docker & Blueprint de Produção (`productionDockerStackService.js`):** Geração de Docker Compose v3.8 completo (Pátio-CRM + Evolution API + Ollama com GPU NVIDIA + Postgres + Redis), variáveis `.env.example` protegidas e healthcheck integrado avaliando 4 subsistemas (Core ERP, Evolution Gateway, Ollama NLU e Banco), apurando o `scoreProntidaoInfra` (0-100).
     - **Rotas REST e UI Frontend:** 4 endpoints REST em `routes/whatsapp_nlu_producao.routes.js`, console interativo de testes NLU e monitor visual de containers (`whatsapp_nlu_producao_ui.js` e `actions.js`).
     - **Garantia de Qualidade:** 943+ testes passando (0 falhas), 100% dos arquivos <= 350 linhas e manifesto de release atualizado.
+12. **Fase 11 (Sprint 11.2 - IA Multimodal no Chão de Oficina e Financeiro: Áudio/Voz Whisper ASR & Visão/OCR WhatsApp):**
+    - **Motor Multimodal Central (`whatsappMultimodalAudioVisionService.js`):** Processamento unificado de áudio de voz e visão computacional/OCR, conectado com o Motor NLU Híbrido, Gateway Evolution e serviços de Pátio, Suprimentos e Financeiro.
+    - **Áudio/Voz Whisper ASR Integrado com Guarda RBAC:** Transcrição de mensagens de voz e despacho automático para o catálogo de Skills via NLU, com bloqueio automático (403 `WHATSAPP_UNAUTHORIZED_MANAGEMENT_SKILL`) se clientes comuns tentarem acionar comandos gerenciais/financeiros por voz.
+    - **Visão Computacional e OCR nos 4 Fluxos Críticos:**
+      1. *Comprovante PIX:* Extração de `txid`, valor e liquidação imediata da cobrança e borderô no financeiro.
+      2. *DANFE/NF de Compra:* Leitura de NF com guarda RBAC (403 para não compras/gerência), entrada automática no almoxarifado, recálculo do Custo Médio Ponderado (CMP) e baixa imediata de gargalo de box.
+      3. *Placa e Hodômetro:* Leitura óptica na Portaria disparando triagem 360º de frotas e atualizando telemetria de KM.
+      4. *Peça Condenada no Box:* Registro de evidência técnica com foto, inserção de item pendente na OS, alocação de box e geração de link externo para aprovação jurídica do frotista.
+    - **Inbound Gateway Resiliente (`whatsappGatewayAdapterService.js`):** Gancho enxuto para recepção de mídias de áudio e imagem, mantendo o módulo em 251 linhas (<= 255L).
+    - **Rotas REST e UI Frontend:** 4 endpoints REST em `routes/whatsapp_multimodal_ia.routes.js`, painel com cards de telemetria e consoles de simulação (`whatsapp_multimodal_ia_ui.js` e `actions.js`).
+    - **Garantia de Qualidade:** 952+ testes passando (0 falhas), 100% dos arquivos <= 350 linhas e manifesto de release limpo certificado.
 
 
 
