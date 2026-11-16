@@ -39,6 +39,7 @@ function mountRoutes(app) {
   app.use(require('./whatsapp_cobranca_gateway.routes'));
   app.use(require('./whatsapp_nlu_producao.routes'));
   app.use(require('./whatsapp_multimodal_ia.routes'));
+  app.use(require('./ops_backup_auditoria.routes'));
   app.use(require('./coreLoop.routes'));
   app.use(require('./static.routes'));
 }

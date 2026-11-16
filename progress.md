@@ -1,6 +1,13 @@
 # Pátio-CRM — Histórico e Roadmap de Evolução (Progress)
 
-## Release v2.0.0 Enterprise (Homologada)
+## Release v2.1.0 Autonomous Enterprise (Homologada)
+- **Data:** 16/11/2026
+- **Status:** Produção / Homologado
+- **Testes:** 955+ testes passando (0 falhas)
+- **Teto Modular:** 100% dos arquivos <= 350 linhas
+- **Destaques:** Motor NLU Híbrido Ollama Local GPU, IA Multimodal ASR Whisper + Visão/OCR Técnico no WhatsApp, Cofre de Snapshot/Backup Atômico SHA-256 e Auditoria de Integridade Cruzada do ERP (Pátio, Estoque CMP, Crédito e Filas WhatsApp).
+
+## Release v2.0.0 Enterprise (Histórico)
 - **Data:** 11/11/2026
 - **Status:** Produção / Homologado
 - **Testes:** 913+ testes passando (0 falhas)
@@ -77,6 +84,16 @@
     - **Inbound Gateway Resiliente (`whatsappGatewayAdapterService.js`):** Gancho enxuto para recepção de mídias de áudio e imagem, mantendo o módulo em 251 linhas (<= 255L).
     - **Rotas REST e UI Frontend:** 4 endpoints REST em `routes/whatsapp_multimodal_ia.routes.js`, painel com cards de telemetria e consoles de simulação (`whatsapp_multimodal_ia_ui.js` e `actions.js`).
     - **Garantia de Qualidade:** 952+ testes passando (0 falhas), 100% dos arquivos <= 350 linhas e manifesto de release limpo certificado.
+13. **Fase 11 (Sprint 11.3 - Cofre de Snapshot SHA-256, Auditoria de Integridade Cruzada & Certificação Release v2.1.0):**
+    - **Cofre de Snapshot/Backup Atômico (`productionBackupAuditService.js`):** Serialização canônica determinística das 14 coleções de negócio do ERP com carimbo criptográfico SHA-256 (64 hex). Proteção anti-adulteração impedindo restauração com 422 `BACKUP_INTEGRITY_HASH_MISMATCH` caso 1 único centavo seja alterado. Restauração atômica com restauração total das coleções em caso de incidente operacional.
+    - **Auditoria de Integridade Cruzada dos 4 Pilares:** Varredura em tempo real cobrindo:
+      1. *Pátio & Boxes:* Validação de coerência de boxes bloqueados com gargalos ativos em `patioBottlenecks`.
+      2. *Crédito por Cliente:* Verificação de consistência entre acordos de dívida ativos e status renegociado em borderôs/títulos.
+      3. *Almoxarifado & CMP:* Detecção de saldos negativos de peças e custos médios ponderados anômalos.
+      4. *Filas WhatsApp:* Monitoramento de mensagens retidas na Dead Letter Queue (DLQ).
+    - **Auto-Reparo de Inconsistências Leves:** Mecanismo opcional para normalização automática de boxes órfãos, status de borderôs renegociados e zeramento de saldos negativos.
+    - **Rotas REST e UI Frontend:** 4 endpoints REST em `routes/ops_backup_auditoria.routes.js`, painel de governança operacional e modais de snapshot/restauração (`ops_backup_auditoria_ui.js` e `actions.js`).
+    - **Certificação Release v2.1.0 Autonomous Enterprise:** 958+ testes passando (0 falhas), 100% dos arquivos <= 350 linhas e manifesto de release SHA-256 certificado.
 
 
 

@@ -133,7 +133,7 @@ test('Sprint 10.1 — Certificação Arquitetural e Folga Modular v2.0.0', async
 
   await t.test('4. Metadados e Consistência da Release v2.0.0 Enterprise', () => {
     const pkg = JSON.parse(fs.readFileSync(path.join(rootDir, 'package.json'), 'utf8'));
-    assert.strictEqual(pkg.version, '2.0.0', 'package.json deve registrar versão 2.0.0 da Release Enterprise.');
+    assert.ok(pkg.version === '2.0.0' || pkg.version === '2.1.0', 'package.json deve registrar versão >= 2.0.0 da Release Enterprise.');
 
     const crmRouter = require('../routes/crm_manutencao_oportunidades.routes');
     assert.ok(crmRouter, 'Router de manutenção e oportunidades deve ser exportado.');
