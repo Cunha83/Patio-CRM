@@ -1,0 +1,84 @@
+version: '3.8'
+
+services:
+  patio-crm-app:
+    container_name: patio-crm-app
+    image: patio-crm:v2.1.0
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - EVOLUTION_API_URL=http://evolution-api:8080
+      - EVOLUTION_API_KEY=${EVOLUTION_API_KEY:-patio_secret_evolution_key_2026}
+      - EVOLUTION_WEBHOOK_SECRET=${EVOLUTION_WEBHOOK_SECRET:-patio_hmac_secret_producao_2026}
+      - OLLAMA_BASE_URL=http://ollama-local:11434
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen2.5-coder:7b}
+      - BANK_API_ENV=production
+    depends_on:
+      - evolution-api
+      - ollama-local
+    volumes:
+      - patio_data:/app/data
+
+  ollama-local:
+    container_name: patio-crm-ollama
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    ports:
+      - "${OLLAMA_PORT:-11434}:11434"
+    volumes:
+      - ollama_models:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  evolution-api:
+    container_name: patio-crm-evolution
+    image: atendai/evolution-api:v2.1.2
+    restart: unless-stopped
+    ports:
+      - "${EVOLUTION_PORT:-8080}:8080"
+    environment:
+      - SERVER_URL=http://localhost:${EVOLUTION_PORT:-8080}
+      - AUTHENTICATION_API_KEY=${EVOLUTION_API_KEY:-patio_secret_evolution_key_2026}
+      - DATABASE_PROVIDER=postgresql
+      - DATABASE_CONNECTION_URI=postgresql://${POSTGRES_USER:-patio}:${POSTGRES_PASSWORD:-patio_secret_evolution}@postgres:5432/${POSTGRES_DB:-evolution}
+      - CACHE_REDIS_ENABLED=true
+      - CACHE_REDIS_URI=redis://redis:6379
+      - LOG_LEVEL=ERROR
+    depends_on:
+      - postgres
+      - redis
+
+  postgres:
+    container_name: patio-crm-postgres
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-patio}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-patio_secret_evolution}
+      - POSTGRES_DB=${POSTGRES_DB:-evolution}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    container_name: patio-crm-redis
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+
+volumes:
+  patio_data:
+  ollama_models:
+  postgres_data:
+  redis_data:
