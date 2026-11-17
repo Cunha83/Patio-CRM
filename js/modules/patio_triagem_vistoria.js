@@ -199,8 +199,11 @@ function novaOSFolha(boxId) {
 
     <div style="display:flex;flex-direction:column;gap:12px;font-size:13px">
       <div>
-        <label style="font-weight:600;display:block;margin-bottom:4px">Selecione o Veículo / Placa:</label>
-        <select class="campo-select" data-act="rasc" data-c="vei" style="width:100%;height:36px;font-weight:600">
+        <div class="entre" style="margin-bottom:4px">
+          <label style="font-weight:600">Selecione o Veículo / Placa:</label>
+          <button type="button" class="btn-link" onclick="if(typeof abrirCadastroVeiculoParaOS==='function')abrirCadastroVeiculoParaOS()" style="font-size:11.5px;font-weight:700;color:var(--brand-primary,#0f766e);cursor:pointer">+ Nova Placa</button>
+        </div>
+        <select class="campo-select" data-act="rasc" data-c="vei" onchange="if(this.value==='novo'){if(typeof abrirCadastroVeiculoParaOS==='function')abrirCadastroVeiculoParaOS()}" style="width:100%;height:36px;font-weight:600">
           <option value="">-- Escolha pela placa --</option>
           <option value="sem_placa" ${rasc.vei === 'sem_placa' ? 'selected' : ''}>⚠️ Sem Placa (Cadastrar depois / Entrada Rápida)</option>
           ${veiculos.map(v => {

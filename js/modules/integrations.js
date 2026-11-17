@@ -82,13 +82,15 @@ function consultarPlaca(placa) {
     let mockData = {
       modelo: 'VOLVO FH 460',
       ano: '2021',
-      tipo: 'Cavalo'
+      tipo: 'Cavalo',
+      chassi: '9BWZZZ377VT004281'
     };
     
     if (typeof S !== 'undefined' && S.ui && S.ui.rascCad) {
       S.ui.rascCad.modelo = mockData.modelo;
       S.ui.rascCad.ano = mockData.ano;
       S.ui.rascCad.tipo = mockData.tipo;
+      S.ui.rascCad.chassi = mockData.chassi;
     }
     
     const inputs = document.querySelectorAll('input[data-act="rc"]');
@@ -96,6 +98,7 @@ function consultarPlaca(placa) {
       if (el.dataset.c === 'modelo') el.value = mockData.modelo;
       if (el.dataset.c === 'ano') el.value = mockData.ano;
       if (el.dataset.c === 'tipo') el.value = mockData.tipo;
+      if (el.dataset.c === 'chassi') el.value = mockData.chassi;
     });
     
     torrar('Veículo localizado na base nacional!', 'sucesso');

@@ -29,6 +29,7 @@ function mountRoutes(app) {
   app.use(require('./financeiro_dre_rentabilidade.routes'));
   app.use(require('./crm_preventiva_preditiva.routes'));
   app.use(require('./fiscal_b2b_fechamento.routes'));
+  app.use(require('./fiscal_distribuicao_nfe.routes'));
   app.use(require('./patio_prontuario_laudo.routes'));
   app.use(require('./torre_controle_executiva.routes'));
   app.use(require('./patio_terminal_box_despacho.routes'));

@@ -2,11 +2,14 @@
    PÁTIO CRM — CENTRAL DE AUTOMAÇÕES DA OFICINA
    Gatilhos operacionais para oficina pesada (WhatsApp, alertas de
    gargalos nos boxes, vistorias técnicas e requisição de peças).
+   Arquitetura Modular (< 350 linhas).
 ===================================================================== */
 
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) {
-    module.exports = factory();
+    const exports = factory();
+    module.exports = exports;
+    if (typeof globalThis !== 'undefined') Object.assign(globalThis, exports);
   } else {
     const exports = factory();
     root.AutomationsModal = exports;
@@ -14,12 +17,13 @@
     root.fecharCentroAutomacoes = exports.fecharCentroAutomacoes;
     root.filtrarCategoriaAutomacao = exports.filtrarCategoriaAutomacao;
     root.ativarReceitaAutomacao = exports.ativarReceitaAutomacao;
+    root.alternarGatilhoVistoriaEntrega = exports.alternarGatilhoVistoriaEntrega;
   }
 }(typeof self !== 'undefined' ? self : this, function () {
 
   let categoriaAtiva = 'todas';
 
-  const receitas = [
+  const receitasDefault = [
     {
       id: 'rec-1',
       categoria: 'whatsapp',
@@ -64,6 +68,13 @@
     }
   ];
 
+  function obterReceitas() {
+    if (typeof S !== 'undefined' && S.cfg && Array.isArray(S.cfg.automacoesReceitas)) {
+      return S.cfg.automacoesReceitas;
+    }
+    return receitasDefault;
+  }
+
   function abrirCentroAutomacoes() {
     let modalEl = document.getElementById('monday-automations-modal');
     if (!modalEl) {
@@ -82,6 +93,7 @@
 
   function filtrarCategoriaAutomacao(cat) {
     categoriaAtiva = cat;
+    if (typeof document === 'undefined') return;
     const container = document.getElementById('monday-recipes-container');
     if (container) {
       container.innerHTML = renderRecipeCards();
@@ -93,23 +105,45 @@
     });
   }
 
+  function alternarGatilhoVistoriaEntrega() {
+    let ativa = false;
+    if (typeof S !== 'undefined' && S.cfg) {
+      S.cfg.automacaoVistoriaEntregaAtiva = !S.cfg.automacaoVistoriaEntregaAtiva;
+      ativa = Boolean(S.cfg.automacaoVistoriaEntregaAtiva);
+      if (typeof salvar === 'function') salvar();
+    } else {
+      ativa = true;
+    }
+
+    const toastFn = typeof torrar === 'function' ? torrar : (typeof torrada === 'function' ? torrada : alert);
+    toastFn(ativa ? '⚡ Gatilho de Vistoria de Entrega ativado!' : 'Gatilho de Vistoria de Entrega desativado.', ativa ? 'sucesso' : 'neutro');
+
+    if (typeof document !== 'undefined') {
+      const modalEl = document.getElementById('monday-automations-modal');
+      if (modalEl) modalEl.innerHTML = renderModalHtml();
+    }
+  }
+
   function ativarReceitaAutomacao(id) {
-    const rec = receitas.find(r => r.id === id);
+    const lista = obterReceitas();
+    const rec = lista.find(r => r.id === id);
     if (rec) {
       rec.ativa = !rec.ativa;
-      if (typeof torrada === 'function') {
-        torrada(rec.ativa ? `⚡ Automação ativada: "${rec.titulo}"` : `Automação desativada: "${rec.titulo}"`);
-      } else {
-        alert(rec.ativa ? `⚡ Automação ativada: "${rec.titulo}"` : `Automação desativada: "${rec.titulo}"`);
+      if (typeof S !== 'undefined' && S.cfg) {
+        S.cfg.automacoesReceitas = lista;
+        if (typeof salvar === 'function') salvar();
       }
+      const toastFn = typeof torrar === 'function' ? torrar : (typeof torrada === 'function' ? torrada : alert);
+      toastFn(rec.ativa ? `⚡ Automação ativada: "${rec.titulo}"` : `Automação desativada: "${rec.titulo}"`, rec.ativa ? 'sucesso' : 'neutro');
       filtrarCategoriaAutomacao(categoriaAtiva);
     }
   }
 
   function renderRecipeCards() {
+    const lista = obterReceitas();
     const filtradas = categoriaAtiva === 'todas'
-      ? receitas
-      : receitas.filter(r => r.categoria === categoriaAtiva);
+      ? lista
+      : lista.filter(r => r.categoria === categoriaAtiva);
 
     return filtradas.map(r => `
       <div class="monday-recipe-card">
@@ -133,6 +167,8 @@
   }
 
   function renderModalHtml() {
+    const vistoriaAtiva = Boolean(typeof S !== 'undefined' && S.cfg && S.cfg.automacaoVistoriaEntregaAtiva);
+
     return `
       <div class="monday-modal-backdrop" onclick="if(event.target===this)fecharCentroAutomacoes()">
         <div class="monday-modal-container">
@@ -151,24 +187,19 @@
             <!-- Sidebar de Categorias -->
             <div class="monday-modal-sidebar">
               <button class="monday-cat-btn ${categoriaAtiva === 'todas' ? 'active' : ''}" data-cat="todas" onclick="filtrarCategoriaAutomacao('todas')">
-                <span>📋</span>
-                <span>Todas as Regras</span>
+                <span>📋</span> <span>Todas as Regras</span>
               </button>
               <button class="monday-cat-btn ${categoriaAtiva === 'whatsapp' ? 'active' : ''}" data-cat="whatsapp" onclick="filtrarCategoriaAutomacao('whatsapp')">
-                <span>💬</span>
-                <span>Alertas WhatsApp</span>
+                <span>💬</span> <span>Alertas WhatsApp</span>
               </button>
               <button class="monday-cat-btn ${categoriaAtiva === 'gargalos' ? 'active' : ''}" data-cat="gargalos" onclick="filtrarCategoriaAutomacao('gargalos')">
-                <span>⏱️</span>
-                <span>Prazos & Gargalos</span>
+                <span>⏱️</span> <span>Prazos & Gargalos</span>
               </button>
               <button class="monday-cat-btn ${categoriaAtiva === 'status' ? 'active' : ''}" data-cat="status" onclick="filtrarCategoriaAutomacao('status')">
-                <span>🔄</span>
-                <span>Mudança de Situação</span>
+                <span>🔄</span> <span>Mudança de Situação</span>
               </button>
               <button class="monday-cat-btn ${categoriaAtiva === 'pecas' ? 'active' : ''}" data-cat="pecas" onclick="filtrarCategoriaAutomacao('pecas')">
-                <span>🔩</span>
-                <span>Almoxarifado & Peças</span>
+                <span>🔩</span> <span>Almoxarifado & Peças</span>
               </button>
             </div>
 
@@ -183,8 +214,8 @@
                     <div style="font-size:12.5px;color:#4b5563">Ao aprovar o checklist de freios e molas, gerar laudo e enviar instantaneamente ao WhatsApp do frotista.</div>
                   </div>
                 </div>
-                <button class="monday-btn-new" style="background:#4f46e5;font-size:12px;padding:6px 14px" onclick="if(typeof torrada==='function')torrada('⚡ Regra em destaque ativada!');">
-                  Habilitar
+                <button class="monday-btn-new" style="${vistoriaAtiva ? 'background:#059669;color:#fff;border-color:#047857;' : 'background:#4f46e5;color:#fff;'}font-size:12px;padding:6px 14px;cursor:pointer" onclick="alternarGatilhoVistoriaEntrega()">
+                  ${vistoriaAtiva ? '✓ Ativa no Pátio' : 'Habilitar'}
                 </button>
               </div>
 
@@ -203,9 +234,9 @@
     fecharCentroAutomacoes,
     filtrarCategoriaAutomacao,
     ativarReceitaAutomacao,
+    alternarGatilhoVistoriaEntrega,
     renderRecipeCards,
     renderModalHtml,
-    receitas
+    obterReceitas
   };
 }));
-

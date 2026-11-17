@@ -43,7 +43,8 @@
     finally { busy = false; document.querySelectorAll('button').forEach(b => b.disabled = false); }
   }
   async function act(operation, text = '') {
-    if (!pending || pending.operation !== operation || pending.text !== text || pending.id !== ticket.id) pending = { operation, text, id: ticket.id, version: ticket.version, requestId: crypto.randomUUID() };
+    const reqId = typeof gerarUuidSeguro === 'function' ? gerarUuidSeguro() : (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'id_' + Math.random().toString(36).slice(2));
+    if (!pending || pending.operation !== operation || pending.text !== text || pending.id !== ticket.id) pending = { operation, text, id: ticket.id, version: ticket.version, requestId: reqId };
     try { show(await api(`/tickets/${ticket.id}/${operation}`, pending)); pending = null; }
     catch (e) { if (e.status === 409) { show(await api('/tickets/' + ticket.id)); pending = null; } throw e; }
     await refresh();

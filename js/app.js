@@ -9,27 +9,42 @@
  * - app_onboarding_tour.js: configurações da oficina, tour guiado e gráficos do painel
  */
 
+function navegarPara(v) {
+  if (!v) return;
+  if (!S.ui) S.ui = {};
+  S.ui.view = v;
+  if (typeof fecharFolha === 'function') fecharFolha();
+  const renderFn = (typeof globalThis !== 'undefined' && typeof globalThis.render === 'function')
+    ? globalThis.render
+    : (typeof window !== 'undefined' && typeof window.render === 'function' ? window.render : render);
+  if (typeof renderFn === 'function') renderFn();
+}
+
 function render() {
-  renderNav();
-  const v = S.ui.view || 'patio';
+  if (typeof renderNav === 'function') renderNav();
+  const v = (S && S.ui && S.ui.view) || 'patio';
   let conteudo = '';
 
   if (v === 'operacao') conteudo = typeof viewDashboardOperacional === 'function' ? viewDashboardOperacional() : '<div class="card card-p">Carregando painel operacional...</div>';
-  else if (v === 'patio') conteudo = viewPatio();
-  else if (v === 'painel') conteudo = viewPainelInicial();
-  else if (v === 'estoque') conteudo = viewEstoque();
+  else if (v === 'patio') conteudo = typeof viewPatio === 'function' ? viewPatio() : '';
+  else if (v === 'painel') conteudo = typeof viewPainelInicial === 'function' ? viewPainelInicial() : '';
+  else if (v === 'estoque') conteudo = typeof viewEstoque === 'function' ? viewEstoque() : '';
   else if (v === 'vendas') conteudo = typeof viewVendas === 'function' ? viewVendas() : '<div class="card card-p">Carregando vendas...</div>';
   else if (v === 'compras') conteudo = typeof viewCompras === 'function' ? viewCompras() : '<div class="card card-p">Carregando compras...</div>';
-  else if (v === 'financeiro') conteudo = viewFinanceiro();
+  else if (v === 'financeiro') conteudo = typeof viewFinanceiro === 'function' ? viewFinanceiro() : '';
   else if (v === 'fiscal') conteudo = typeof viewCentralFiscal === 'function' ? viewCentralFiscal() : (typeof viewFiscal === 'function' ? viewFiscal() : '<div class="card card-p">Módulo fiscal</div>');
-  else if (v === 'mensagens') conteudo = viewMensagens();
-  else if (v === 'cadastros') conteudo = viewCadastros();
-  else if (v === 'relatorios') conteudo = viewRelatorios();
-  else if (v === 'configuracoes') conteudo = viewConfiguracoes();
+  else if (v === 'mensagens') conteudo = typeof viewMensagens === 'function' ? viewMensagens() : '';
+  else if (v === 'cadastros') conteudo = typeof viewCadastros === 'function' ? viewCadastros() : '';
+  else if (v === 'relatorios') conteudo = typeof viewRelatorios === 'function' ? viewRelatorios() : '';
+  else if (v === 'configuracoes') conteudo = typeof viewConfiguracoes === 'function' ? viewConfiguracoes() : '';
 
-  const appEl = document.getElementById('app');
-  if (appEl) {
-    appEl.innerHTML = renderTopo() + `<main class="wrap">${renderOnboardingBanner()}${conteudo}</main>`;
+  if (typeof document !== 'undefined') {
+    const appEl = document.getElementById('app');
+    if (appEl) {
+      const topo = typeof renderTopo === 'function' ? renderTopo() : '';
+      const banner = typeof renderOnboardingBanner === 'function' ? renderOnboardingBanner() : '';
+      appEl.innerHTML = topo + `<main class="wrap">${banner}${conteudo}</main>`;
+    }
   }
 
   if (v === 'operacao' && typeof inicializarGraficosOperacionais === 'function') {
@@ -38,7 +53,7 @@ function render() {
   if (v === 'painel' && typeof renderGraficosPainel === 'function') {
     setTimeout(renderGraficosPainel, 100);
   }
-  if (v === 'financeiro' && (!S.ui.abaFin || S.ui.abaFin === 'dashboard')) {
+  if (v === 'financeiro' && (!S.ui.abaFin || S.ui.abaFin === 'dashboard') && typeof renderGraficosFinanceiro === 'function') {
     setTimeout(renderGraficosFinanceiro, 60);
   }
   if (v === 'configuracoes' && typeof popularSelectVozesModal === 'function') {
@@ -172,13 +187,20 @@ async function boot() {
     iniciarPollingSincronizacao(5000);
   }
 }
-boot();
+if (typeof window !== 'undefined') {
+  boot();
+}
 
 // Exportações explícitas para o ecossistema SPA e testes Node VM
 (function (global) {
   'use strict';
+  const funcoesLocais = { boot, render, navegarPara, viewPainelInicial };
+  Object.assign(global, funcoesLocais);
+  if (typeof window !== 'undefined') Object.assign(window, funcoesLocais);
+  if (typeof globalThis !== 'undefined') Object.assign(globalThis, funcoesLocais);
+
   const funcoesApp = [
-    'boot', 'render', 'viewPainelInicial', 'blocoTitulosPainel', 'renderGraficosPainel',
+    'boot', 'render', 'navegarPara', 'viewPainelInicial', 'blocoTitulosPainel', 'renderGraficosPainel',
     'viewConfiguracoes', 'abrirFolha', 'renderFolha', 'fecharFolha', 'abrirModalGenerico', 'fecharModalGenerico'
   ];
   funcoesApp.forEach((nome) => {

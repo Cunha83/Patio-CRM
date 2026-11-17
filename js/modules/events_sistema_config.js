@@ -44,6 +44,37 @@ function debounceSearch(fn, ms = 250) {
   _searchTimer = setTimeout(fn, ms);
 }
 
+function modalConfirmacaoRemoverDemo() {
+  return `
+    <div class="card card-p" style="max-width:480px;margin:0 auto;text-align:center">
+      <div style="font-size:36px;margin-bottom:8px">⚠️</div>
+      <h3 style="font-size:18px;font-weight:800;color:#dc2626;margin:0 0 10px 0">Remover Dados de Demonstração</h3>
+      <p style="font-size:13px;color:var(--aco-700);line-height:1.5;margin:0 0 20px 0">Esta ação irá excluir permanentemente todos os registros simulados (OS, peças e clientes de teste). A oficina ficará zerada pronta para uso real.</p>
+      <div style="display:flex;justify-content:center;gap:12px">
+        <button class="btn btn-secundario" data-act="fechar">Cancelar</button>
+        <button class="btn btn-perigo" onclick="executarLimpezaDadosDemoConfirmada()" style="font-weight:700">Confirmar Exclusão dos Dados de Demonstração</button>
+      </div>
+    </div>`;
+}
+
+function abrirModalConfirmacaoRemoverDemo() {
+  if (typeof abrirFolha === 'function') abrirFolha(modalConfirmacaoRemoverDemo);
+}
+
+function executarLimpezaDadosDemoConfirmada() {
+  torrar('Removendo dados de demonstração...', 'neutro');
+  fetch('/api/onboarding/demo-data', { method: 'DELETE', credentials: 'same-origin' })
+    .then(r => r.json())
+    .then(d => {
+      if (d.sucesso) {
+        if (typeof fecharFolha === 'function') fecharFolha();
+        torrar('Dados de demonstração removidos com sucesso! Oficina zerada.', 'sucesso');
+        setTimeout(() => location.reload(), 600);
+      } else { torrar(d.erro || 'Erro ao remover dados de exemplo.', 'erro'); }
+    })
+    .catch(() => torrar('Erro de comunicação ao remover dados de exemplo.', 'erro'));
+}
+
 function tratarEventosSistemaConfig(a, b, e, o) {
   switch (a) {
     case 'carregar-demo': {
@@ -62,23 +93,9 @@ function tratarEventosSistemaConfig(a, b, e, o) {
       return true;
     }
 
-    case 'remover-demo': {
-      pedirConfirmacao('remover-demo', 'Tem certeza que deseja remover todos os dados de demonstração?', () => {
-        torrar('Removendo dados de demonstração...', 'neutro');
-        fetch('/api/onboarding/demo-data', { method: 'DELETE', credentials: 'same-origin' })
-          .then(r => r.json())
-          .then(d => {
-            if (d.sucesso) {
-              torrar('Dados de demonstração removidos!', 'sucesso');
-              setTimeout(() => location.reload(), 500);
-            } else {
-              torrar(d.erro || 'Erro ao remover dados de exemplo.', 'erro');
-            }
-          })
-          .catch(() => torrar('Erro de comunicação ao remover dados de exemplo.', 'erro'));
-      });
+    case 'remover-demo':
+      abrirModalConfirmacaoRemoverDemo();
       return true;
-    }
 
     case 'concluir-onboarding':
       S.cfg = S.cfg || {};
@@ -310,19 +327,10 @@ function tratarChangeSistemaConfig(a, el, e, o) {
   return false;
 }
 
-if (typeof window !== 'undefined') {
-  window.pedirConfirmacao = pedirConfirmacao;
-  window.copiar = copiar;
-  window.caiuNoTextarea = caiuNoTextarea;
-  window.debounceSearch = debounceSearch;
-  window.tratarEventosSistemaConfig = tratarEventosSistemaConfig;
-  window.tratarChangeSistemaConfig = tratarChangeSistemaConfig;
-}
-if (typeof globalThis !== 'undefined') {
-  globalThis.pedirConfirmacao = pedirConfirmacao;
-  globalThis.copiar = copiar;
-  globalThis.caiuNoTextarea = caiuNoTextarea;
-  globalThis.debounceSearch = debounceSearch;
-  globalThis.tratarEventosSistemaConfig = tratarEventosSistemaConfig;
-  globalThis.tratarChangeSistemaConfig = tratarChangeSistemaConfig;
-}
+const exportsSisCfg = {
+  abrirModalConfirmacaoRemoverDemo, modalConfirmacaoRemoverDemo, executarLimpezaDadosDemoConfirmada,
+  pedirConfirmacao, copiar, caiuNoTextarea, debounceSearch,
+  tratarEventosSistemaConfig, tratarChangeSistemaConfig
+};
+if (typeof window !== 'undefined') Object.assign(window, exportsSisCfg);
+if (typeof globalThis !== 'undefined') Object.assign(globalThis, exportsSisCfg);

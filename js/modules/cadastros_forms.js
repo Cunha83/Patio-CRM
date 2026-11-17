@@ -178,7 +178,7 @@ function folhaCadastro() {
 
   /* ---------- Formulário genérico para demais entidades ---------- */
   const campos = {
-    veiculo: [['placa','Placa'],['modelo','Modelo'],['ano','Ano'],['tipo','Tipo (cavalo, carreta, truck)'],['km','KM atual','number']],
+    veiculo: [['placa','Placa'],['modelo','Modelo'],['ano','Ano'],['chassi','Chassi'],['tipo','Tipo (cavalo, carreta, truck)'],['km','KM atual','number']],
     fornecedor: [['nome','Razão social'],['fantasia','Nome fantasia'],['doc','CNPJ'],['fone','Telefone'],['email','E-mail'],['contato','Pessoa de contato'],['cep','CEP'],['endereco','Endereço'],['cidade','Cidade'],['uf','UF']],
     mecanico: [['nome','Nome do mecânico'],['especialidade','Especialidade (Geral, Freios, Elétrica)'],['fone','Telefone']],
     box: [['nome','Nome do box'],['tipo','Tipo (elevador, vala, solda)']]
@@ -213,6 +213,15 @@ function folhaCadastro() {
     </div>`;
 }
 
-const exportsCadForms = { folhaCliente, folhaCadastro };
+function abrirCadastroVeiculoParaOS() {
+  if (!S.ui) S.ui = {};
+  S.ui.rascunhoOSPreservado = { ...(S.ui.rascunho || {}) };
+  S.ui.cadTipo = 'veiculo';
+  S.ui.rascCad = { tipo: 'Cavalo', placa: '', modelo: '', ano: '', chassi: '', km: '', cli: (S.clientes && S.clientes[0]?.id) || '' };
+  S.ui.veiculoRetornoOS = true;
+  if (typeof abrirFolha === 'function') abrirFolha(folhaCadastro);
+}
+
+const exportsCadForms = { folhaCliente, folhaCadastro, abrirCadastroVeiculoParaOS };
 if (typeof window !== 'undefined') Object.assign(window, exportsCadForms);
 if (typeof globalThis !== 'undefined') Object.assign(globalThis, exportsCadForms);

@@ -19,7 +19,7 @@
   const $ = s => root.querySelector(s);
   const labels = { bot: 'Assistente virtual', waiting_human: 'Aguardando equipe', human: 'Atendimento humano', resolved: 'Encerrado' };
   let ticket = null, busy = false, pending = null, createId = null;
-  const key = () => crypto.randomUUID();
+  const key = () => (typeof gerarUuidSeguro === 'function' ? gerarUuidSeguro() : (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'id_' + Math.random().toString(36).slice(2)));
   // O carregamento do estilo usa a mesma identidade e oficina das chamadas do chat.
   host.hidden = true;
   fetch('/api/support/assets/support.css', { credentials: 'same-origin', headers: typeof obterHeadersRequisicao === 'function' ? obterHeadersRequisicao() : {} })

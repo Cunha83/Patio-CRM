@@ -56,9 +56,9 @@ document.addEventListener('input', e => {
   if (a === 'regra-txt') { const r = (S.zap.regua || []).find(x => x.id === el.dataset.i); if (r) { r.texto = el.value; salvar(); } }
   if (a === 'regra-quando') { const r = (S.zap.regua || []).find(x => x.id === el.dataset.i); if (r) { r.quando = +el.value; salvar(); } }
   if (a === 'campo-os' && o) { o[el.dataset.c] = el.value; salvar(); }
-  if (a === 'desc-os' && o) { o.desc = +el.value || 0; salvar(); renderFolha(); }
-  if (a === 'km-os' && o) { o.km = +el.value || 0; salvar(); }
-  if (a === 'val-item' && o) { const item = (o[el.dataset.t] || []).find(x => x.id === el.dataset.i); if (item) { item.valor = +el.value || 0; salvar(); } }
+  if (a === 'desc-os' && o) { o.desc = Math.max(0, +el.value || 0); salvar(); renderFolha(); }
+  if (a === 'km-os' && o) { o.km = Math.max(0, +el.value || 0); salvar(); }
+  if (a === 'val-item' && o) { const item = (o[el.dataset.t] || []).find(x => x.id === el.dataset.i); if (item) { item.valor = Math.max(0, +el.value || 0); salvar(); } }
   if (a === 'campo-peca') { const p = typeof P === 'function' ? P(S.ui.pecaAberta) : null; if (p) { p[el.dataset.c] = el.dataset.tipo === 'number' ? (+el.value || 0) : el.value; salvar(); } }
 });
 
@@ -84,7 +84,12 @@ document.addEventListener('change', e => {
 
 // 4. ATALHOS GLOBAIS E FECHAMENTO
 document.getElementById('vidro')?.addEventListener('click', fecharFolha);
-document.addEventListener('keydown', e => { if (e.key === 'Escape' && folhaAtual) fecharFolha(); });
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && typeof folhaAtual !== 'undefined' && folhaAtual) fecharFolha();
+  if (e.target && (e.target.type === 'number' || e.target.classList.contains('num')) && (e.key === '-' || e.key === 'Subtract')) {
+    e.preventDefault();
+  }
+});
 
 // 5. EXPORTAÇÕES PÚBLICAS
 (function (global) {

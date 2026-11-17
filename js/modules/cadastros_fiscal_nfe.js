@@ -62,10 +62,11 @@ function viewCentralFiscal() {
     <button class="folder-tab ${subAbaFiscal === 'mdfe' ? 'ativo' : ''}" onclick="S.ui.subAbaFiscal='mdfe';render()">${ico('caminhao', 14)} <span>MDF-E</span></button>
     <button class="folder-tab ${subAbaFiscal === 'eventos' ? 'ativo' : ''}" onclick="S.ui.subAbaFiscal='eventos';render()">${ico('relatorios', 14)} <span>NF EVENTOS (CC-E)</span></button>
     <button class="folder-tab ${subAbaFiscal === 'recebidas' ? 'ativo' : ''}" onclick="S.ui.subAbaFiscal='recebidas';render()">${ico('caixa', 14)} <span>RECEBIDAS (ENTRADA)</span></button>
+    <button class="folder-tab ${subAbaFiscal === 'xml_destinatario' ? 'ativo' : ''}" onclick="S.ui.subAbaFiscal='xml_destinatario';render()">${ico('doc', 14)} <span>XMLS RECEBIDOS (CONTRA CNPJ)</span></button>
     <button class="folder-tab ${subAbaFiscal === 'configuracoes' ? 'ativo' : ''}" onclick="S.ui.subAbaFiscal='configuracoes';render()">${ico('cfg', 14)} <span>CONFIGURAÇÕES SEFAZ</span></button>
   </div>
 
-  ${subAbaFiscal === 'configuracoes' ? (typeof viewFiscal === 'function' ? viewFiscal() : '') : `
+  ${subAbaFiscal === 'configuracoes' ? (typeof viewFiscal === 'function' ? viewFiscal() : '') : subAbaFiscal === 'xml_destinatario' ? (typeof viewFiscalXmlDistribuicao === 'function' ? viewFiscalXmlDistribuicao() : '') : `
     <div class="barra-acoes-lote">
       <div class="barra-acoes-grupo">
         <button class="btn btn-primario" onclick="abrirModalNovaNFe()" style="font-weight:700;display:inline-flex;align-items:center;gap:6px">${ico('mais', 14)} + Nova ${subAbaFiscal.toUpperCase()}</button>
@@ -301,26 +302,10 @@ function viewFiscal() {
   </div>`;
 }
 
-if (typeof window !== 'undefined') {
-  window.viewCentralFiscal = viewCentralFiscal;
-  window.patioFiscalAvailable = true;
-  window.abrirModalNovaNFe = abrirModalNovaNFe;
-  window.transmitirNFe = transmitirNFe;
-  window.acaoFiscal = acaoFiscal;
-  window.acaoFiscalUtilitario = acaoFiscalUtilitario;
-  window.imprimirDanfe = imprimirDanfe;
-  window.enviarNfeWhatsApp = enviarNfeWhatsApp;
-  window.viewFiscal = viewFiscal;
-}
-if (typeof globalThis !== 'undefined') {
-  globalThis.viewCentralFiscal = viewCentralFiscal;
-  globalThis.patioFiscalAvailable = true;
-  globalThis.abrirModalNovaNFe = abrirModalNovaNFe;
-  globalThis.transmitirNFe = transmitirNFe;
-  globalThis.acaoFiscal = acaoFiscal;
-  globalThis.acaoFiscalUtilitario = acaoFiscalUtilitario;
-  globalThis.imprimirDanfe = imprimirDanfe;
-  globalThis.enviarNfeWhatsApp = enviarNfeWhatsApp;
-  globalThis.viewFiscal = viewFiscal;
-}
+const exportsCadFiscalNFe = {
+  viewCentralFiscal, patioFiscalAvailable: true, abrirModalNovaNFe, transmitirNFe,
+  acaoFiscal, acaoFiscalUtilitario, imprimirDanfe, enviarNfeWhatsApp, viewFiscal
+};
+if (typeof window !== 'undefined') Object.assign(window, exportsCadFiscalNFe);
+if (typeof globalThis !== 'undefined') Object.assign(globalThis, exportsCadFiscalNFe);
 

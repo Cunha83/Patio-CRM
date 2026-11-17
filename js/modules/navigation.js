@@ -111,7 +111,7 @@ function renderNav() {
       return `
         <div class="nav-grupo-titulo">${g.titulo}</div>
         ${visiveis.map(item => `
-          <button class="nav-link ${v === item.id ? 'ativo' : ''}" data-act="${item.id === 'fiscal' ? 'fiscal-open' : 'ir'}" data-v="${item.id}">
+          <button class="nav-link ${v === item.id ? 'ativo' : ''}" data-act="ir" data-v="${item.id}">
             ${ico(item.icone, 16)}
             <span>${item.label}</span>
           </button>

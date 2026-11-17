@@ -4,7 +4,7 @@
   const host=document.createElement('div'); host.id='patio-fiscal'; document.body.append(host);
   const root=host.attachShadow({mode:'open'});
   const $=s=>root.querySelector(s);
-  root.innerHTML=`<button class="launcher" hidden>Notas fiscais</button><dialog><header><div><h1>Notas fiscais</h1><p class="sub-ambiente">Módulo Fiscal Habilitado · NF-e & NFS-e</p></div><button class="close" aria-label="Fechar notas fiscais">Fechar</button></header><nav><button data-view="list">Documentos</button><button data-view="new">Novo documento</button><button data-view="config">Emitente e parâmetros</button></nav><p class="notice" role="status" aria-live="polite"></p><main></main></dialog>`;
+  root.innerHTML=`<button class="launcher" hidden>Notas fiscais</button><dialog><header><div><h1>Notas fiscais</h1><p class="sub-ambiente">Módulo Fiscal Habilitado · NF-e & NFS-e</p></div><button class="close" aria-label="Fechar notas fiscais">Fechar</button></header><nav><button data-view="list">Documentos</button><button data-view="new">Novo documento</button><button data-view="config">Emitente e parâmetros</button><button data-view="xml-recebidos">XMLs Recebidos (Contra CNPJ)</button></nav><p class="notice" role="status" aria-live="polite"></p><main></main></dialog>`;
   let selected=null,busy=false,creationKey=null;
   async function request(path,method='GET',data) {
     const headers=typeof obterHeadersRequisicao==='function'?obterHeadersRequisicao({'Content-Type':'application/json'}):{'Content-Type':'application/json'};
@@ -43,7 +43,7 @@
     if(doc.providerPayload){const details=el('details');details.append(el('summary','Composição revisada enviada ao provedor'),el('pre',JSON.stringify(doc.providerPayload,null,2)));main.append(details);}
     main.append(el('small','NFC-e, inutilização, substituição, devolução e contingência não disponíveis nesta versão.'));message(doc.reviewedAt?'Revisão fiscal registrada.':'');
   }
-  function editor(doc=null){creationKey=doc?null:crypto.randomUUID();selected=doc;const main=$('main');main.replaceChildren();main.append(el('h2',doc?'Corrigir documento':'Preparar documento'),el('p','Preencha os códigos e alíquotas validados pelo contador. Campos vazios impedem a revisão; não use zero para representar informação desconhecida.'));
+  function editor(doc=null){creationKey=doc?null:(typeof gerarUuidSeguro==='function'?gerarUuidSeguro():(typeof crypto!=='undefined'&&crypto.randomUUID?crypto.randomUUID():'id_'+Math.random().toString(36).slice(2)));selected=doc;const main=$('main');main.replaceChildren();main.append(el('h2',doc?'Corrigir documento':'Preparar documento'),el('p','Preencha os códigos e alíquotas validados pelo contador. Campos vazios impedem a revisão; não use zero para representar informação desconhecida.'));
     const form=el('form'),model=el('select');model.name='modelo';for(const [v,label] of [['55','NF-e · peças'],['NFS-e','NFS-e · serviços municipais']]){const o=el('option',label);o.value=v;model.append(o);}model.value=doc?.modelo||'55';model.disabled=!!doc;const ml=el('label','Documento');ml.append(model);form.append(ml);
     const dest=el('fieldset');dest.append(el('legend','Destinatário / tomador'));const d=doc?.destinatario||{};
     for(const [name,label] of Object.entries({nome:'Nome / razão social',documento:'CPF / CNPJ',logradouro:'Logradouro',numero:'Número',bairro:'Bairro',municipio:'Município',codigoMunicipio:'Código IBGE',uf:'UF',cep:'CEP',indicadorIE:'Indicador de IE',inscricaoEstadual:'Inscrição estadual'}))field(dest,name,label,d[name]);form.append(dest);
@@ -64,8 +64,46 @@
     const profiles=field(form,'regrasTributarias','Perfis fiscais versionados e validados pelo contador (JSON)',JSON.stringify(c.regrasTributarias,null,2),'textarea');profiles.rows=14;
     button(form,'Salvar configuração fiscal',async()=>{const body=Object.fromEntries([...form.querySelectorAll('input')].map(x=>[x.name,x.value]));body.ambiente=ambSelect.value;body.provider='focus_nfe';body.regrasTributarias=JSON.parse(profiles.value);await request('/config','PUT',body);message('Configuração fiscal salva com sucesso.');});form.onsubmit=e=>e.preventDefault();main.append(form);message('');
   }
+  async function xmlRecebidos(){
+    selected=null;const main=$('main');main.replaceChildren();
+    main.append(el('h2','XMLs Recebidos (Contra CNPJ da Empresa)'),el('p','Distribuição DF-e e Manifestação do Destinatário na SEFAZ.'));
+    const r=await fetch('/api/fiscal/nfe/xml-recebidos',{headers:typeof obterHeadersRequisicao==='function'?obterHeadersRequisicao():{},credentials:'same-origin'}).then(res=>res.json()).catch(()=>({}));
+    const cnpj=r.cnpjAtivo;
+    const bar=el('div');bar.style.cssText='display:flex;align-items:center;justify-content:space-between;background:#e2e8f0;padding:10px 14px;border-radius:8px;margin-bottom:12px';
+    bar.innerHTML=`<div><strong>CNPJ Ativo da Oficina:</strong> <span style="font-family:monospace;font-weight:700;color:${cnpj?'#0f766e':'#dc2626'}">${cnpj||'Não configurado'}</span></div>`;
+    button(bar,'⚡ Sincronizar XMLs na SEFAZ',async()=>{
+      message('Consultando notas emitidas contra o CNPJ na SEFAZ...');
+      const s=await fetch('/api/fiscal/nfe/buscar-xml-destinatario',{method:'POST',headers:typeof obterHeadersRequisicao==='function'?obterHeadersRequisicao({'Content-Type':'application/json'}):{'Content-Type':'application/json'},credentials:'same-origin'}).then(res=>res.json());
+      if(!s.success)throw Error(s.error||'Erro ao consultar SEFAZ.');
+      message(`Sincronização concluída! ${s.novosCapturados} nota(s) capturada(s).`);
+      await xmlRecebidos();
+    });
+    main.append(bar);
+    if(!cnpj){
+      main.append(el('p','⚠️ CNPJ da empresa não configurado na instalação ativa. Acesse a aba "Emitente e parâmetros" para configurar o CNPJ da sua oficina.'));
+      return;
+    }
+    const xmls=r.xmls||[];
+    if(!xmls.length){main.append(el('p','Nenhum XML capturado. Clique em "Sincronizar XMLs na SEFAZ".'));return;}
+    const table=el('table');const header=el('tr');for(const text of ['NF-e / Série','Fornecedor','Chave de Acesso','Emissão','Total','Situação','Ação'])header.append(el('th',text));table.append(header);
+    for(const x of xmls){
+      const tr=el('tr');
+      tr.append(el('td',`#${x.numero} · Série ${x.serie}`),el('td',`${x.fornecedorNome} (${x.fornecedorUf})`),el('td',`${x.chave.slice(0,6)}...${x.chave.slice(-8)}`),el('td',x.emissao||'-'),el('td',money(x.valorTotal)),el('td',x.importado?'✓ Importado':'● Disponível'));
+      const td=el('td');
+      if(x.importado)td.append(el('span','Já no Estoque'));
+      else button(td,'Importar XML para Estoque & Financeiro',async()=>{
+        message(`Importando NF-e nº ${x.numero} com recálculo de CMP e Contas a Pagar...`);
+        const imp=await fetch('/api/fiscal/nfe/importar-xml',{method:'POST',headers:typeof obterHeadersRequisicao==='function'?obterHeadersRequisicao({'Content-Type':'application/json'}):{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({chave:x.chave})}).then(res=>res.json());
+        if(!imp.success)throw Error(imp.error||'Erro ao importar XML.');
+        message(`NF-e nº ${x.numero} importada com sucesso! ${imp.itensImportados} itens atualizados com CMP e Contas a Pagar gerada.`);
+        await xmlRecebidos();
+      });
+      tr.append(td);table.append(tr);
+    }
+    main.append(table);
+  }
   document.addEventListener('click',event=>{if(event.target.closest('[data-act="fiscal-open"]')){$('dialog').showModal();action(list);}});
-  $('.launcher').onclick=()=>{$('dialog').showModal();action(list);};$('.close').onclick=()=>$('dialog').close();root.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>action(()=>b.dataset.view==='list'?list():b.dataset.view==='config'?config():editor()));
+  $('.launcher').onclick=()=>{$('dialog').showModal();action(list);};$('.close').onclick=()=>$('dialog').close();root.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>action(()=>b.dataset.view==='list'?list():b.dataset.view==='config'?config():b.dataset.view==='xml-recebidos'?xmlRecebidos():editor()));
   const style=el('style');style.textContent=`:host{font:14px system-ui;color:#142d40}.launcher{position:fixed;right:20px;top:16px;z-index:9000;background:#173e52;color:white}button{padding:10px 14px;border:1px solid #b6c9d2;border-radius:8px;cursor:pointer;margin:4px;background:#fff;color:#173e52}button:disabled{opacity:.5;cursor:wait}dialog{width:min(1060px,94vw);height:88vh;max-width:94vw;padding:0;border:0;border-radius:14px;background:#f5f8fa;color:#142d40}dialog::backdrop{background:#12273499}header{display:flex;justify-content:space-between;padding:18px 24px;background:#173e52;color:white}h1,h2{margin:0 0 8px}header p{margin:0}nav,main,.notice{padding:12px 24px}.notice{margin:0;color:#713b00;background:#fff3da;white-space:pre-wrap}.notice:empty{display:none}main{padding-bottom:36px}label{display:flex;flex-direction:column;gap:5px;margin:8px 4px;min-width:190px;flex:1}input,select,textarea{font:inherit;padding:10px;border:1px solid #b6c9d2;border-radius:6px;max-width:100%;box-sizing:border-box;background:white}fieldset{display:flex;flex-wrap:wrap;gap:8px;border:1px solid #d1dde3;margin:16px 0;border-radius:8px}legend{font-weight:700}details{width:100%;margin:12px 0}textarea{width:100%;min-height:110px}table{border-collapse:collapse;width:100%;margin-top:16px}td,th{text-align:left;padding:12px;border-bottom:1px solid #d1dde3}pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px}small{display:block;margin-top:20px}@media(max-width:640px){header,main,nav,.notice{padding:12px}.launcher{top:8px;right:8px}label{min-width:130px}td,th{padding:6px}}`;root.prepend(style);
   request('/config').then(()=>{window.patioFiscalAvailable=true;if(typeof renderNav==='function' && typeof S!=='undefined' && S)renderNav();}).catch(()=>host.remove());
 })();

@@ -96,12 +96,24 @@ function tratarEventosCadastros(a, b, e, o) {
       const r = S.ui.rascCad || {}, t = S.ui.cadTipo;
       if (t === 'cliente') {
         if (!r.nome) { torrar('Razão Social / Nome é obrigatório'); return true; }
+        let novoId;
         if (r.id) {
+          novoId = r.id;
           const idx = (S.clientes || []).findIndex(x => x.id === r.id);
           if (idx >= 0) S.clientes[idx] = { ...S.clientes[idx], ...r, scoreSerasa: (r.scoreSerasa !== undefined && r.scoreSerasa !== '' && r.scoreSerasa !== null) ? Number(r.scoreSerasa) : (S.clientes[idx].scoreSerasa ?? null), situacaoSerasa: r.situacaoSerasa ?? S.clientes[idx].situacaoSerasa ?? null, consultaSerasaRealizada: r.consultaSerasaRealizada !== undefined ? Boolean(r.consultaSerasaRealizada) : (S.clientes[idx].consultaSerasaRealizada || false) };
         } else {
+          novoId = uid('cli');
           S.clientes = S.clientes || [];
-          S.clientes.push({ id: uid('cli'), nome: r.nome, fantasia: r.fantasia || '', doc: r.doc || '', fone: r.fone || '', email: r.email || '', contato: r.contato || '', prazo: +r.prazo || 0, ie: r.ie || '', endereco: r.endereco || '', cidade: r.cidade || '', uf: r.uf || '', cep: r.cep || '', optin: true, bloqueado: false, scoreSerasa: (r.scoreSerasa !== undefined && r.scoreSerasa !== '' && r.scoreSerasa !== null) ? Number(r.scoreSerasa) : null, situacaoSerasa: r.situacaoSerasa ?? null, consultaSerasaRealizada: Boolean(r.consultaSerasaRealizada) });
+          S.clientes.push({ id: novoId, nome: r.nome, fantasia: r.fantasia || '', doc: r.doc || '', fone: r.fone || '', email: r.email || '', contato: r.contato || '', prazo: +r.prazo || 0, ie: r.ie || '', endereco: r.endereco || '', cidade: r.cidade || '', uf: r.uf || '', cep: r.cep || '', optin: true, bloqueado: false, scoreSerasa: (r.scoreSerasa !== undefined && r.scoreSerasa !== '' && r.scoreSerasa !== null) ? Number(r.scoreSerasa) : null, situacaoSerasa: r.situacaoSerasa ?? null, consultaSerasaRealizada: Boolean(r.consultaSerasaRealizada) });
+        }
+        if (S.ui.retornoVenda) {
+          S.ui.retornoVenda = false;
+          if (S.ui.rascVenda) S.ui.rascVenda.clienteId = novoId;
+          salvar(); S.ui.rascCad = null;
+          if (typeof folhaNovaVenda === 'function') abrirFolha(folhaNovaVenda);
+          render();
+          torrar('Cliente cadastrado e selecionado na Nova Venda!', 'sucesso');
+          return true;
         }
       }
       if (t === 'fornecedor') {
@@ -173,11 +185,24 @@ function tratarEventosCadastros(a, b, e, o) {
       if (t === 'veiculo') {
         if (!r.placa) { torrar('Falta a placa'); return true; }
         S.veiculos = S.veiculos || [];
+        let novoId;
         if (r.id) {
+          novoId = r.id;
           const idx = S.veiculos.findIndex(x => x.id === r.id);
-          if (idx >= 0) S.veiculos[idx] = { ...S.veiculos[idx], ...r, placa: (r.placa || '').toUpperCase(), km: +r.km || 0 };
+          if (idx >= 0) S.veiculos[idx] = { ...S.veiculos[idx], ...r, placa: (r.placa || '').toUpperCase(), chassi: r.chassi || '', km: +r.km || 0 };
         } else {
-          S.veiculos.push({ id: uid('v'), cli: r.cli || S.clientes[0]?.id, placa: (r.placa || '').toUpperCase(), modelo: r.modelo || '', ano: r.ano || '', km: +r.km || 0, tipo: r.tipo || 'Cavalo' });
+          novoId = uid('v');
+          S.veiculos.push({ id: novoId, cli: r.cli || S.clientes[0]?.id, placa: (r.placa || '').toUpperCase(), modelo: r.modelo || '', ano: r.ano || '', chassi: r.chassi || '', km: +r.km || 0, tipo: r.tipo || 'Cavalo' });
+        }
+        if (S.ui.veiculoRetornoOS) {
+          S.ui.veiculoRetornoOS = false;
+          S.ui.rascunho = S.ui.rascunhoOSPreservado || {};
+          S.ui.rascunho.vei = novoId;
+          salvar(); S.ui.rascCad = null;
+          if (typeof folhaNovaOS === 'function') abrirFolha(folhaNovaOS);
+          render();
+          torrar('Veículo cadastrado e vinculado à nova OS!', 'sucesso');
+          return true;
         }
       }
       salvar(); S.ui.rascCad = null; fecharFolha(); render();
