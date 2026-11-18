@@ -200,13 +200,90 @@ async function gerarEVisualizarBriefing() {
 }
 
 
+function abrirModalNovaContaCaixa() {
+  const modalHtml = () => `
+    <div class="card card-p" style="max-width:480px;margin:0 auto">
+      <div class="entre" style="border-bottom:1px solid var(--aco-150);padding-bottom:10px;margin-bottom:14px">
+        <h3 style="font-size:17px;font-weight:700;margin:0">Cadastrar Nova Conta Caixa / Banco</h3>
+        <button class="btn-fechar" data-act="fechar">${ico('x', 18)}</button>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px;font-size:13px">
+        <div>
+          <label style="font-weight:600;display:block;margin-bottom:4px">Nome da Conta / Banco:</label>
+          <input type="text" id="nova_conta_nome" class="campo-texto" placeholder="Ex: Banco Santander / Caixa Gaveta" style="width:100%;height:34px">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div>
+            <label style="font-weight:600;display:block;margin-bottom:4px">Tipo de Conta:</label>
+            <select id="nova_conta_tipo" class="campo-texto" style="width:100%;height:34px">
+              <option value="banco">Conta Corrente / Bancária</option>
+              <option value="caixa">Caixa Físico / Gaveta</option>
+              <option value="poupanca">Poupança / Aplicação</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-weight:600;display:block;margin-bottom:4px">Saldo Inicial (R$):</label>
+            <input type="number" id="nova_conta_saldo" class="campo-texto" placeholder="0.00" step="0.50" style="width:100%;height:34px">
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div>
+            <label style="font-weight:600;display:block;margin-bottom:4px">Agência (se banco):</label>
+            <input type="text" id="nova_conta_ag" class="campo-texto" placeholder="Ex: 1234" style="width:100%;height:34px">
+          </div>
+          <div>
+            <label style="font-weight:600;display:block;margin-bottom:4px">Número da Conta:</label>
+            <input type="text" id="nova_conta_cc" class="campo-texto" placeholder="Ex: 56789-0" style="width:100%;height:34px">
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px;border-top:1px solid var(--aco-150);padding-top:12px">
+        <button class="btn btn-secundario" data-act="fechar">Cancelar</button>
+        <button class="btn btn-primario" data-act="salvar-conta-caixa" onclick="salvarNovaContaCaixa()">Salvar Conta</button>
+      </div>
+    </div>`;
+  if (typeof abrirFolha === 'function') abrirFolha(modalHtml);
+}
+
+function salvarNovaContaCaixa() {
+  const nome = (document.getElementById('nova_conta_nome')?.value || '').trim();
+  if (!nome) {
+    if (typeof torrar === 'function') torrar('Informe o nome da conta caixa.', 'alerta');
+    return;
+  }
+  const tipo = document.getElementById('nova_conta_tipo')?.value || 'banco';
+  const saldo = Number(document.getElementById('nova_conta_saldo')?.value || 0);
+  const ag = (document.getElementById('nova_conta_ag')?.value || '').trim() || '—';
+  const cc = (document.getElementById('nova_conta_cc')?.value || '').trim() || (tipo === 'banco' ? 'C/C' : 'Dinheiro');
+
+  S.contasCaixa = S.contasCaixa || [];
+  S.contasCaixa.push({
+    id: (typeof uid === 'function' ? uid('cx') : 'cx_' + Date.now()),
+    tipo,
+    nome,
+    subtitulo: tipo === 'banco' ? 'Conta Bancária' : 'Caixa Operacional',
+    ag,
+    cc,
+    saldo
+  });
+
+  if (typeof salvarLocal === 'function') salvarLocal();
+  if (typeof fecharFolha === 'function') fecharFolha();
+  if (typeof render === 'function') render();
+  if (typeof torrar === 'function') torrar(`Conta "${nome}" cadastrada com sucesso!`, 'sucesso');
+}
+
 if (typeof window !== 'undefined') {
   window.salvarConfigAssistenteModal = salvarConfigAssistenteModal;
   window.testarAlertasProativosModal = testarAlertasProativosModal;
   window.gerarEVisualizarBriefing = gerarEVisualizarBriefing;
+  window.abrirModalNovaContaCaixa = abrirModalNovaContaCaixa;
+  window.salvarNovaContaCaixa = salvarNovaContaCaixa;
 }
 if (typeof globalThis !== 'undefined') {
   globalThis.salvarConfigAssistenteModal = salvarConfigAssistenteModal;
   globalThis.testarAlertasProativosModal = testarAlertasProativosModal;
   globalThis.gerarEVisualizarBriefing = gerarEVisualizarBriefing;
+  globalThis.abrirModalNovaContaCaixa = abrirModalNovaContaCaixa;
+  globalThis.salvarNovaContaCaixa = salvarNovaContaCaixa;
 }

@@ -88,7 +88,11 @@ function renderAbaGeral() {
             <label style="font-size:12px;font-weight:700;color:#334155;display:block;margin-bottom:4px">E-mail Comercial:</label>
             <input type="text" id="cfg_email" class="campo-texto" value="${esc(cfg.email || 'contato@automolasfort.com.br')}" style="width:100%;height:36px;font-size:13px">
           </div>
-          <div style="grid-column:span 2">
+          <div>
+            <label style="font-size:12px;font-weight:700;color:#334155;display:block;margin-bottom:4px">Markup Padrão da Empresa (% Margem):</label>
+            <input type="number" id="cfg_markup_padrao" class="campo-texto" value="${cfg.markupPadrao !== undefined ? cfg.markupPadrao : (cfg.empresa?.markupPadrao || 40)}" min="0" step="5" style="width:100%;height:36px;font-size:13px;font-weight:700" title="Margem sugerida para preço de venda sobre o custo de reposição">
+          </div>
+          <div>
             <label style="font-size:12px;font-weight:700;color:#334155;display:block;margin-bottom:4px">Endereço Completo (Pátio / Oficina):</label>
             <input type="text" id="cfg_endereco" class="campo-texto" value="${esc(cfg.endereco || 'Rodovia BR-116, Km 14, Nº 4500 - Distrito Industrial')}" style="width:100%;height:36px;font-size:13px">
           </div>
@@ -175,6 +179,15 @@ function renderAbaPlanoContas() {
 
 function renderAbaContasCaixa() {
   const cfg = S.cfg || {};
+  if (!S.contasCaixa || !S.contasCaixa.length) {
+    S.contasCaixa = [
+      { id: 'cx_1', tipo: 'banco', nome: 'Banco Bradesco S.A.', subtitulo: 'Conta Principal', ag: '2341', cc: '98765-4', saldo: 84190.00 },
+      { id: 'cx_2', tipo: 'banco', nome: 'Banco Itaú Unibanco', subtitulo: 'Conta Secundária', ag: '0450', cc: '33412-1', saldo: 42600.00 },
+      { id: 'cx_3', tipo: 'caixa', nome: 'Caixa Físico do Pátio', subtitulo: 'Caixa Balcão', ag: '—', cc: 'Dinheiro', saldo: 4250.00 }
+    ];
+  }
+  const contas = S.contasCaixa;
+
   return `
     <div class="card" style="padding:20px;border:1px solid #cbd5e1;background:#ffffff;border-radius:10px">
       <div class="entre" style="margin-bottom:14px">
@@ -182,30 +195,18 @@ function renderAbaContasCaixa() {
           <h3 style="margin:0 0 4px 0;font-size:16px;font-weight:700;color:#0f172a">🏦 Contas Bancárias & Caixas Físicos</h3>
           <div style="font-size:12.5px;color:#64748b">Contas ativas para conciliação bancária, Pix e depósitos</div>
         </div>
-        <button class="btn btn-primario" onclick="torrar('Abrindo modal de conta bancária...','neutro')">+ Nova Conta</button>
+        <button class="btn btn-primario" data-act="nova-conta-caixa" onclick="abrirModalNovaContaCaixa()">+ Nova Conta Caixa</button>
       </div>
 
       <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));gap:14px">
-        <div style="background:#f8fafc;padding:16px;border-radius:8px;border:1px solid #e2e8f0">
-          <div style="font-size:11px;font-weight:800;color:#2563eb;text-transform:uppercase">Conta Principal</div>
-          <div style="font-size:16px;font-weight:800;color:#0f172a;margin:4px 0">Banco Bradesco S.A.</div>
-          <div style="font-size:12px;color:#64748b">Ag: 2341 · CC: 98765-4</div>
-          <div style="font-size:18px;font-weight:800;color:#10b981;margin-top:10px">R$ 84.190,00</div>
-        </div>
-
-        <div style="background:#f8fafc;padding:16px;border-radius:8px;border:1px solid #e2e8f0">
-          <div style="font-size:11px;font-weight:800;color:#f59e0b;text-transform:uppercase">Conta Secundária</div>
-          <div style="font-size:16px;font-weight:800;color:#0f172a;margin:4px 0">Banco Itaú Unibanco</div>
-          <div style="font-size:12px;color:#64748b">Ag: 0450 · CC: 33412-1</div>
-          <div style="font-size:18px;font-weight:800;color:#10b981;margin-top:10px">R$ 42.600,00</div>
-        </div>
-
-        <div style="background:#f8fafc;padding:16px;border-radius:8px;border:1px solid #e2e8f0">
-          <div style="font-size:11px;font-weight:800;color:#64748b;text-transform:uppercase">Caixa Balcão</div>
-          <div style="font-size:16px;font-weight:800;color:#0f172a;margin:4px 0">Caixa Físico do Pátio</div>
-          <div style="font-size:12px;color:#64748b">Dinheiro em cofre operacional</div>
-          <div style="font-size:18px;font-weight:800;color:#10b981;margin-top:10px">R$ 4.250,00</div>
-        </div>
+        ${contas.map(c => `
+          <div style="background:#f8fafc;padding:16px;border-radius:8px;border:1px solid #e2e8f0">
+            <div style="font-size:11px;font-weight:800;color:${c.tipo === 'banco' ? '#2563eb' : '#64748b'};text-transform:uppercase">${esc(c.subtitulo || (c.tipo === 'banco' ? 'Conta Bancária' : 'Caixa Físico'))}</div>
+            <div style="font-size:16px;font-weight:800;color:#0f172a;margin:4px 0">${esc(c.nome)}</div>
+            <div style="font-size:12px;color:#64748b">${c.ag && c.ag !== '—' ? 'Ag: ' + esc(c.ag) + ' · ' : ''}${esc(c.cc || '')}</div>
+            <div style="font-size:18px;font-weight:800;color:#10b981;margin-top:10px">${typeof brl === 'function' ? brl(c.saldo || 0) : 'R$ ' + Number(c.saldo || 0).toFixed(2)}</div>
+          </div>
+        `).join('')}
       </div>
     </div>`;
 }

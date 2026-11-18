@@ -160,14 +160,14 @@
       </div>
 
       <div style="display:flex;gap:8px">
-        <button class="btn btn-secundario" onclick="folhaXML()" style="gap:6px;display:flex;align-items:center;font-size:12.5px">
-          ${ico('upload', 14)} 📄 Importar NF-e (XML)
+        <button class="btn btn-secundario" data-act="importar-xml" onclick="abrirFolha(folhaXML)" style="gap:6px;display:flex;align-items:center;font-size:12.5px" title="Lançar Nota de Entrada via XML">
+          ${ico('upload', 14)} + Nova Nota de Entrada
         </button>
-        <button class="btn btn-secundario" onclick="folhaSimulacaoOCR()" style="gap:6px;display:flex;align-items:center;font-size:12.5px">
+        <button class="btn btn-secundario" data-act="ocr-entrada" onclick="abrirFolha(folhaSimulacaoOCR)" style="gap:6px;display:flex;align-items:center;font-size:12.5px" title="Leitor OCR Danfe">
           ${ico('qr', 14)} 📷 Leitor OCR Danfe
         </button>
-        <button class="btn btn-primario" onclick="folhaNovaPeca()" style="gap:6px;display:flex;align-items:center;font-size:12.5px">
-          ${ico('mais', 14)} + Cadastrar Peça
+        <button class="btn btn-primario" data-act="nova-peca" onclick="S.ui.rascPeca=null;abrirFolha(folhaNovaPeca)" style="gap:6px;display:flex;align-items:center;font-size:12.5px" title="Cadastrar nova peça no estoque">
+          ${ico('mais', 14)} + Novo Item / Peça
         </button>
       </div>
     </div>

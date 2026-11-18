@@ -80,8 +80,8 @@ function viewCompras() {
     <div class="barra-acoes-grupo">
       <input type="file" id="xml-compra-input" accept=".xml,text/xml" style="display:none" onchange="processarXMLCompra(this.files[0])">
       
-      <button class="btn btn-primario" onclick="abrirModalNovaCompra()" style="font-weight:700;display:inline-flex;align-items:center;gap:6px">
-        ${ico('mais', 14)} + Nova Compra
+      <button class="btn btn-primario" data-act="nova-compra" onclick="abrirModalNovaCompra()" style="font-weight:700;display:inline-flex;align-items:center;gap:6px">
+        ${ico('mais', 14)} + Nova Nota de Entrada
       </button>
       <button class="btn btn-neutro" onclick="document.getElementById('xml-compra-input').click()" style="font-weight:600;display:inline-flex;align-items:center;gap:6px" title="Importar XML SEFAZ da NF-e do Fornecedor">
         ${ico('upload', 14)} Carregar XML (NF-e)

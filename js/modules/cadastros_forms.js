@@ -87,6 +87,7 @@ function folhaCadastro() {
               <input type="text" class="campo-texto" placeholder="00.000.000/0000-00" data-act="rc" data-c="doc" value="${esc(r.doc || '')}" style="width:100%;height:34px" id="doc_cli" oninput="if(this.value && this.value.replace(/\D/g,'').length===14 && typeof verificarAutoConsultaCnpj==='function')verificarAutoConsultaCnpj(this.value)" onchange="if(this.value && this.value.replace(/\D/g,'').length >= 11 && typeof abrirModalConsultaCliente==='function') abrirModalConsultaCliente(this.value)">
               <button type="button" class="btn btn-primario" onclick="if(typeof abrirModalConsultaCliente==='function')abrirModalConsultaCliente(document.getElementById('doc_cli').value)" style="padding:0 10px;font-size:12px;font-weight:600;white-space:nowrap" title="Consultar dados via API (Sintegra & Serasa)" id="btn_consultar_cli">🔍 Consultar</button>
             </div>
+            <div id="banner_consulta_cliente" style="display:none;margin-top:4px;padding:6px 10px;border-radius:6px;font-size:11px;line-height:1.4"></div>
           </div>
         </div>
 

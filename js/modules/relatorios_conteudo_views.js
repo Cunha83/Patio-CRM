@@ -8,7 +8,11 @@ function renderConteudoRelatorio(id) {
   let conteudoTabela = '';
   let kpisHtml = '';
 
-  if (rel.id === 'vendas_produtos') {
+  const relPatio = typeof renderRelatorioPatio === 'function' ? renderRelatorioPatio(rel.id) : null;
+  if (relPatio) {
+    kpisHtml = relPatio.kpisHtml;
+    conteudoTabela = relPatio.conteudoTabela;
+  } else if (rel.id === 'vendas_produtos') {
     kpisHtml = `
       <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));gap:12px;margin-bottom:16px">
         <div style="background:#f8fafc;padding:12px;border-radius:8px;border:1px solid #e2e8f0">

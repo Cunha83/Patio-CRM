@@ -70,14 +70,19 @@ function folhaNovaCompra() {
           <thead>
             <tr>
               <th>Peça / Produto</th>
-              <th style="width:90px;text-align:center">Qtd</th>
-              <th style="width:120px;text-align:right">Custo Unit.</th>
-              <th style="width:120px;text-align:right">Subtotal</th>
-              <th style="width:50px;text-align:center"></th>
+              <th style="width:75px;text-align:center">Qtd</th>
+              <th style="width:105px;text-align:right">Custo Unit.</th>
+              <th style="width:85px;text-align:center">Markup %</th>
+              <th style="width:105px;text-align:right">Venda Sug.</th>
+              <th style="width:105px;text-align:right">Subtotal</th>
+              <th style="width:36px"></th>
             </tr>
           </thead>
           <tbody>
-            ${r.itens.map((it, idx) => `
+            ${r.itens.map((it, idx) => {
+              const mk = it.markup !== undefined ? it.markup : (S.cfg?.empresa?.markupPadrao || S.cfg?.markupPadrao || 40);
+              const vSug = (it.custo || 0) * (1 + mk / 100);
+              return `
               <tr>
                 <td>
                   <select class="campo-texto" onchange="S.ui.rascCompra.itens[${idx}].pecaId=this.value;atualizarItemRascCompra(${idx});renderFolha()" style="width:100%;height:32px;font-size:12px">
@@ -86,19 +91,23 @@ function folhaNovaCompra() {
                   </select>
                 </td>
                 <td style="text-align:center">
-                  <input type="number" class="campo-texto" value="${it.qtd || 1}" min="1" step="1" oninput="S.ui.rascCompra.itens[${idx}].qtd=+this.value||1;renderFolha()" style="width:70px;height:32px;text-align:center">
+                  <input type="number" class="campo-texto" value="${it.qtd || 1}" min="1" step="1" oninput="S.ui.rascCompra.itens[${idx}].qtd=+this.value||1;renderFolha()" style="width:65px;height:32px;text-align:center">
                 </td>
                 <td style="text-align:right">
-                  <input type="number" class="campo-texto" value="${it.custo || 0}" step="0.01" oninput="S.ui.rascCompra.itens[${idx}].custo=+this.value||0;renderFolha()" style="width:100px;height:32px;text-align:right">
+                  <input type="number" class="campo-texto" value="${it.custo || 0}" step="0.01" oninput="S.ui.rascCompra.itens[${idx}].custo=+this.value||0;renderFolha()" style="width:95px;height:32px;text-align:right">
                 </td>
+                <td style="text-align:center">
+                  <input type="number" class="campo-texto" value="${mk}" min="0" step="5" oninput="S.ui.rascCompra.itens[${idx}].markup=+this.value||0;renderFolha()" style="width:70px;height:32px;text-align:center;font-weight:700">
+                </td>
+                <td style="text-align:right;color:#059669;font-weight:700" class="num">${brl(vSug)}</td>
                 <td style="text-align:right;font-weight:700" class="num">
                   ${brl((it.qtd || 1) * (it.custo || 0))}
                 </td>
                 <td style="text-align:center">
                   <button class="btn-icone-perigo" onclick="S.ui.rascCompra.itens.splice(${idx}, 1);renderFolha()">${ico('lixo', 14)}</button>
                 </td>
-              </tr>
-            `).join('')}
+              </tr>`;
+            }).join('')}
           </tbody>
         </table>
       `}
@@ -157,13 +166,17 @@ function salvarNovaCompraConfirmada() {
   const forn = (S.fornecedores || []).find(f => f.id === r.fornecedorId) || {};
   const total = r.itens.reduce((acc, it) => acc + (it.qtd * it.custo), 0);
 
-  // 1. Atualiza estoque de cada item
+  // 1. Atualiza estoque de cada item e preço sugerido de venda com markup
   S.pecas = S.pecas || [];
   r.itens.forEach(it => {
     const p = S.pecas.find(x => x.id === it.pecaId);
     if (p) {
       p.qtd = (Number(p.qtd) || 0) + (Number(it.qtd) || 0);
       if (it.custo > 0) p.custo = it.custo;
+      const mk = Number(it.markup !== undefined ? it.markup : (S.cfg?.empresa?.markupPadrao || S.cfg?.markupPadrao || 40));
+      if (it.custo > 0 && mk > 0) {
+        p.venda = Math.round(it.custo * (1 + mk / 100) * 100) / 100;
+      }
     }
   });
 

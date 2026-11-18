@@ -103,6 +103,14 @@ function salvarConfigGeralForm() {
   S.cfg.email = document.getElementById('cfg_email')?.value || S.cfg.email;
   S.cfg.chavePix = document.getElementById('cfg_chave_pix')?.value || S.cfg.chavePix;
 
+  const mkEl = document.getElementById('cfg_markup_padrao');
+  if (mkEl) {
+    const mkVal = Math.max(0, +mkEl.value || 0);
+    S.cfg.markupPadrao = mkVal;
+    if (typeof S.cfg.empresa === 'object') S.cfg.empresa.markupPadrao = mkVal;
+    if (S.empresa) S.empresa.markupPadrao = mkVal;
+  }
+
   salvarLocal();
   torrar('Configurações gerais salvas com sucesso!', 'sucesso');
 }

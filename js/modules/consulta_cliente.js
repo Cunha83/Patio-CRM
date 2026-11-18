@@ -86,6 +86,19 @@ async function confirmarConsultaCliente(incluirSerasa) {
 }
 
 async function executarConsultaCliente(doc, incluirSerasa) {
+  const btnConsultar = document.getElementById('btn_consultar_cli');
+  const bannerConsulta = document.getElementById('banner_consulta_cliente');
+  const btnOriginalText = btnConsultar ? btnConsultar.innerHTML : '🔍 Consultar';
+
+  if (btnConsultar) {
+    btnConsultar.disabled = true;
+    btnConsultar.innerHTML = '⏳ Consultando...';
+  }
+  if (bannerConsulta) {
+    bannerConsulta.style.display = 'none';
+    bannerConsulta.textContent = '';
+  }
+
   if (typeof torrar === 'function') {
     torrar(incluirSerasa ? 'Consultando Sintegra + SERASA...' : 'Consultando Sintegra...', 'neutro');
   }
@@ -113,6 +126,14 @@ async function executarConsultaCliente(doc, incluirSerasa) {
 
     const body = await res.json();
     if (!res.ok || !body.success) {
+      const msgErro = 'Chave de API Sintegra/Serasa não configurada em Configurações > Integrações, ou falha na consulta pública. Preencha manualmente ou configure o token.';
+      if (bannerConsulta) {
+        bannerConsulta.style.display = 'block';
+        bannerConsulta.style.background = 'rgba(239, 68, 68, 0.12)';
+        bannerConsulta.style.border = '1px solid rgba(239, 68, 68, 0.3)';
+        bannerConsulta.style.color = '#dc2626';
+        bannerConsulta.innerHTML = `⚠️ <b>Aviso:</b> ${msgErro}`;
+      }
       if (body.disponivel === false || body.codigo === 'INTEGRACAO_NAO_CONFIGURADA') {
         if (tagEl) {
           tagEl.textContent = 'Consulta externa não configurada';
@@ -122,12 +143,12 @@ async function executarConsultaCliente(doc, incluirSerasa) {
         const inpStatus = document.getElementById('consulta_serasa_status');
         if (inpStatus) inpStatus.value = 'Não configurado (Manual)';
         if (typeof torrar === 'function') {
-          torrar(body.mensagem || 'Consulta externa indisponível. Campos liberados para preenchimento manual.', 'alerta');
+          torrar(body.mensagem || msgErro, 'alerta');
         }
         return;
       }
       if (typeof torrar === 'function') {
-        torrar(body.error || body.erro || 'Não foi possível consultar os dados externos. Preencha manualmente.', 'erro');
+        torrar(body.error || body.erro || msgErro, 'erro');
       }
       return;
     }
@@ -213,8 +234,21 @@ async function executarConsultaCliente(doc, incluirSerasa) {
     }
   } catch (err) {
     console.error('Erro ao executar consulta cliente:', err);
+    const msgErro = 'Chave de API Sintegra/Serasa não configurada em Configurações > Integrações, ou falha na consulta pública. Preencha manualmente ou configure o token.';
+    if (bannerConsulta) {
+      bannerConsulta.style.display = 'block';
+      bannerConsulta.style.background = 'rgba(239, 68, 68, 0.12)';
+      bannerConsulta.style.border = '1px solid rgba(239, 68, 68, 0.3)';
+      bannerConsulta.style.color = '#dc2626';
+      bannerConsulta.innerHTML = `⚠️ <b>Aviso:</b> ${msgErro}`;
+    }
     if (typeof torrar === 'function') {
       torrar('Erro ao conectar com serviço de consulta.', 'erro');
+    }
+  } finally {
+    if (btnConsultar) {
+      btnConsultar.disabled = false;
+      btnConsultar.innerHTML = btnOriginalText;
     }
   }
 }

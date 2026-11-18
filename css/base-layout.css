@@ -2,11 +2,11 @@
    PÁTIO CRM — ESTRUTURA BASE, SIDEBAR, HEADER, CARDS & KPIS
 ===================================================================== */
 
-/* ---------- Barra Lateral de Navegação (Sidebar Escura Metálica #0b1120) ---------- */
-.nav {
+/* ---------- Barra Lateral de Navegação (Sidebar High-Contrast Industrial Tech) ---------- */
+.nav, #nav {
   position: fixed; top: 0; bottom: 0; left: 0; width: 240px; z-index: 45;
-  background: linear-gradient(180deg, #0b1120 0%, #111827 100%);
-  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(180deg, #070B14 0%, #0F172A 55%, #111827 100%);
+  border-right: 1px solid rgba(59, 130, 246, 0.18);
   display: flex; flex-direction: column; padding: 18px 12px 14px;
 }
 
@@ -25,16 +25,24 @@
 .nav-link {
   display: flex; align-items: center; gap: 12px; padding: 9px 12px;
   color: #cbd5e1; font-size: 13.5px; font-weight: 600; border-radius: 6px;
-  transition: all 0.15s ease; width: 100%; text-align: left;
+  transition: all 180ms cubic-bezier(0.4, 0, 0.2, 1); width: 100%; text-align: left;
   border-left: 4px solid transparent;
 }
-.nav-link:hover { background: rgba(255, 255, 255, 0.07); color: #fff; }
-.nav-link.ativo {
-  background: linear-gradient(90deg, rgba(37, 99, 235, 0.22) 0%, rgba(37, 99, 235, 0.05) 100%);
+.nav-link:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  transform: translateX(4px);
+}
+.nav-link.ativo, .nav-link.active {
+  background: linear-gradient(90deg, rgba(37, 99, 235, 0.28) 0%, rgba(37, 99, 235, 0.05) 100%);
   color: #ffffff;
-  border-left: 4px solid #2563eb;
+  border-left: 4px solid #3B82F6;
   font-weight: 700;
-  box-shadow: 0 0 12px rgba(37, 99, 235, 0.35);
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.6);
+}
+.nav-link.ativo svg, .nav-link.active svg {
+  flex: none;
+  filter: drop-shadow(0 0 6px rgba(59, 130, 246, 0.8));
 }
 .nav-link svg { flex: none; }
 
@@ -108,12 +116,12 @@
 
 /* ---------- Navegação Agrupada & Perfis de Usuário ---------- */
 .nav-grupo-titulo {
-  font-size: 9.5px;
+  font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.6px;
-  color: var(--aco-400);
-  padding: 10px 14px 4px;
+  letter-spacing: 0.08em;
+  color: #64748b;
+  padding: 12px 12px 4px;
 }
 .onboarding-banner {
   background: linear-gradient(135deg, #0f172a, #1e293b);

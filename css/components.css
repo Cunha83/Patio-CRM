@@ -201,10 +201,61 @@
 }
 .torrada.on { opacity: 1; transform: translateX(-50%) translateY(0); }
 
-/* ---------- Impressão / Print Media ---------- */
+/* ---------- Impressão / Print Media Isolado (A4 Limpo & Zero Distrações) ---------- */
 @media print {
-  body { padding: 0 !important; background: #fff !important; color: #000 !important; }
-  .topo, .nav, .vidro, .folha, .torrada, .btn, .chip, .abas, .btn-voz-flutuante, .gaveta-voz { display: none !important; }
-  .wrap { max-width: 100% !important; padding: 0 !important; }
+  @page {
+    size: A4 portrait;
+    margin: 10mm;
+  }
+  body {
+    padding: 0 !important;
+    margin: 0 !important;
+    background: #fff !important;
+    color: #000 !important;
+  }
+  #nav, .nav, .nav-lateral,
+  #topbar, .topo, .topo-desktop, .topbar-enterprise, .sub-header-contextual,
+  .vidro, .torrada, .btn, .btn-chip, .btn-primario, .btn-secundario, .btn-neutro,
+  .btn-fechar, .btn-icone-perigo, .btn-voz-flutuante, .gaveta-voz,
+  .suporte-widget, #suporte-widget-container,
+  .dropdown-novo-wrap, .user-dropdown-wrap, .period-navigator, .folder-tabs,
+  .barra-acoes-lote, .card-acoes, .chat-drawer-container,
+  #monday-automations-modal, #modal-consulta-cliente, .modal-dialog-serasa {
+    display: none !important;
+  }
+  .wrap {
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  .card {
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+  }
+  .folha:not(.on) {
+    display: none !important;
+  }
+  .folha.on {
+    position: static !important;
+    box-shadow: none !important;
+    border: none !important;
+    max-height: none !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    width: 100% !important;
+    transform: none !important;
+  }
+  .tabela, .tabela-densa {
+    width: 100% !important;
+    page-break-inside: auto;
+  }
+  tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
+  thead {
+    display: table-header-group;
+  }
 }
 

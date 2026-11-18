@@ -155,6 +155,14 @@ function tratarEventosSistemaConfig(a, b, e, o) {
       return true;
     }
 
+    case 'nova-conta-caixa':
+      if (typeof abrirModalNovaContaCaixa === 'function') abrirModalNovaContaCaixa();
+      return true;
+
+    case 'salvar-conta-caixa':
+      if (typeof salvarNovaContaCaixa === 'function') salvarNovaContaCaixa();
+      return true;
+
     case 'exportar-csv':
       exportarCSV(b.dataset.tipo);
       return true;
