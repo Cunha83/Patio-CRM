@@ -159,157 +159,100 @@ function imprimirOS(o, formato = 'a4') {
   const totServ = (typeof soma === 'function' ? soma(o.servicos, i => (i.qtd || 1) * (i.valor || 0)) : 0);
   const totPec = (typeof soma === 'function' ? soma(o.pecas, i => (i.qtd || 1) * (i.valor || 0)) : 0);
 
+  const htmlTermica = `
+    <div style="font-family:'Courier New',monospace;font-size:11px;width:72mm;margin:0 auto;padding:6px;color:#000;line-height:1.3">
+      <div style="text-align:center;font-weight:bold;font-size:13px">${esc(cfg.empresa || 'PÁTIO CRM')}</div>
+      <div style="text-align:center">CNPJ: ${esc(cfg.cnpj || '—')}</div>
+      <div style="text-align:center">Tel: ${esc(cfg.fone || '—')}</div>
+      <div style="border-top:1px dashed #000;margin:6px 0"></div>
+      <div style="text-align:center;font-weight:bold">CUPOM DE ATENDIMENTO · OS #${esc(o.num)}</div>
+      <div style="display:flex;justify-content:space-between"><span>Data:</span><span>${typeof dataBRfull === 'function' ? dataBRfull(o.abertura) : o.abertura}</span></div>
+      <div style="display:flex;justify-content:space-between"><span>Placa:</span><span style="font-weight:bold">${esc(v.placa)}</span></div>
+      <div style="display:flex;justify-content:space-between"><span>Veículo:</span><span>${esc(v.modelo || '')}</span></div>
+      <div style="display:flex;justify-content:space-between"><span>Cliente:</span><span>${esc(c.nome)}</span></div>
+      <div style="border-top:1px dashed #000;margin:6px 0"></div>
+      <div style="font-weight:bold">SERVIÇOS / MÃO DE OBRA:</div>
+      ${(o.servicos || []).map(s => `<div style="display:flex;justify-content:space-between"><span>${esc(s.nome)} (${s.qtd}x)</span><span>${brl(s.qtd * s.valor)}</span></div>`).join('')}
+      <div style="border-top:1px dashed #000;margin:6px 0"></div>
+      <div style="font-weight:bold">PEÇAS / INSUMOS:</div>
+      ${(o.pecas || []).map(p => `<div style="display:flex;justify-content:space-between"><span>${esc(p.nome)} (${p.qtd}x)</span><span>${brl(p.qtd * p.valor)}</span></div>`).join('')}
+      <div style="border-top:1px dashed #000;margin:6px 0"></div>
+      <div style="display:flex;justify-content:space-between"><span>Subtotal Serv.:</span><span>${brl(totServ)}</span></div>
+      <div style="display:flex;justify-content:space-between"><span>Subtotal Peças:</span><span>${brl(totPec)}</span></div>
+      ${o.desc ? `<div style="display:flex;justify-content:space-between"><span>Desconto:</span><span>-${brl(o.desc)}</span></div>` : ''}
+      <div style="display:flex;justify-content:space-between;font-weight:bold;font-size:14px;margin-top:4px"><span>TOTAL:</span><span>${brl(total)}</span></div>
+      ${cfg.chavePix ? `<div style="border-top:1px dashed #000;margin:6px 0"></div><div style="text-align:center">Chave Pix: <b>${esc(cfg.chavePix)}</b></div>` : ''}
+      <div style="border-top:1px dashed #000;margin:6px 0"></div>
+      <div style="text-align:center;font-size:10px">Garantia legal: 90 dias conforme CDC</div>
+      <div style="text-align:center;margin-top:8px">Obrigado pela preferência!</div>
+    </div>`;
+
+  const htmlA4 = `
+    <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:13px;color:#1e293b;padding:20px;max-width:800px;margin:0 auto;line-height:1.4">
+      <div style="display:flex;justify-content:space-between;border-bottom:2px solid #0f172a;padding-bottom:12px;margin-bottom:16px">
+        <div style="display:flex;align-items:center;gap:16px">
+          ${(cfg.identidadeVisual?.logo && /^https?:\/\/|^data:image\//i.test(cfg.identidadeVisual.logo)) ? `<img src="${esc(cfg.identidadeVisual.logo)}" alt="${esc(cfg.empresa)}" style="max-height:60px;max-width:160px;object-fit:contain">` : ''}
+          <div>
+            <div style="font-size:20px;font-weight:bold;color:#0f172a">${esc(cfg.empresa)}</div>
+            <div>CNPJ: ${esc(cfg.cnpj)} · Tel: ${esc(cfg.fone)}</div>
+            <div>${esc(cfg.endereco)}</div>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:22px;font-weight:bold;color:#2563eb;text-align:right">${isMec ? 'VIA DE OFICINA' : `ORDEM DE SERVIÇO Nº ${o.num}`}</div>
+          <div>Emissão: ${typeof dataBRfull === 'function' ? dataBRfull(o.abertura) : o.abertura}</div>
+          <div>Previsão: ${typeof dataBRfull === 'function' ? dataBRfull(o.prev) : o.prev}</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;background:#f8fafc;padding:12px;border-radius:6px;border:1px solid #e2e8f0">
+        <div><b>CLIENTE:</b> ${esc(c.nome)}<br><b>CNPJ/CPF:</b> ${esc(c.doc || '—')}<br><b>FONE:</b> ${esc(c.fone || '—')}</div>
+        <div><b>VEÍCULO:</b> ${esc(v.marca || '')} ${esc(v.modelo || '')}<br><b>PLACA:</b> <b>${esc(v.placa)}</b><br><b>KM:</b> ${(o.km || 0).toLocaleString('pt-BR')} km</div>
+      </div>
+      ${o.queixa ? `<div style="margin-bottom:14px;background:#fff;padding:8px;border-left:3px solid #f59e0b"><b>Diagnóstico / Queixa:</b> ${esc(o.queixa)}</div>` : ''}
+      <div style="font-weight:bold;margin-bottom:6px">1. SERVIÇOS</div>
+      <table style="width:100%;border-collapse:collapse;margin-bottom:14px">
+        <thead><tr style="background:#f1f5f9;text-align:left"><th style="padding:6px">Descrição</th><th style="width:60px;text-align:center">Qtd</th>${!isMec ? '<th style="width:90px;text-align:right">Valor</th><th style="width:90px;text-align:right">Total</th>' : ''}</tr></thead>
+        <tbody>${(o.servicos || []).map(s => `<tr><td style="padding:6px;border-bottom:1px solid #e2e8f0">${esc(s.nome)}</td><td style="text-align:center">${s.qtd}</td>${!isMec ? `<td style="text-align:right">${brl(s.valor)}</td><td style="text-align:right">${brl(s.qtd * s.valor)}</td>` : ''}</tr>`).join('')}</tbody>
+      </table>
+      <div style="font-weight:bold;margin-bottom:6px">2. PEÇAS</div>
+      <table style="width:100%;border-collapse:collapse;margin-bottom:14px">
+        <thead><tr style="background:#f1f5f9;text-align:left"><th style="padding:6px">Descrição</th><th style="width:60px;text-align:center">Qtd</th>${!isMec ? '<th style="width:90px;text-align:right">Valor</th><th style="width:90px;text-align:right">Total</th>' : ''}</tr></thead>
+        <tbody>${(o.pecas || []).map(p => `<tr><td style="padding:6px;border-bottom:1px solid #e2e8f0">${esc(p.nome)}</td><td style="text-align:center">${p.qtd}</td>${!isMec ? `<td style="text-align:right">${brl(p.valor)}</td><td style="text-align:right">${brl(p.qtd * p.valor)}</td>` : ''}</tr>`).join('')}</tbody>
+      </table>
+      ${!isMec ? `<div style="margin-left:auto;width:280px;border:1px solid #cbd5e1;padding:8px;border-radius:6px;margin-bottom:16px">
+        <div style="display:flex;justify-content:space-between"><span>Serviços:</span><span>${brl(totServ)}</span></div>
+        <div style="display:flex;justify-content:space-between"><span>Peças:</span><span>${brl(totPec)}</span></div>
+        ${o.desc ? `<div style="display:flex;justify-content:space-between;color:#ef4444"><span>Desconto:</span><span>−${brl(o.desc)}</span></div>` : ''}
+        <div style="display:flex;justify-content:space-between;font-weight:bold;border-top:1px solid #94a3b8;padding-top:4px;margin-top:4px"><span>TOTAL:</span><span>${brl(total)}</span></div>
+      </div>` : ''}
+      <div style="display:flex;justify-content:space-between;margin-top:30px">
+        <div style="width:45%;text-align:center;border-top:1px solid #000;padding-top:4px;font-size:11px">${esc(cfg.empresa)}<br>Responsável Técnico</div>
+        <div style="width:45%;text-align:center;border-top:1px solid #000;padding-top:4px;font-size:11px">${esc(c.nome)}<br>Assinatura Cliente</div>
+      </div>
+    </div>`;
+
+  const printArea = (typeof document !== 'undefined') ? document.getElementById('print-area-exclusiva') : null;
+  const htmlConteudo = formato === 'termica' ? htmlTermica : htmlA4;
+  if (printArea) {
+    printArea.innerHTML = htmlConteudo;
+    printArea.style.display = 'block';
+    if (typeof window !== 'undefined') {
+      window.onafterprint = () => {
+        printArea.innerHTML = '';
+        printArea.style.display = 'none';
+      };
+      window.print();
+    }
+    return;
+  }
+
   if (typeof window === 'undefined' || !window.open) return;
   const janela = window.open('', '_blank');
   if (!janela) {
     if (typeof torrar === 'function') torrar('Por favor, permita popups para imprimir o comprovante.');
     return;
   }
-
-  if (formato === 'termica') {
-    janela.document.write(`
-    <!DOCTYPE html>
-    <html lang="pt-BR">
-    <head>
-      <meta charset="utf-8">
-      <title>Cupom OS ${esc(o.num)}</title>
-      <style>
-        @page { size: 80mm auto; margin: 0; }
-        body { font-family: 'Courier New', Courier, monospace; font-size: 11px; width: 72mm; margin: 0 auto; padding: 6px; color: #000; line-height: 1.3; }
-        .c { text-align: center; }
-        .d { display: flex; justify-content: space-between; }
-        .b { font-weight: bold; }
-        .sep { border-top: 1px dashed #000; margin: 6px 0; }
-      </style>
-    </head>
-    <body>
-      <div class="c b" style="font-size:13px">${esc(cfg.empresa || 'PÁTIO CRM')}</div>
-      <div class="c">CNPJ: ${esc(cfg.cnpj || '—')}</div>
-      <div class="c">Tel: ${esc(cfg.fone || '—')}</div>
-      <div class="sep"></div>
-      <div class="c b">CUPOM DE ATENDIMENTO · OS #${esc(o.num)}</div>
-      <div class="d"><span>Data:</span><span>${typeof dataBRfull === 'function' ? dataBRfull(o.abertura) : o.abertura}</span></div>
-      <div class="d"><span>Placa:</span><span class="b">${esc(v.placa)}</span></div>
-      <div class="d"><span>Veículo:</span><span>${esc(v.modelo || '')}</span></div>
-      <div class="d"><span>Cliente:</span><span>${esc(c.nome)}</span></div>
-      <div class="sep"></div>
-      <div class="b">SERVIÇOS / MÃO DE OBRA:</div>
-      ${(o.servicos || []).map(s => `<div class="d"><span>${esc(s.nome)} (${s.qtd}x)</span><span>${brl(s.qtd * s.valor)}</span></div>`).join('')}
-      <div class="sep"></div>
-      <div class="b">PEÇAS / INSUMOS:</div>
-      ${(o.pecas || []).map(p => `<div class="d"><span>${esc(p.nome)} (${p.qtd}x)</span><span>${brl(p.qtd * p.valor)}</span></div>`).join('')}
-      <div class="sep"></div>
-      <div class="d"><span>Subtotal Serv.:</span><span>${brl(totServ)}</span></div>
-      <div class="d"><span>Subtotal Peças:</span><span>${brl(totPec)}</span></div>
-      ${o.desc ? `<div class="d"><span>Desconto:</span><span>-${brl(o.desc)}</span></div>` : ''}
-      <div class="d b" style="font-size:14px;margin-top:4px"><span>TOTAL:</span><span>${brl(total)}</span></div>
-      ${cfg.chavePix ? `<div class="sep"></div><div class="c">Chave Pix: <b>${esc(cfg.chavePix)}</b></div>` : ''}
-      <div class="sep"></div>
-      <div class="c mini">Garantia legal: 90 dias conforme CDC</div>
-      <div class="c" style="margin-top:8px">Obrigado pela preferência!</div>
-      <script>window.onload = () => window.print();<\/script>
-    </body>
-    </html>`);
-    janela.document.close();
-    return;
-  }
-
-  // Layout A4 Completo
-  janela.document.write(`
-  <!DOCTYPE html>
-  <html lang="pt-BR">
-  <head>
-    <meta charset="utf-8">
-    <title>OS ${esc(o.num)} — ${esc(cfg.empresa)}</title>
-    <style>
-      body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; font-size: 13px; color: #1e293b; padding: 20px; max-width: 800px; margin: 0 auto; line-height: 1.4; }
-      .topo { display: flex; justify-content: space-between; border-bottom: 2px solid #0f172a; padding-bottom: 12px; margin-bottom: 16px; }
-      .empresa { font-size: 20px; font-weight: bold; color: #0f172a; }
-      .num-os { font-size: 22px; font-weight: bold; color: #2563eb; text-align: right; }
-      .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; background: #f8fafc; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0; }
-      table { width: 100%; border-collapse: collapse; margin-bottom: 14px; }
-      th { background: #f1f5f9; text-align: left; padding: 8px; font-size: 12px; border-bottom: 1px solid #cbd5e1; }
-      td { padding: 8px; border-bottom: 1px solid #e2e8f0; }
-      .totais { margin-left: auto; width: 300px; border: 1px solid #cbd5e1; padding: 10px; border-radius: 6px; margin-bottom: 20px; }
-      .tot-linha { display: flex; justify-content: space-between; margin-bottom: 4px; }
-      .tot-final { font-size: 16px; font-weight: bold; border-top: 1px solid #94a3b8; padding-top: 6px; margin-top: 6px; }
-      .assinaturas { display: flex; justify-content: space-between; margin-top: 40px; }
-      .campo-ass { width: 45%; text-align: center; border-top: 1px solid #000; padding-top: 6px; font-size: 12px; }
-      @media print { body { padding: 0; } }
-    </style>
-  </head>
-  <body>
-    <div class="topo">
-      <div style="display:flex;align-items:center;gap:16px">
-        ${(cfg.identidadeVisual?.logo && /^https?:\/\/|^data:image\//i.test(cfg.identidadeVisual.logo)) ? `<img src="${esc(cfg.identidadeVisual.logo)}" alt="${esc(cfg.empresa)}" style="max-height:60px;max-width:160px;object-fit:contain">` : ''}
-        <div>
-          <div class="empresa">${esc(cfg.empresa)}</div>
-          <div>CNPJ: ${esc(cfg.cnpj)} · Tel: ${esc(cfg.fone)}</div>
-          <div>${esc(cfg.endereco)}</div>
-        </div>
-      </div>
-      <div>
-        <div class="num-os">${isMec ? 'ORDEM DE SERVIÇO TÉCNICA (VIA DE OFICINA)' : `ORDEM DE SERVIÇO Nº ${o.num}`}</div>
-        <div>Emissão: ${typeof dataBRfull === 'function' ? dataBRfull(o.abertura) : o.abertura} ${typeof horaBR === 'function' ? horaBR() : ''}</div>
-        <div>Previsão: ${typeof dataBRfull === 'function' ? dataBRfull(o.prev) : o.prev}</div>
-      </div>
-    </div>
-
-    <div class="grid">
-      <div>
-        <div><b>CLIENTE:</b> ${esc(c.nome)}</div>
-        <div><b>CNPJ/CPF:</b> ${esc(c.doc || '—')}</div>
-        <div><b>CONTATO / FONE:</b> ${esc(c.contato || '—')} (${esc(c.fone || '—')})</div>
-      </div>
-      <div>
-        <div><b>VEÍCULO:</b> ${esc(v.marca || '')} ${esc(v.modelo || '')}</div>
-        <div><b>PLACA:</b> <span style="font-family:monospace;font-weight:bold;font-size:14px">${esc(v.placa)}</span></div>
-        <div><b>KM REGISTRADO:</b> ${(o.km || 0).toLocaleString('pt-BR')} km</div>
-      </div>
-    </div>
-
-    ${o.queixa ? `<div style="margin-bottom:14px;background:#fff;padding:8px;border-left:3px solid #f59e0b"><b>Diagnóstico / Queixa do Cliente:</b> ${esc(o.queixa)}</div>` : ''}
-
-    <div style="font-weight:bold;margin-bottom:6px">1. SERVIÇOS A EXECUTAR / MÃO DE OBRA</div>
-    <table>
-      <thead>
-        <tr><th>Descrição do Serviço</th><th style="width:60px;text-align:center">Qtd</th>${!isMec ? '<th style="width:100px;text-align:right">Valor Unit.</th><th style="width:100px;text-align:right">Subtotal</th>' : ''}</tr>
-      </thead>
-      <tbody>
-        ${(o.servicos || []).map(s => `<tr><td>${esc(s.nome)}</td><td style="text-align:center">${s.qtd}</td>${!isMec ? `<td style="text-align:right">${brl(s.valor)}</td><td style="text-align:right">${brl(s.qtd * s.valor)}</td>` : ''}</tr>`).join('')}
-      </tbody>
-    </table>
-
-    <div style="font-weight:bold;margin-bottom:6px">2. PEÇAS E MATERIAIS REQUISITADOS</div>
-    <table>
-      <thead>
-        <tr><th>Descrição da Peça / Código</th><th style="width:60px;text-align:center">Qtd</th>${!isMec ? '<th style="width:100px;text-align:right">Valor Unit.</th><th style="width:100px;text-align:right">Subtotal</th>' : ''}</tr>
-      </thead>
-      <tbody>
-        ${(o.pecas || []).map(p => `<tr><td>${esc(p.nome)}</td><td style="text-align:center">${p.qtd}</td>${!isMec ? `<td style="text-align:right">${brl(p.valor)}</td><td style="text-align:right">${brl(p.qtd * p.valor)}</td>` : ''}</tr>`).join('')}
-      </tbody>
-    </table>
-
-    ${!isMec ? `
-    <div class="totais">
-      <div class="tot-linha"><span>Total de Serviços:</span><span>${brl(totServ)}</span></div>
-      <div class="tot-linha"><span>Total de Peças:</span><span>${brl(totPec)}</span></div>
-      ${o.desc ? `<div class="tot-linha" style="color:#ef4444"><span>Desconto Concedido:</span><span>−${brl(o.desc)}</span></div>` : ''}
-      <div class="tot-linha tot-final"><span>TOTAL GERAL:</span><span>${brl(total)}</span></div>
-    </div>` : ''}
-
-    <div style="font-size:11px;color:#64748b;margin-bottom:30px">
-      <b>Termo de Garantia:</b> ${esc(cfg.termoGarantia || 'Garantia legal de 90 dias conforme CDC.')}
-    </div>
-
-    <div class="assinaturas">
-      <div class="campo-ass">${esc(cfg.empresa)}<br><small>Responsável Técnico</small></div>
-      <div class="campo-ass">${esc(c.nome)}<br><small>Assinatura do Cliente / Motorista</small></div>
-    </div>
-
-    <script>window.onload = () => window.print();<\/script>
-  </body>
-  </html>`);
+  janela.document.write(`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><title>OS ${esc(o.num)}</title></head><body>${htmlConteudo}<script>window.onload = () => window.print();<\/script></body></html>`);
   janela.document.close();
 }
 

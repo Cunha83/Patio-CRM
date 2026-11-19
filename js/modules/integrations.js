@@ -17,7 +17,8 @@ function buscarCep(cep, prefix) {
       
       // Update rascCad
       if (typeof S !== 'undefined' && S.ui && S.ui.rascCad) {
-        S.ui.rascCad.endereco = end;
+        S.ui.rascCad.endereco = data.logradouro || end;
+        S.ui.rascCad.bairro = data.bairro || '';
         S.ui.rascCad.cidade = data.localidade;
         S.ui.rascCad.uf = data.uf;
       }
@@ -25,7 +26,8 @@ function buscarCep(cep, prefix) {
       // Update DOM
       const inputs = document.querySelectorAll('input[data-act="rc"]');
       inputs.forEach(el => {
-        if (el.dataset.c === 'endereco') el.value = end;
+        if (el.dataset.c === 'endereco') el.value = data.logradouro || end;
+        if (el.dataset.c === 'bairro' && data.bairro) el.value = data.bairro;
         if (el.dataset.c === 'cidade') el.value = data.localidade;
         if (el.dataset.c === 'uf') el.value = data.uf;
       });
@@ -73,36 +75,66 @@ function buscarCNPJ(cnpj, prefix) {
     .catch(() => torrar('Erro ao consultar CNPJ.'));
 }
 
-function consultarPlaca(placa) {
-  if (!placa || placa.length < 7) { torrar('Placa inválida'); return; }
+async function consultarPlaca(placa) {
+  const limpa = String(placa || '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+  if (!limpa || limpa.length < 7) {
+    if (typeof torrar === 'function') torrar('Informe uma placa válida (7 caracteres).', 'alerta');
+    return;
+  }
   if (typeof apiThrottle === 'function' && !apiThrottle('consultaPlaca')) return;
-  torrar('Consultando base do Sinesp/Denatran...', 'neutro');
-  
-  setTimeout(() => {
-    let mockData = {
-      modelo: 'VOLVO FH 460',
-      ano: '2021',
-      tipo: 'Cavalo',
-      chassi: '9BWZZZ377VT004281'
-    };
-    
-    if (typeof S !== 'undefined' && S.ui && S.ui.rascCad) {
-      S.ui.rascCad.modelo = mockData.modelo;
-      S.ui.rascCad.ano = mockData.ano;
-      S.ui.rascCad.tipo = mockData.tipo;
-      S.ui.rascCad.chassi = mockData.chassi;
-    }
-    
-    const inputs = document.querySelectorAll('input[data-act="rc"]');
-    inputs.forEach(el => {
-      if (el.dataset.c === 'modelo') el.value = mockData.modelo;
-      if (el.dataset.c === 'ano') el.value = mockData.ano;
-      if (el.dataset.c === 'tipo') el.value = mockData.tipo;
-      if (el.dataset.c === 'chassi') el.value = mockData.chassi;
+  if (typeof torrar === 'function') torrar('Consultando placa via API nacional...', 'neutro');
+
+  try {
+    const headers = typeof obterHeadersRequisicao === 'function'
+      ? obterHeadersRequisicao({ 'Content-Type': 'application/json' })
+      : { 'Content-Type': 'application/json' };
+
+    const res = await fetch('/api/veiculos/consultar-placa', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ placa: limpa })
     });
-    
-    torrar('Veículo localizado na base nacional!', 'sucesso');
-  }, 1000);
+
+    const data = await res.json();
+    if (res.ok && data.success && data.dados) {
+      const d = data.dados;
+      if (typeof S !== 'undefined' && S.ui) {
+        if (S.ui.rascCad) {
+          S.ui.rascCad.placa = d.placa;
+          S.ui.rascCad.marca = d.marca || '';
+          S.ui.rascCad.modelo = d.modelo || '';
+          S.ui.rascCad.ano = d.ano || '';
+          S.ui.rascCad.cor = d.cor || '';
+          S.ui.rascCad.tipo = d.tipo || 'Cavalo';
+          S.ui.rascCad.chassi = d.chassi || '';
+        }
+        if (S.ui.rascVeiculo) {
+          S.ui.rascVeiculo.placa = d.placa;
+          S.ui.rascVeiculo.marca = d.marca || '';
+          S.ui.rascVeiculo.modelo = d.modelo || '';
+          S.ui.rascVeiculo.ano = d.ano || '';
+          S.ui.rascVeiculo.cor = d.cor || '';
+          S.ui.rascVeiculo.tipo = d.tipo || 'Cavalo';
+          S.ui.rascVeiculo.chassi = d.chassi || '';
+        }
+      }
+
+      const inputs = document.querySelectorAll('input[data-act="rc"], input[data-act="rasc-vei"]');
+      inputs.forEach(el => {
+        const campo = el.dataset.c;
+        if (campo && d[campo] !== undefined) el.value = d[campo];
+      });
+
+      if (typeof torrar === 'function') torrar(`Veículo ${d.modelo || d.placa} localizado!`, 'sucesso');
+    } else {
+      const msg = (data && data.erro) || 'Consulta de placa indisponível ou token de API não configurado em Configurações > Integrações. Preencha os dados do veículo manualmente.';
+      if (typeof torrar === 'function') torrar(msg, 'alerta');
+    }
+  } catch (err) {
+    if (typeof torrar === 'function') {
+      torrar('Consulta de placa indisponível ou token de API não configurado em Configurações > Integrações. Preencha os dados do veículo manualmente.', 'alerta');
+    }
+  }
 }
 
 function consultarSerasa(doc, prefix) {

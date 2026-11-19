@@ -177,6 +177,13 @@ function folhaCadastro() {
     }
   }
 
+  // Delegação para formulário completo de colaborador / mecânico
+  if (['mecanico', 'colaborador'].includes(t)) {
+    if (typeof folhaCadastroColaborador === 'function') {
+      return folhaCadastroColaborador(r);
+    }
+  }
+
   /* ---------- Formulário genérico para demais entidades ---------- */
   const campos = {
     veiculo: [['placa','Placa'],['modelo','Modelo'],['ano','Ano'],['chassi','Chassi'],['tipo','Tipo (cavalo, carreta, truck)'],['km','KM atual','number']],

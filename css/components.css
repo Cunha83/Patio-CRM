@@ -213,6 +213,16 @@
     background: #fff !important;
     color: #000 !important;
   }
+  body > *:not(#print-area-exclusiva) {
+    display: none !important;
+  }
+  #print-area-exclusiva {
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
+    background: #fff !important;
+    color: #000 !important;
+  }
   #nav, .nav, .nav-lateral,
   #topbar, .topo, .topo-desktop, .topbar-enterprise, .sub-header-contextual,
   .vidro, .torrada, .btn, .btn-chip, .btn-primario, .btn-secundario, .btn-neutro,

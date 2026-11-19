@@ -27,21 +27,32 @@ function tabelaMecanicos() {
       <table class="tabela">
         <thead>
           <tr>
-            <th>Nome do Colaborador</th>
-            <th>Especialidade</th>
+            <th>Nome do Colaborador / CPF</th>
+            <th>Cargo & Especialidade</th>
             <th>Telefone / WhatsApp</th>
+            <th>Habilitação & Docs</th>
             <th style="width:120px;text-align:center">OS em Andamento</th>
-            <th style="width:120px;text-align:center">Ações</th>
+            <th style="width:110px;text-align:center">Ações</th>
           </tr>
         </thead>
         <tbody>
-          ${lista.length === 0 ? `<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--aco-500)">Nenhum mecânico cadastrado.</td></tr>` : lista.map(m => {
+          ${lista.length === 0 ? `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--aco-500)">Nenhum mecânico/colaborador cadastrado.</td></tr>` : lista.map(m => {
             const osEmAndamento = (S.os || []).filter(o => o.mecanico === m.id && o.st === 'executando');
             return `
             <tr>
-              <td><div style="font-weight:700;color:var(--aco-900)">${esc(m.nome)}</div></td>
-              <td><span class="selo">${esc(m.especialidade || 'Geral')}</span></td>
+              <td>
+                <div style="font-weight:700;color:var(--aco-900)">${esc(m.nome)}</div>
+                ${m.cpf ? `<div class="mini" style="color:var(--aco-500)">CPF: ${esc(m.cpf)}</div>` : ''}
+              </td>
+              <td>
+                <span class="selo">${esc(m.especialidade || m.cargo || 'Geral')}</span>
+                ${m.status ? `<div class="mini" style="margin-top:2px;color:${m.status === 'Ativo' ? 'var(--verde)' : '#ef4444'}">● ${esc(m.status)}</div>` : ''}
+              </td>
               <td class="mono">${esc(m.fone || '—')}</td>
+              <td class="mini">
+                CNH: <b>${esc(m.cnh || '—')}</b> ${m.categoriaCnh ? `(${esc(m.categoriaCnh)})` : ''}<br>
+                Comissão: <b>${m.comissao || 0}%</b>
+              </td>
               <td style="text-align:center">
                 <span class="selo ${osEmAndamento.length ? 'selo-executando' : 'selo-fila'}">${osEmAndamento.length} OS</span>
               </td>

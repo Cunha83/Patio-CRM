@@ -98,8 +98,25 @@ router.delete('/api/onboarding/demo-data', requirePermission('company:settings',
   }
 });
 
+router.post('/api/onboarding/zerar-base', requirePermission('company:settings', 'admin:settings'), async (req, res) => {
+  try {
+    const state = await getOrLoadState(req);
+    const tenantId = extractTenantId(req);
+    const resultado = demoDataService.zerarBaseOperacional({
+      tenantId,
+      state,
+      ator: req.securityContext?.actorId || 'administrador'
+    });
+    const saveRes = await persistTenantState(req, state);
+    if (!saveRes || !saveRes.ok) {
+      return res.status(saveRes?.status || 500).json({ success: false, error: saveRes?.error || 'Falha ao zerar base operacional.' });
+    }
+    res.json(resultado);
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 /* ── 11. ASSINATURA SaaS & FEATURE FLAGS ────────────────────────── */
-
-
 
 module.exports = router;

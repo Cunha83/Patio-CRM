@@ -49,8 +49,8 @@
   }
 
   function viewFiscalXmlDistribuicao() {
-    const cfg = (S.config && S.config.empresa) || S.emitente || S.cfg || {};
-    const cnpj = (cfg.cnpj || cfg.doc || cfg.documento || '').replace(/\D/g, '');
+    const cfg = (S.cfg && S.cfg.empresa) || S.empresa || (S.config && S.config.empresa) || S.emitente || S.cfg || {};
+    const cnpj = (cfg.cnpj || cfg.doc || cfg.documento || (S.cfg && S.cfg.cnpj) || (S.empresa && S.empresa.cnpj) || '').replace(/\D/g, '');
     const xmls = S.fiscalXmlsRecebidos || [];
 
     return `

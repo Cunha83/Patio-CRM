@@ -3,6 +3,15 @@
    Submódulo de listagem, busca e filtragem da base de contatos
    ===================================================================== */
 
+function trocarSubAbaContatos(sub) {
+  if (typeof S !== 'undefined' && S.ui) {
+    S.ui.subAbaContatos = sub;
+    S.ui.abaCad = sub;
+    S.ui.buscaCad = '';
+  }
+  if (typeof render === 'function') render();
+}
+
 function viewContatosUnificados(abaAtiva) {
   const subAba = abaAtiva || (S.ui && S.ui.subAbaContatos) || 'clientes';
   if (S.ui) S.ui.subAbaContatos = subAba;
@@ -71,17 +80,17 @@ function viewContatosUnificados(abaAtiva) {
   <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px">
     <div style="display:flex;gap:8px;border-bottom:2px solid var(--aco-200);padding-bottom:2px">
       <button class="btn ${subAba === 'clientes' ? 'btn-primario' : 'btn-neutro'}" 
-              onclick="if(typeof viewContatosUnificados==='function')document.getElementById('conteudo-cadastros').innerHTML=viewContatosUnificados('clientes')" 
+              onclick="trocarSubAbaContatos('clientes')" 
               style="padding:6px 14px;font-size:13px;font-weight:700">
         🏢 Clientes & Frotistas (${clientes.length})
       </button>
       <button class="btn ${subAba === 'fornecedores' ? 'btn-primario' : 'btn-neutro'}" 
-              onclick="if(typeof viewContatosUnificados==='function')document.getElementById('conteudo-cadastros').innerHTML=viewContatosUnificados('fornecedores')" 
+              onclick="trocarSubAbaContatos('fornecedores')" 
               style="padding:6px 14px;font-size:13px;font-weight:700">
         🏭 Fornecedores de Peças (${fornecedores.length})
       </button>
       <button class="btn ${subAba === 'transportadores' ? 'btn-primario' : 'btn-neutro'}" 
-              onclick="if(typeof viewContatosUnificados==='function')document.getElementById('conteudo-cadastros').innerHTML=viewContatosUnificados('transportadores')" 
+              onclick="trocarSubAbaContatos('transportadores')" 
               style="padding:6px 14px;font-size:13px;font-weight:700">
         🚛 Transportadores & Fretes (${transportadores.length})
       </button>
@@ -90,7 +99,7 @@ function viewContatosUnificados(abaAtiva) {
     <div style="display:flex;gap:8px;align-items:center">
       <input type="text" class="campo-texto" placeholder="🔍 Buscar por Razão, CNPJ, Telefone, Cidade ou Tag..." 
              value="${esc((S.ui && S.ui.buscaCad) || '')}" 
-             oninput="S.ui.buscaCad=this.value;if(typeof viewContatosUnificados==='function')document.getElementById('conteudo-cadastros').innerHTML=viewContatosUnificados('${subAba}')" 
+             oninput="S.ui.buscaCad=this.value;render()" 
              style="width:300px;height:36px;font-size:12.5px">
       <button class="btn btn-sucesso" data-act="novo-cad" data-t="${singularTipo}" style="height:36px;padding:0 14px;font-size:12.5px;font-weight:700">
         ${labelNovo}

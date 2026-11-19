@@ -77,6 +77,36 @@
     }
   }
 
+  function ativarModoTvOperacao() {
+    if (typeof document === 'undefined') return;
+    document.body.classList.add('fullscreen-patio-mode');
+    let btn = document.getElementById('btn-sair-tv-flutuante');
+    if (!btn) {
+      btn = document.createElement('button');
+      btn.id = 'btn-sair-tv-flutuante';
+      btn.innerHTML = '✕ Sair do Modo TV';
+      btn.title = 'Restaurar menu e barra superior';
+      btn.onclick = desativarModoTvOperacao;
+      document.body.appendChild(btn);
+    }
+  }
+
+  function desativarModoTvOperacao() {
+    if (typeof document === 'undefined') return;
+    document.body.classList.remove('fullscreen-patio-mode');
+    const btn = document.getElementById('btn-sair-tv-flutuante');
+    if (btn) btn.remove();
+  }
+
+  function toggleModoTV() {
+    if (typeof document === 'undefined') return;
+    if (document.body.classList.contains('fullscreen-patio-mode')) {
+      desativarModoTvOperacao();
+    } else {
+      ativarModoTvOperacao();
+    }
+  }
+
   async function reconhecerAlerta(alertaId) {
     if (!alertaId) return;
     try {
@@ -136,7 +166,7 @@
           <div class="mini" style="color:var(--aco-500);margin-top:2px">Visão Executiva, Chão de Oficina, Gargalos e Alertas em Tempo Real</div>
         </div>
         <div style="display:flex;align-items:center;gap:8px">
-          <button class="btn btn-secundario" data-act="toggle-modo-tv" title="Alternar Modo TV Fullscreen">📺 Modo TV</button>
+          <button class="btn btn-secundario" data-act="toggle-modo-tv" title="Alternar Modo TV Fullscreen">📺 Modo TV / Tela Cheia</button>
           <button class="btn btn-primario" data-act="refresh-op" title="Atualizar agora">🔄 Atualizar</button>
         </div>
       </div>
@@ -222,9 +252,15 @@
     window.carregarPainelOperacional = carregarPainelOperacional;
     window.reconhecerAlertaOperacional = reconhecerAlerta;
     window.renderDashboardOperacionalSeAtivo = renderDashboardOperacionalSeAtivo;
+    window.ativarModoTvOperacao = ativarModoTvOperacao;
+    window.desativarModoTvOperacao = desativarModoTvOperacao;
+    window.toggleModoTV = toggleModoTV;
   }
   if (typeof globalThis !== 'undefined') {
     globalThis.viewDashboardOperacional = viewDashboardOperacional;
     globalThis.carregarPainelOperacional = carregarPainelOperacional;
+    globalThis.ativarModoTvOperacao = ativarModoTvOperacao;
+    globalThis.desativarModoTvOperacao = desativarModoTvOperacao;
+    globalThis.toggleModoTV = toggleModoTV;
   }
 })();

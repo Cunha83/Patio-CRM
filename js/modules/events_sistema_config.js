@@ -44,35 +44,9 @@ function debounceSearch(fn, ms = 250) {
   _searchTimer = setTimeout(fn, ms);
 }
 
-function modalConfirmacaoRemoverDemo() {
-  return `
-    <div class="card card-p" style="max-width:480px;margin:0 auto;text-align:center">
-      <div style="font-size:36px;margin-bottom:8px">⚠️</div>
-      <h3 style="font-size:18px;font-weight:800;color:#dc2626;margin:0 0 10px 0">Remover Dados de Demonstração</h3>
-      <p style="font-size:13px;color:var(--aco-700);line-height:1.5;margin:0 0 20px 0">Esta ação irá excluir permanentemente todos os registros simulados (OS, peças e clientes de teste). A oficina ficará zerada pronta para uso real.</p>
-      <div style="display:flex;justify-content:center;gap:12px">
-        <button class="btn btn-secundario" data-act="fechar">Cancelar</button>
-        <button class="btn btn-perigo" onclick="executarLimpezaDadosDemoConfirmada()" style="font-weight:700">Confirmar Exclusão dos Dados de Demonstração</button>
-      </div>
-    </div>`;
-}
-
 function abrirModalConfirmacaoRemoverDemo() {
+  if (typeof abrirModalConfirmacaoZerarBase === 'function') return abrirModalConfirmacaoZerarBase();
   if (typeof abrirFolha === 'function') abrirFolha(modalConfirmacaoRemoverDemo);
-}
-
-function executarLimpezaDadosDemoConfirmada() {
-  torrar('Removendo dados de demonstração...', 'neutro');
-  fetch('/api/onboarding/demo-data', { method: 'DELETE', credentials: 'same-origin' })
-    .then(r => r.json())
-    .then(d => {
-      if (d.sucesso) {
-        if (typeof fecharFolha === 'function') fecharFolha();
-        torrar('Dados de demonstração removidos com sucesso! Oficina zerada.', 'sucesso');
-        setTimeout(() => location.reload(), 600);
-      } else { torrar(d.erro || 'Erro ao remover dados de exemplo.', 'erro'); }
-    })
-    .catch(() => torrar('Erro de comunicação ao remover dados de exemplo.', 'erro'));
 }
 
 function tratarEventosSistemaConfig(a, b, e, o) {
@@ -94,7 +68,20 @@ function tratarEventosSistemaConfig(a, b, e, o) {
     }
 
     case 'remover-demo':
-      abrirModalConfirmacaoRemoverDemo();
+    case 'zerar-base':
+      if (typeof abrirModalConfirmacaoZerarBase === 'function') {
+        abrirModalConfirmacaoZerarBase();
+      } else {
+        abrirModalConfirmacaoRemoverDemo();
+      }
+      return true;
+
+    case 'restaurar-demo':
+      if (typeof abrirModalConfirmacaoRestaurarDemo === 'function') {
+        abrirModalConfirmacaoRestaurarDemo();
+      } else {
+        tratarEventosSistemaConfig('carregar-demo', b, e, o);
+      }
       return true;
 
     case 'concluir-onboarding':

@@ -86,6 +86,9 @@ function viewCompras() {
       <button class="btn btn-neutro" onclick="document.getElementById('xml-compra-input').click()" style="font-weight:600;display:inline-flex;align-items:center;gap:6px" title="Importar XML SEFAZ da NF-e do Fornecedor">
         ${ico('upload', 14)} Carregar XML (NF-e)
       </button>
+      <button class="btn btn-primario" onclick="buscarXmlsEmitidosContraCnpj()" style="font-weight:700;display:inline-flex;align-items:center;gap:6px;background:#0284c7" title="Buscar XMLs emitidos contra o CNPJ da empresa na SEFAZ">
+        ${ico('nuvem', 14) || '☁️'} Buscar XMLs Emitidos Contra o CNPJ (SEFAZ)
+      </button>
       <button class="btn btn-neutro" onclick="acaoEmLoteCompras('duplicar')" title="Duplicar compra selecionada">
         ${ico('doc', 14)} Duplicar
       </button>
@@ -227,10 +230,29 @@ function acaoEmLoteCompras(acao) {
   }
 }
 
+async function buscarXmlsEmitidosContraCnpj() {
+  const cnpjEmpresa = (S.cfg && S.cfg.empresa && S.cfg.empresa.cnpj) || (S.empresa && S.empresa.cnpj) || (S.cfg && S.cfg.cnpj) || '';
+  if (typeof torrar === 'function') torrar(`Buscando XMLs na SEFAZ para CNPJ ${cnpjEmpresa || 'da empresa'}...`, 'neutro');
+  try {
+    const headers = typeof obterHeadersRequisicao === 'function' ? obterHeadersRequisicao({ 'Content-Type': 'application/json' }) : { 'Content-Type': 'application/json' };
+    const res = await fetch('/api/fiscal/nfe/buscar-xml-destinatario', { method: 'POST', headers, credentials: 'same-origin' });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      if (typeof torrar === 'function') torrar(data.mensagem || 'XMLs sincronizados com sucesso!', 'sucesso');
+      if (typeof render === 'function') render();
+    } else {
+      if (typeof torrar === 'function') torrar(data.error || 'Erro na consulta SEFAZ.', 'alerta');
+    }
+  } catch (err) {
+    if (typeof torrar === 'function') torrar('Falha ao conectar com o serviço SEFAZ.', 'erro');
+  }
+}
+
 // Binds no escopo global
 if (typeof window !== 'undefined') {
   window.viewCompras = viewCompras;
   window.acaoEmLoteCompras = acaoEmLoteCompras;
+  window.buscarXmlsEmitidosContraCnpj = buscarXmlsEmitidosContraCnpj;
   window.processarXMLCompra = typeof processarXMLCompra !== 'undefined' ? processarXMLCompra : (window.processarXMLCompra || null);
   window.processarXmlNfe = window.processarXMLCompra;
   window.abrirModalNovaCompra = typeof abrirModalNovaCompra !== 'undefined' ? abrirModalNovaCompra : (window.abrirModalNovaCompra || null);

@@ -42,6 +42,12 @@ function folhaCadastroFiscal(t, r) {
           <div><label class="mini">cClassTrib (RTC)</label><input class="campo-texto" data-act="rc" data-c="cClassTrib" value="${esc(r.cClassTrib||'')}" placeholder="Ex: 010101" style="width:100%" title="Código de Classificação Tributária da Reforma Tributária"></div>
           <div><label class="mini">Origem</label><select class="campo-texto" data-act="rc" data-c="origem" style="width:100%">${selOrigem}</select></div>
         </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px">
+          <div><label class="mini">CST / CSOSN ICMS</label><input class="campo-texto" data-act="rc" data-c="csosn" value="${esc(r.csosn || r.cstICMS || '102')}" placeholder="102, 500, 00, 60" style="width:100%"></div>
+          <div><label class="mini">Alíquota ICMS (%)</label><input type="number" class="campo-texto" data-act="rc" data-c="aliqICMS" value="${r.aliqICMS||0}" step="0.01" style="width:100%"></div>
+          <div><label class="mini">CST PIS</label><input class="campo-texto" data-act="rc" data-c="cstPIS" value="${esc(r.cstPIS||'49')}" placeholder="01, 49, 99" style="width:100%"></div>
+          <div><label class="mini">CST COFINS</label><input class="campo-texto" data-act="rc" data-c="cstCOFINS" value="${esc(r.cstCOFINS||'49')}" placeholder="01, 49, 99" style="width:100%"></div>
+        </div>
 
         <div style="border-top:1px solid var(--aco-150);padding-top:12px;margin-top:4px">
           <label class="mini" style="font-weight:700">CFOP de Saída (Perfil Tributário)</label>
@@ -80,8 +86,18 @@ function folhaCadastroFiscal(t, r) {
           <div><label class="mini">Horas de Box</label><input type="number" class="campo-texto" data-act="rc" data-c="horas" value="${r.horas||1}" style="width:100%"></div>
           <div><label class="mini">CNAE</label><input class="campo-texto" data-act="rc" data-c="cnae" value="${esc(r.cnae||'')}" placeholder="4520-0/01" style="width:100%"></div>
         </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+          <div><label class="mini">Código Serviço (LC 116/2003)</label><input class="campo-texto" data-act="rc" data-c="codServLC116" value="${esc(r.codServLC116||'14.01')}" placeholder="Ex: 14.01" style="width:100%"></div>
+          <div><label class="mini">Alíquota ISS (%)</label><input type="number" class="campo-texto" data-act="rc" data-c="aliqISS" value="${r.aliqISS||0}" step="0.01" style="width:100%"></div>
+          <div><label class="mini">ISS Retido na Fonte?</label>
+            <select class="campo-texto" data-act="rc" data-c="issRetido" style="width:100%">
+              <option value="false" ${!r.issRetido ? 'selected' : ''}>Não</option>
+              <option value="true" ${r.issRetido ? 'selected' : ''}>Sim</option>
+            </select>
+          </div>
+        </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-          <div><label class="mini">Código Serviço (LC 116/2003)</label><input class="campo-texto" data-act="rc" data-c="codServLC116" value="${esc(r.codServLC116||'')}" placeholder="Ex: 14.01" style="width:100%"></div>
+          <div><label class="mini">Categoria de Serviço</label><input class="campo-texto" data-act="rc" data-c="categoria" value="${esc(r.categoria||'Mecânica')}" style="width:100%"></div>
           <div><label class="mini">cClassTrib (Reforma Tributária / RTC)</label><input class="campo-texto" data-act="rc" data-c="cClassTrib" value="${esc(r.cClassTrib||'')}" placeholder="Ex: 010101" style="width:100%" title="Código de Classificação Tributária da Reforma Tributária"></div>
         </div>
 

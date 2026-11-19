@@ -17,11 +17,14 @@ function tabelaVeiculos() {
   }
 
   return `
-  <div style="margin-bottom:12px">
+  <div class="entre" style="margin-bottom:12px;gap:10px;flex-wrap:wrap">
     <input type="text" class="campo-texto" placeholder="🔍 Buscar por Placa, Modelo ou Proprietário..." 
            value="${esc((S.ui && S.ui.buscaCad) || '')}" 
            oninput="S.ui.buscaCad=this.value;render()" 
            style="width:100%;max-width:480px;height:36px;font-size:13px">
+    <button class="btn btn-primario" data-act="novo-cad" data-t="veiculo" style="font-weight:600;font-size:12.5px;padding:0 14px;height:36px">
+      ${(typeof ico === 'function' ? ico('plus', 14) : '+')} Novo Veículo
+    </button>
   </div>
 
   <div class="card">
@@ -93,11 +96,14 @@ function tabelaProdutos() {
     `).join('')}
   </div>
 
-  <div style="margin-bottom:12px">
+  <div class="entre" style="margin-bottom:12px;gap:10px;flex-wrap:wrap">
     <input type="text" class="campo-texto" placeholder="🔍 Buscar peça por código, descrição ou NCM..." 
            value="${esc((S.ui && S.ui.buscaCad) || '')}" 
            oninput="S.ui.buscaCad=this.value;render()" 
            style="width:100%;max-width:480px;height:36px;font-size:13px">
+    <button class="btn btn-primario" data-act="novo-cad" data-t="produto" style="font-weight:600;font-size:12.5px;padding:0 14px;height:36px">
+      ${(typeof ico === 'function' ? ico('plus', 14) : '+')} Novo Produto / Peça
+    </button>
   </div>
 
   <div class="card">
@@ -169,11 +175,14 @@ function tabelaServicos() {
   }
 
   return `
-  <div style="margin-bottom:12px">
+  <div class="entre" style="margin-bottom:12px;gap:10px;flex-wrap:wrap">
     <input type="text" class="campo-texto" placeholder="🔍 Buscar serviço por descrição, CNAE ou código..." 
            value="${esc((S.ui && S.ui.buscaCad) || '')}" 
            oninput="S.ui.buscaCad=this.value;render()" 
            style="width:100%;max-width:480px;height:36px;font-size:13px">
+    <button class="btn btn-primario" data-act="novo-cad" data-t="servico" style="font-weight:600;font-size:12.5px;padding:0 14px;height:36px">
+      ${(typeof ico === 'function' ? ico('plus', 14) : '+')} Novo Serviço
+    </button>
   </div>
 
   <div class="card">

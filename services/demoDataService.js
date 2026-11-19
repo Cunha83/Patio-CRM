@@ -168,7 +168,42 @@ function removerDadosDemonstracao({ tenantId, state, ator = 'administrador' }) {
   };
 }
 
+function zerarBaseOperacional({ tenantId, state, ator = 'administrador' }) {
+  if (!tenantId || !state) throw new Error('tenantId e state são obrigatórios.');
+
+  const colecoesOperacionais = [
+    'os', 'vendas', 'clientes', 'veiculos', 'pecas', 'servicos',
+    'contasReceber', 'contasPagar', 'lancamentosCaixa', 'movimentacoesEstoque',
+    'quotations', 'maintenancePlans', 'opportunities', 'appointments', 'afterSales', 'preOS'
+  ];
+
+  let totalExcluidos = 0;
+  for (const col of colecoesOperacionais) {
+    if (Array.isArray(state[col])) {
+      totalExcluidos += state[col].length;
+      state[col] = [];
+    }
+  }
+
+  if (!state.auditoria) state.auditoria = [];
+  state.auditoria.unshift({
+    id: `aud_zerar_${Date.now()}`,
+    timestamp: new Date().toISOString(),
+    action: 'base_operacional_zerada',
+    actorId: ator,
+    tenantId,
+    details: { totalExcluidos }
+  });
+
+  return {
+    ok: true,
+    mensagem: 'Base operacional zerada com sucesso! Cadastros e ordens foram limpos mantendo as configurações da oficina.',
+    totalExcluidos
+  };
+}
+
 module.exports = {
   carregarDadosDemonstracao,
-  removerDadosDemonstracao
+  removerDadosDemonstracao,
+  zerarBaseOperacional
 };

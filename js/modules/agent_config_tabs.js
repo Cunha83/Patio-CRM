@@ -104,6 +104,9 @@ function renderAbaGeral() {
           </button>
         </div>
       </div>
+
+      <!-- Gestão Permanente da Base de Dados -->
+      ${typeof viewPainelGestaoBancoDados === 'function' ? viewPainelGestaoBancoDados() : ''}
     </div>`;
 }
 

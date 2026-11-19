@@ -65,9 +65,10 @@ function tratarEventosCadastros(a, b, e, o) {
       if (tipo === 'cliente') item = (S.clientes || []).find(x => x.id === id);
       else if (tipo === 'veiculo') item = (S.veiculos || []).find(x => x.id === id);
       else if (tipo === 'fornecedor') item = (S.fornecedores || []).find(x => x.id === id);
+      else if (tipo === 'transportador') item = (S.transportadores || []).find(x => x.id === id);
       else if (tipo === 'produto') item = (S.pecas || []).find(x => x.id === id);
       else if (tipo === 'servico') item = (S.servicos || []).find(x => x.id === id);
-      else if (tipo === 'mecanico') item = (S.mecanicos || []).find(x => x.id === id);
+      else if (tipo === 'mecanico' || tipo === 'colaborador') item = (S.mecanicos || []).find(x => x.id === id);
       else if (tipo === 'box') item = (S.boxes || []).find(x => x.id === id);
       if (item) {
         S.ui.cadTipo = tipo;
@@ -83,9 +84,10 @@ function tratarEventosCadastros(a, b, e, o) {
         if (tipo === 'cliente') S.clientes = (S.clientes || []).filter(x => x.id !== id);
         else if (tipo === 'veiculo') S.veiculos = (S.veiculos || []).filter(x => x.id !== id);
         else if (tipo === 'fornecedor') S.fornecedores = (S.fornecedores || []).filter(x => x.id !== id);
+        else if (tipo === 'transportador') S.transportadores = (S.transportadores || []).filter(x => x.id !== id);
         else if (tipo === 'produto') S.pecas = (S.pecas || []).filter(x => x.id !== id);
         else if (tipo === 'servico') S.servicos = (S.servicos || []).filter(x => x.id !== id);
-        else if (tipo === 'mecanico') S.mecanicos = (S.mecanicos || []).filter(x => x.id !== id);
+        else if (tipo === 'mecanico' || tipo === 'colaborador') S.mecanicos = (S.mecanicos || []).filter(x => x.id !== id);
         else if (tipo === 'box') S.boxes = (S.boxes || []).filter(x => x.id !== id);
         salvar(); render(); torrar('Registro excluído com sucesso!');
       });
@@ -126,34 +128,100 @@ function tratarEventosCadastros(a, b, e, o) {
           S.fornecedores.push({ id: uid('f'), nome: r.nome, fantasia: r.fantasia||'', doc: r.doc||'', fone: r.fone||'', email: r.email||'', contato: r.contato||'', cidade: r.cidade||'', uf: r.uf||'', cep: r.cep||'', endereco: r.endereco||'' });
         }
       }
-      if (t === 'mecanico') {
-        if (!r.nome) { torrar('Nome do mecânico é obrigatório'); return true; }
+      if (t === 'transportador') {
+        if (!r.nome) { torrar('Razão Social do Transportador é obrigatória'); return true; }
+        S.transportadores = S.transportadores || [];
+        if (r.id) {
+          const idx = S.transportadores.findIndex(x => x.id === r.id);
+          if (idx >= 0) S.transportadores[idx] = { ...S.transportadores[idx], ...r };
+        } else {
+          S.transportadores.push({ id: uid('transp'), nome: r.nome, fantasia: r.fantasia||'', doc: r.doc||'', fone: r.fone||'', email: r.email||'', contato: r.contato||'', cidade: r.cidade||'', uf: r.uf||'', cep: r.cep||'', endereco: r.endereco||'' });
+        }
+      }
+      if (t === 'mecanico' || t === 'colaborador') {
+        if (!r.nome) { torrar('Nome do colaborador é obrigatório'); return true; }
         S.mecanicos = S.mecanicos || [];
+        const colabData = {
+          nome: r.nome,
+          cpf: r.cpf || '',
+          rg: r.rg || '',
+          nascimento: r.nascimento || '',
+          fone: r.fone || '',
+          email: r.email || '',
+          cep: r.cep || '',
+          endereco: r.endereco || '',
+          numero: r.numero || '',
+          complemento: r.complemento || '',
+          bairro: r.bairro || '',
+          cidade: r.cidade || '',
+          uf: r.uf || '',
+          especialidade: r.especialidade || 'Geral',
+          cargo: r.cargo || 'Mecânico',
+          admissao: r.admissao || '',
+          status: r.status || 'Ativo',
+          ctps: r.ctps || '',
+          cnh: r.cnh || '',
+          categoriaCnh: r.categoriaCnh || '',
+          comissao: r.comissao !== undefined && r.comissao !== '' ? Number(r.comissao) : 0,
+          custoHora: r.custoHora !== undefined && r.custoHora !== '' ? Number(r.custoHora) : 0
+        };
         if (r.id) {
           const idx = S.mecanicos.findIndex(x => x.id === r.id);
-          if (idx >= 0) S.mecanicos[idx] = { ...S.mecanicos[idx], ...r };
+          if (idx >= 0) S.mecanicos[idx] = { ...S.mecanicos[idx], ...r, ...colabData };
         } else {
-          S.mecanicos.push({ id: uid('m'), nome: r.nome, especialidade: r.especialidade||'Geral', fone: r.fone||'' });
+          S.mecanicos.push({ id: uid('m'), ...r, ...colabData });
         }
       }
       if (t === 'produto') {
         if (!r.nome) { torrar('Nome do produto é obrigatório'); return true; }
         S.pecas = S.pecas || [];
+        const prodData = {
+          cod: r.cod || '',
+          nome: r.nome,
+          categoria: r.categoria || 'Suspensão',
+          un: r.un || 'un',
+          ncm: r.ncm || '',
+          cest: r.cest || '',
+          origem: r.origem !== undefined ? String(r.origem) : '0',
+          cfop: r.cfop || '5102',
+          cstICMS: r.cstICMS || '',
+          csosn: r.csosn || '',
+          aliqICMS: +(r.aliqICMS || 0),
+          cstPIS: r.cstPIS || '',
+          cstCOFINS: r.cstCOFINS || '',
+          cClassTrib: r.cClassTrib || '',
+          custo: +r.custo || 0,
+          venda: +r.venda || 0,
+          qtd: r.qtd !== undefined ? +r.qtd : 0,
+          min: r.min !== undefined ? +r.min : 1
+        };
         if (r.id) {
           const idx = S.pecas.findIndex(x => x.id === r.id);
-          if (idx >= 0) S.pecas[idx] = { ...S.pecas[idx], ...r, categoria: r.categoria || S.pecas[idx].categoria || 'Suspensão', custo: +r.custo||0, venda: +r.venda||0, qtd: r.qtd !== undefined ? +r.qtd : (S.pecas[idx].qtd || 0), min: r.min !== undefined ? +r.min : (S.pecas[idx].min || 1), cClassTrib: r.cClassTrib || S.pecas[idx].cClassTrib || '' };
+          if (idx >= 0) S.pecas[idx] = { ...S.pecas[idx], ...r, ...prodData };
         } else {
-          S.pecas.push({ id: uid('p'), cod: r.cod||'', nome: r.nome, categoria: r.categoria||'Suspensão', un: r.un||'un', ncm: r.ncm||'', cest: r.cest||'', origem: r.origem||'0', cfop: r.cfop||'', cClassTrib: r.cClassTrib||'', custo: +r.custo||0, venda: +r.venda||0, qtd: +r.qtd||0, min: +r.min||1 });
+          S.pecas.push({ id: uid('p'), ...r, ...prodData });
         }
       }
       if (t === 'servico') {
         if (!r.nome) { torrar('Descrição do serviço é obrigatória'); return true; }
         S.servicos = S.servicos || [];
+        const servData = {
+          nome: r.nome,
+          valor: +r.valor || 0,
+          horas: +r.horas || 1,
+          cnae: r.cnae || '',
+          codServLC116: r.codServLC116 || '',
+          aliqISS: +(r.aliqISS || 0),
+          issRetido: Boolean(r.issRetido),
+          cfop: r.cfop || '',
+          cClassTrib: r.cClassTrib || '',
+          categoria: r.categoria || 'Mecânica'
+        };
         if (r.id) {
           const idx = S.servicos.findIndex(x => x.id === r.id);
-          if (idx >= 0) S.servicos[idx] = { ...S.servicos[idx], ...r, valor: +r.valor||0, horas: +r.horas||1, cClassTrib: r.cClassTrib || S.servicos[idx].cClassTrib || '' };
+          if (idx >= 0) S.servicos[idx] = { ...S.servicos[idx], ...r, ...servData };
         } else {
-          S.servicos.push({ id: uid('s'), nome: r.nome, valor: +r.valor||0, horas: +r.horas||1, cnae: r.cnae||'', codServLC116: r.codServLC116||'', cfop: r.cfop||'', cClassTrib: r.cClassTrib||'' });
+          S.servicos.push({ id: uid('s'), ...r, ...servData });
         }
       }
       if (t === 'regra-tributaria') {

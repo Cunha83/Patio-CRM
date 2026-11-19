@@ -4,7 +4,7 @@
   const host=document.createElement('div'); host.id='patio-fiscal'; document.body.append(host);
   const root=host.attachShadow({mode:'open'});
   const $=s=>root.querySelector(s);
-  root.innerHTML=`<button class="launcher" hidden>Notas fiscais</button><dialog><header><div><h1>Notas fiscais</h1><p class="sub-ambiente">Módulo Fiscal Habilitado · NF-e & NFS-e</p></div><button class="close" aria-label="Fechar notas fiscais">Fechar</button></header><nav><button data-view="list">Documentos</button><button data-view="new">Novo documento</button><button data-view="config">Emitente e parâmetros</button><button data-view="xml-recebidos">XMLs Recebidos (Contra CNPJ)</button></nav><p class="notice" role="status" aria-live="polite"></p><main></main></dialog>`;
+  root.innerHTML=`<button class="launcher" hidden>Notas fiscais</button><dialog><header><div><h1>Notas fiscais</h1><p class="sub-ambiente">Módulo Fiscal Habilitado · NF-e & NFS-e</p></div><button class="close" aria-label="Fechar notas fiscais">Fechar</button></header><nav><button data-view="list">Documentos</button><button data-view="new">Novo documento</button><button data-view="config">Emitente e parâmetros</button><button data-view="xml-recebidos" style="font-weight:700;color:#0284c7">☁️ Buscar XMLs Emitidos Contra o CNPJ (SEFAZ)</button></nav><p class="notice" role="status" aria-live="polite"></p><main></main></dialog>`;
   let selected=null,busy=false,creationKey=null;
   async function request(path,method='GET',data) {
     const headers=typeof obterHeadersRequisicao==='function'?obterHeadersRequisicao({'Content-Type':'application/json'}):{'Content-Type':'application/json'};
